@@ -22,7 +22,9 @@ app.use(cors({
   credentials: true
 }));
 
-app.use(express.json());
+// Default body size limit is only 100kb — too small for the hotel logo/stamp/
+// signature images (sent as base64) and invoice PDFs. Raised to handle those.
+app.use(express.json({ limit: '20mb' }));
 
 // Slow down brute-force login attempts. Applies to all /api/auth/* routes.
 const loginLimiter = rateLimit({
