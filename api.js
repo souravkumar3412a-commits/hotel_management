@@ -9,7 +9,7 @@
 // ============================================================
 (function (global) {
   // Change this to your deployed backend URL once you deploy (Phase 9).
-  const API_BASE = 'http://localhost:4000/api';
+  const API_BASE = 'https://resort-backend-lb7u.onrender.com/api';
 
   let authToken = null;
   try { authToken = window.localStorage.getItem('invoice-desk:auth-token'); } catch (e) {}
