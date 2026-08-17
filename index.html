@@ -2831,7 +2831,7 @@ tr.top-row td{background:var(--accent-tint);}
 
     setBtnLoading(btn, true, 'Creating account…');
     api.adminSignup(firstName, lastName, email, pw).then(function(user){
-      state.session = { role:'admin', adminId: user.adminId, email: user.email };
+      state.session = { role:'admin', adminId: user.adminId, email: user.email, firstName: user.firstName, lastName: user.lastName, photo: user.photo || null };
       resetTenantState(); // brand-new admin — starts with a completely fresh restaurant, not anyone else's data
       setBtnLoading(btn, false, null, 'Create account & continue');
       showToast('Admin account created');
@@ -2856,7 +2856,7 @@ tr.top-row td{background:var(--accent-tint);}
     setBtnLoading(btn, true, 'Signing in…');
     api.adminLogin(email, pw).then(function(user){
       err.classList.remove('show');
-      state.session = { role:'admin', adminId: user.adminId, email: user.email };
+      state.session = { role:'admin', adminId: user.adminId, email: user.email, firstName: user.firstName, lastName: user.lastName, photo: user.photo || null };
       return loadTenantData(user.adminId);
     }).then(function(){
       setBtnLoading(btn, false, null, 'Log in');
@@ -2901,7 +2901,7 @@ tr.top-row td{background:var(--accent-tint);}
       return;
     }
     api.adminGoogleLogin(tokenResponse.access_token).then(function(user){
-      state.session = { role:'admin', adminId: user.adminId, email: user.email };
+      state.session = { role:'admin', adminId: user.adminId, email: user.email, firstName: user.firstName, lastName: user.lastName, photo: user.photo || null };
       return loadTenantData(user.adminId);
     }).then(function(){
       if(googleAuthBtn) setBtnLoading(googleAuthBtn, false, null, 'Continue with Google');
@@ -2930,7 +2930,7 @@ tr.top-row td{background:var(--accent-tint);}
     setBtnLoading(btn, true, 'Signing in…');
     api.staffLogin(staffId, pw).then(function(user){
       err.classList.remove('show');
-      state.session = { role:'staff', staffId: user.staffId, name: user.name, department: user.department, adminId: user.adminId };
+      state.session = { role:'staff', staffId: user.staffId, name: user.name, department: user.department, adminId: user.adminId, photo: user.photo || null };
       return loadTenantData(user.adminId);
     }).then(function(){
       setBtnLoading(btn, false, null, 'Log in');
@@ -3044,30 +3044,34 @@ tr.top-row td{background:var(--accent-tint);}
     var btn = this;
     var isAdmin = state.session.role === 'admin';
     var err = document.getElementById('editNameError');
-    var account = getCurrentAccount();
-    if(!account){ err.textContent = 'Could not find your account to update.'; err.classList.add('show'); return; }
 
+    var savePromise;
     if(isAdmin){
       var firstName = document.getElementById('editFirstName').value.trim();
       var lastName = document.getElementById('editLastName').value.trim();
       if(!firstName){ err.textContent = 'Enter a first name.'; err.classList.add('show'); return; }
       if(!lastName){ err.textContent = 'Enter a last name.'; err.classList.add('show'); return; }
       err.classList.remove('show');
-      account.firstName = firstName;
-      account.lastName = lastName;
+      savePromise = api.updateAdminProfile(firstName, lastName, state.session.photo || null);
     } else {
       var staffName = document.getElementById('editStaffName').value.trim();
       if(!staffName){ err.textContent = 'Enter a name.'; err.classList.add('show'); return; }
       err.classList.remove('show');
-      account.name = staffName;
-      state.session.name = staffName;
+      savePromise = api.updateStaffProfile(staffName, state.session.photo || null);
     }
     setBtnLoading(btn, true, 'Saving…');
-    Promise.all([persistCurrentAccount(), persistSession()]).then(function(){
+    savePromise.then(function(updated){
+      state.session.firstName = updated.firstName;
+      state.session.lastName = updated.lastName;
+      state.session.name = updated.name;
+      state.session.photo = updated.photo || null;
       setBtnLoading(btn, false, null, 'Save');
       editNameModalScrim.classList.remove('show');
       showToast('Name updated');
       renderSessionPill();
+    }).catch(function(e){
+      setBtnLoading(btn, false, null, 'Save');
+      err.textContent = e.message; err.classList.add('show');
     });
   });
 
@@ -3172,16 +3176,10 @@ tr.top-row td{background:var(--accent-tint);}
 
   function getCurrentAccount(){
     if(!state.session) return null;
-    if(state.session.role === 'admin'){
-      return state.admins.find(function(a){ return a.id === state.session.adminId; })
-        || state.admins.find(function(a){ return a.email && state.session.email && a.email.toLowerCase() === state.session.email.toLowerCase(); })
-        || null;
-    }
-    return state.staff.find(function(s){ return s.staffId === state.session.staffId; }) || null;
+    return { firstName: state.session.firstName, lastName: state.session.lastName, name: state.session.name, email: state.session.email, photo: state.session.photo };
   }
-  function persistCurrentAccount(){
-    return state.session.role === 'admin' ? persistAdmins() : persistStaff();
-  }
+  // Removed persistCurrentAccount() — name/photo now save via the API
+  // (see saveNameBtn, profilePhotoInput, removePhotoBtn handlers below).
   function avatarInnerHtml(photo, initial){
     return photo ? '<img src="'+photo+'" alt="Profile photo">' : escapeHtml(initial);
   }
@@ -3239,13 +3237,15 @@ tr.top-row td{background:var(--accent-tint);}
         var sx = (img.width - side) / 2, sy = (img.height - side) / 2;
         ctx.drawImage(img, sx, sy, side, side, 0, 0, size, size);
         var dataUrl = canvas.toDataURL('image/jpeg', 0.86);
-        var account = getCurrentAccount();
-        if(!account){ showToast('Could not find your account to update.', 'error'); return; }
-        account.photo = dataUrl;
-        persistCurrentAccount().then(function(){
+        var isAdmin = state.session.role === 'admin';
+        var savePromise = isAdmin
+          ? api.updateAdminProfile(state.session.firstName, state.session.lastName, dataUrl)
+          : api.updateStaffProfile(state.session.name, dataUrl);
+        savePromise.then(function(updated){
+          state.session.photo = updated.photo || null;
           showToast('Profile photo updated');
           renderSessionPill();
-        });
+        }).catch(function(e){ showToast(e.message, 'error'); });
       };
       img.onerror = function(){ showToast('Could not read that image — try a different file.', 'error'); };
       img.src = reader.result;
@@ -3255,13 +3255,16 @@ tr.top-row td{background:var(--accent-tint);}
   });
   document.getElementById('removePhotoBtn').addEventListener('click', function(e){
     e.stopPropagation();
-    var account = getCurrentAccount();
-    if(!account || !account.photo) return;
-    delete account.photo;
-    persistCurrentAccount().then(function(){
+    if(!state.session.photo) return;
+    var isAdmin = state.session.role === 'admin';
+    var savePromise = isAdmin
+      ? api.updateAdminProfile(state.session.firstName, state.session.lastName, null)
+      : api.updateStaffProfile(state.session.name, null);
+    savePromise.then(function(updated){
+      state.session.photo = updated.photo || null;
       showToast('Profile photo removed');
       renderSessionPill();
-    });
+    }).catch(function(e){ showToast(e.message, 'error'); });
   });
 
   // mobile sidebar drawer
@@ -6838,9 +6841,9 @@ tr.top-row td{background:var(--accent-tint);}
     api.me().then(function(res){
       var u = res.user;
       if(u.role === 'admin'){
-        state.session = { role:'admin', adminId: u.adminId, email: u.email };
+        state.session = { role:'admin', adminId: u.adminId, email: u.email, firstName: u.firstName, lastName: u.lastName, photo: u.photo || null };
       } else {
-        state.session = { role:'staff', staffId: u.staffId, name: u.name, department: u.department, adminId: u.adminId };
+        state.session = { role:'staff', staffId: u.staffId, name: u.name, department: u.department, adminId: u.adminId, photo: u.photo || null };
       }
       return loadTenantData(u.adminId);
     }).then(function(){

@@ -39,7 +39,7 @@ router.post('/admin/signup', async (req, res) => {
     await pool.query('INSERT INTO restaurant_settings (admin_id) VALUES ($1)', [admin.id]);
 
     const token = sign({ role: 'admin', adminId: admin.id, email: admin.email });
-    res.status(201).json({ token, user: { role: 'admin', adminId: admin.id, email: admin.email, firstName: admin.first_name, lastName: admin.last_name } });
+    res.status(201).json({ token, user: { role: 'admin', adminId: admin.id, email: admin.email, firstName: admin.first_name, lastName: admin.last_name, photo: null } });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Something went wrong creating the admin account.' });
@@ -61,7 +61,7 @@ router.post('/admin/login', async (req, res) => {
     const ok = await bcrypt.compare(password, admin.password_hash);
     if (!ok) return res.status(401).json({ error: 'Incorrect password.' });
     const token = sign({ role: 'admin', adminId: admin.id, email: admin.email });
-    res.json({ token, user: { role: 'admin', adminId: admin.id, email: admin.email, firstName: admin.first_name, lastName: admin.last_name } });
+    res.json({ token, user: { role: 'admin', adminId: admin.id, email: admin.email, firstName: admin.first_name, lastName: admin.last_name, photo: admin.photo_url || null } });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Something went wrong logging in.' });
@@ -109,7 +109,7 @@ router.post('/admin/google', async (req, res) => {
     }
 
     const token = sign({ role: 'admin', adminId: admin.id, email: admin.email });
-    res.json({ token, user: { role: 'admin', adminId: admin.id, email: admin.email, firstName: admin.first_name, lastName: admin.last_name } });
+    res.json({ token, user: { role: 'admin', adminId: admin.id, email: admin.email, firstName: admin.first_name, lastName: admin.last_name, photo: admin.photo_url || null } });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Something went wrong signing in with Google.' });
@@ -129,16 +129,70 @@ router.post('/staff/login', async (req, res) => {
     const ok = await bcrypt.compare(password, acct.password_hash);
     if (!ok) return res.status(401).json({ error: 'Incorrect password.' });
     const token = sign({ role: 'staff', staffId: acct.staff_id, name: acct.name, department: acct.department, adminId: acct.admin_id });
-    res.json({ token, user: { role: 'staff', staffId: acct.staff_id, name: acct.name, department: acct.department, adminId: acct.admin_id } });
+    res.json({ token, user: { role: 'staff', staffId: acct.staff_id, name: acct.name, department: acct.department, adminId: acct.admin_id, photo: acct.photo_url || null } });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Something went wrong logging in.' });
   }
 });
 
-// GET /api/auth/me — used on app load to check if the stored token is still valid
-router.get('/me', requireAuth, (req, res) => {
-  res.json({ user: req.user });
+// GET /api/auth/me — used on app load to check if the stored token is still
+// valid, and to get current profile info (name/photo may have changed since
+// the token was issued, so this always reads fresh from the database).
+router.get('/me', requireAuth, async (req, res) => {
+  try {
+    if (req.user.role === 'admin') {
+      const r = await pool.query('SELECT id, email, first_name, last_name, photo_url FROM admins WHERE id = $1', [req.user.adminId]);
+      if (!r.rows[0]) return res.status(401).json({ error: 'Account no longer exists.' });
+      const a = r.rows[0];
+      return res.json({ user: { role: 'admin', adminId: a.id, email: a.email, firstName: a.first_name, lastName: a.last_name, photo: a.photo_url || null } });
+    }
+    const r = await pool.query('SELECT staff_id, name, department, admin_id, photo_url FROM staff WHERE staff_id = $1 AND admin_id = $2', [req.user.staffId, req.user.adminId]);
+    if (!r.rows[0]) return res.status(401).json({ error: 'Account no longer exists.' });
+    const s = r.rows[0];
+    res.json({ user: { role: 'staff', staffId: s.staff_id, name: s.name, department: s.department, adminId: s.admin_id, photo: s.photo_url || null } });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Something went wrong loading your profile.' });
+  }
+});
+
+// PUT /api/auth/admin/profile — Admin editing their own name/photo.
+router.put('/admin/profile', requireAuth, async (req, res) => {
+  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin access required.' });
+  const { firstName, lastName, photo } = req.body;
+  if (!firstName || !lastName) return res.status(400).json({ error: 'First name and last name are required.' });
+  try {
+    const r = await pool.query(
+      'UPDATE admins SET first_name = $1, last_name = $2, photo_url = $3 WHERE id = $4 RETURNING id, email, first_name, last_name, photo_url',
+      [firstName, lastName, photo === undefined ? null : photo, req.user.adminId]
+    );
+    const a = r.rows[0];
+    res.json({ role: 'admin', adminId: a.id, email: a.email, firstName: a.first_name, lastName: a.last_name, photo: a.photo_url || null });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Something went wrong updating your profile.' });
+  }
+});
+
+// PUT /api/auth/staff/profile — Staff editing their own name/photo (self-service;
+// staffId/department/password stay admin-controlled, matching existing rules).
+router.put('/staff/profile', requireAuth, async (req, res) => {
+  if (req.user.role !== 'staff') return res.status(403).json({ error: 'Staff access required.' });
+  const { name, photo } = req.body;
+  if (!name) return res.status(400).json({ error: 'Name is required.' });
+  try {
+    const r = await pool.query(
+      'UPDATE staff SET name = $1, photo_url = $2 WHERE staff_id = $3 AND admin_id = $4 RETURNING staff_id, name, department, admin_id, photo_url',
+      [name, photo === undefined ? null : photo, req.user.staffId, req.user.adminId]
+    );
+    if (!r.rows[0]) return res.status(404).json({ error: 'Account not found.' });
+    const s = r.rows[0];
+    res.json({ role: 'staff', staffId: s.staff_id, name: s.name, department: s.department, adminId: s.admin_id, photo: s.photo_url || null });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Something went wrong updating your profile.' });
+  }
 });
 
 module.exports = router;

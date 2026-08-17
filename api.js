@@ -9,8 +9,7 @@
 // ============================================================
 (function (global) {
   // Change this to your deployed backend URL once you deploy (Phase 9).
-  const API_BASE = 'https://resort-backend-lb7u.onrender.com/api';
-
+  const API_BASE =  'https://resort-backend-lb7u.onrender.com/api';
   let authToken = null;
   try { authToken = window.localStorage.getItem('invoice-desk:auth-token'); } catch (e) {}
 
@@ -79,6 +78,8 @@
         .then(r => { setToken(r.token); return r.user; }),
 
     me: () => request('GET', '/auth/me'),
+    updateAdminProfile: (firstName, lastName, photo) => request('PUT', '/auth/admin/profile', { firstName, lastName, photo }),
+    updateStaffProfile: (name, photo) => request('PUT', '/auth/staff/profile', { name, photo }),
 
     logout: () => setToken(null),
 
