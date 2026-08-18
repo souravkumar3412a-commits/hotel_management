@@ -2871,7 +2871,7 @@ tr.top-row td{background:var(--accent-tint);}
   // Set this to the OAuth Client ID from Google Cloud Console (see README) —
   // it's not a secret, it's meant to be public in frontend code.
   var GOOGLE_CLIENT_ID = '516202983818-1il4sbfers16cuee2i46v4harn7an026.apps.googleusercontent.com';
-
+  
   var googleTokenClient = null;
   function getGoogleTokenClient(){
     if(!GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID.indexOf('PASTE_YOUR') === 0){
@@ -3924,9 +3924,12 @@ tr.top-row td{background:var(--accent-tint);}
     var d = promo.discountType === 'percent' ? totalAfterTax * (promo.discountValue / 100) : promo.discountValue;
     return Math.max(0, Math.min(d, totalAfterTax));
   }
+  // The real invoice number is now assigned by the server at the moment of
+  // generation (so numbering stays correct even with multiple staff/devices
+  // creating invoices at the same time) — so this preview can no longer predict
+  // the exact number in advance the way it could when everything was local-only.
   function previewInvoiceNo(){
-    var n = state.invoiceSeq + 1;
-    return state.restaurant.invoicePrefix + '-' + String(n).padStart(4,'0');
+    return 'Assigned on generate';
   }
   function renderAppliedPromo(){
     var wrap = document.getElementById('appliedPromoInfo');
