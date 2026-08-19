@@ -13,6 +13,11 @@ const settingsRoutes = require('./routes/settings');
 
 const app = express();
 
+// Render (like most hosts) sits your app behind a reverse proxy, which adds
+// an X-Forwarded-For header. Without this, express-rate-limit can't reliably
+// tell requests apart by IP and throws a validation error on every request.
+app.set('trust proxy', 1);
+
 // Only allow your actual frontend origin(s) to call this API.
 // Set FRONTEND_ORIGIN in .env — comma-separated if you have more than one
 // (e.g. your local dev server AND your deployed site).
