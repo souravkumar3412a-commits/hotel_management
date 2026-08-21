@@ -145,6 +145,43 @@ button{font-family:'Inter',sans-serif;cursor:pointer;}
 .gbp-bottom{position:relative;font-family:'IBM Plex Mono',monospace;font-size:11px;color:rgba(243,239,230,.4);letter-spacing:.05em;}
 
 .gate-form-panel{flex:1 1 54%;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:40px 24px;background:var(--bg);}
+
+/* ---------- subscription paywall ---------- */
+#subscriptionGate{
+  display:none;position:fixed;inset:0;z-index:900;overflow-y:auto;
+  align-items:center;justify-content:center;padding:32px 20px;
+  background:radial-gradient(circle at 22% 18%, #25392f 0%, var(--primary) 55%, #0f1813 100%);
+}
+#subscriptionGate::before{
+  content:"";position:fixed;inset:0;opacity:.5;pointer-events:none;
+  background-image:radial-gradient(circle at 1px 1px, rgba(189,126,43,.16) 1px, transparent 0);
+  background-size:26px 26px;
+}
+#subscriptionGate.show{display:flex;}
+.sub-gate-card{
+  position:relative;width:100%;max-width:460px;background:var(--surface);border-radius:var(--radius-lg);
+  box-shadow:0 30px 80px rgba(0,0,0,.45);padding:44px 40px 36px;text-align:center;
+  animation:fadeInUp .35s ease;
+}
+.sub-gate-close{position:absolute;top:16px;right:16px;width:32px;height:32px;border-radius:50%;border:1px solid var(--border);background:transparent;color:var(--text-muted);font-size:20px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.sub-gate-close:hover{background:var(--danger-bg);color:var(--danger);border-color:transparent;}
+.sub-gate-brand{display:flex;align-items:center;justify-content:center;gap:9px;font-family:'Playfair Display',serif;font-weight:700;font-size:17px;color:var(--primary);margin-bottom:22px;}
+.sub-gate-crest{color:var(--accent);font-size:19px;}
+.sub-gate-eyebrow{font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);margin:0 0 10px;}
+.sub-gate-card h2{font-family:'Playfair Display',serif;font-size:23px;font-weight:700;margin:0 0 10px;line-height:1.25;}
+.sub-gate-sub{font-size:13px;color:var(--text-secondary);line-height:1.65;margin:0 0 26px;}
+.sub-gate-plan{border:1px solid var(--border-strong);border-radius:var(--radius-md);padding:22px 24px;margin-bottom:22px;background:var(--primary-tint);text-align:left;}
+.sub-gate-plan-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.sub-gate-plan-name{font-weight:700;font-size:14.5px;}
+.sub-gate-plan-badge{font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;background:var(--accent);color:var(--text-on-primary);padding:3px 9px;border-radius:99px;}
+.sub-gate-price{font-family:'Playfair Display',serif;font-weight:700;font-size:38px;color:var(--primary);line-height:1;margin-bottom:10px;}
+.sub-gate-currency{font-size:22px;vertical-align:top;position:relative;top:4px;}
+.sub-gate-per{font-family:'Inter',sans-serif;font-size:14px;font-weight:500;color:var(--text-muted);}
+.sub-gate-includes{font-size:12.5px;color:var(--text-secondary);line-height:1.6;margin:0;}
+.sub-gate-note{font-size:12px;color:var(--text-muted);margin:14px 0 4px;min-height:16px;}
+.sub-gate-cancel-link{margin-top:8px;background:none;border:none;color:var(--text-muted);font-size:12.5px;text-decoration:underline;cursor:pointer;padding:6px;}
+.sub-gate-cancel-link:hover{color:var(--danger);}
+@media (max-width:480px){.sub-gate-card{padding:36px 24px 28px;}.sub-gate-price{font-size:32px;}}
 .gate-box{width:100%;max-width:420px;}
 .gate-box-mobile-brand{display:none;}
 .gate-panel{display:none;}
@@ -986,6 +1023,39 @@ tr.top-row td{background:var(--accent-tint);}
         </div>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- ============== SUBSCRIPTION PAYWALL (Admin only) ==============
+     Shown instead of the app whenever a logged-in Admin's subscription is
+     not 'active'. There is no route/URL for the dashboard to bypass this by
+     navigating directly — #appLayout is only ever shown by enterAppReal(),
+     which is only called once subscriptionGateGuard() confirms an active
+     subscription against the backend (never from cached/local state). -->
+<div id="subscriptionGate">
+  <div class="sub-gate-card">
+    <button type="button" class="sub-gate-close" id="subGateCloseBtn" title="Close and sign out" aria-label="Close and sign out">&times;</button>
+    <div class="sub-gate-brand">
+      <span class="sub-gate-crest">&#9813;</span>
+      <span>RoyalStay</span>
+    </div>
+    <p class="sub-gate-eyebrow" id="subGateEyebrow">Subscription required</p>
+    <h2 id="subGateTitle">Activate your RoyalStay subscription</h2>
+    <p class="sub-gate-sub" id="subGateSub">Your dashboard, Room/Banquet/Restaurant management, staff accounts, and invoicing are all included in one simple annual plan.</p>
+
+    <div class="sub-gate-plan">
+      <div class="sub-gate-plan-head">
+        <span class="sub-gate-plan-name">RoyalStay Annual</span>
+        <span class="sub-gate-plan-badge">Best value</span>
+      </div>
+      <div class="sub-gate-price"><span class="sub-gate-currency">₹</span>12,000<span class="sub-gate-per">/ year</span></div>
+      <p class="sub-gate-includes">Includes full access to the Resort Management System — Rooms, Banquets, Restaurant, Staff, Invoicing, and Reports.</p>
+    </div>
+
+    <p class="error-text" id="subGateError"></p>
+    <button type="button" class="btn accent full" id="subGateSubscribeBtn" style="height:50px;font-size:15px;">Subscribe for ₹12,000 / Year</button>
+    <p class="sub-gate-note" id="subGateNote"></p>
+    <button type="button" class="sub-gate-cancel-link" id="subGateCancelBtn">Cancel and sign out</button>
   </div>
 </div>
 
@@ -2901,7 +2971,7 @@ tr.top-row td{background:var(--accent-tint);}
       document.getElementById('signupEmail').value = '';
       document.getElementById('signupPassword').value = '';
       document.getElementById('signupConfirm').value = '';
-      enterApp();
+      proceedAfterLogin();
     }).catch(function(e){
       setBtnLoading(btn, false, null, 'Create account & continue');
       err.textContent = e.message; err.classList.add('show');
@@ -2921,7 +2991,7 @@ tr.top-row td{background:var(--accent-tint);}
       return loadTenantData(user.adminId);
     }).then(function(){
       setBtnLoading(btn, false, null, 'Log in');
-      enterApp();
+      proceedAfterLogin();
     }).catch(function(e){
       setBtnLoading(btn, false, null, 'Log in');
       err.textContent = e.message; err.classList.add('show');
@@ -2931,7 +3001,7 @@ tr.top-row td{background:var(--accent-tint);}
   // ---------- "Continue with Google" (admin only) ----------
   // Set this to the OAuth Client ID from Google Cloud Console (see README) —
   // it's not a secret, it's meant to be public in frontend code.
-  var GOOGLE_CLIENT_ID = '516202983818-1il4sbfers16cuee2i46v4harn7an026.apps.googleusercontent.com';
+ var GOOGLE_CLIENT_ID = '516202983818-1il4sbfers16cuee2i46v4harn7an026.apps.googleusercontent.com';
 
   var googleTokenClient = null;
   function getGoogleTokenClient(){
@@ -2966,7 +3036,7 @@ tr.top-row td{background:var(--accent-tint);}
       return loadTenantData(user.adminId);
     }).then(function(){
       if(googleAuthBtn) setBtnLoading(googleAuthBtn, false, null, 'Continue with Google');
-      enterApp();
+      proceedAfterLogin();
     }).catch(function(e){
       if(googleAuthBtn) setBtnLoading(googleAuthBtn, false, null, 'Continue with Google');
       showToast(e.message, 'error');
@@ -3339,6 +3409,92 @@ tr.top-row td{background:var(--accent-tint);}
   }
   document.getElementById('hamburgerBtn').addEventListener('click', openMobileSidebar);
   document.getElementById('sidebarScrim').addEventListener('click', closeMobileSidebar);
+
+  // ================= SUBSCRIPTION PAYWALL (Admin only) =================
+  // Called after every successful login/signup/session-restore, in place of
+  // calling enterApp() directly. Staff go straight in, unaffected — this only
+  // gates the Admin role. The check always hits the server (never trusts
+  // anything cached locally), so it can't be bypassed by editing localStorage.
+  function proceedAfterLogin(){
+    if(!state.session || state.session.role !== 'admin'){
+      enterApp();
+      return;
+    }
+    api.getSubscription().then(function(sub){
+      if(sub && sub.status === 'active'){
+        enterApp();
+      } else {
+        showSubscriptionGate(sub);
+      }
+    }).catch(function(){
+      // Can't confirm status — fail closed (show the paywall) rather than
+      // risk letting someone into the dashboard on a network hiccup.
+      showSubscriptionGate(null);
+    });
+  }
+  function signOutToLogin(){
+    state.session = null;
+    api.logout();
+    document.getElementById('subscriptionGate').classList.remove('show');
+    document.getElementById('appLayout').classList.remove('show');
+    document.getElementById('gateScreen').style.display = 'flex';
+    showGatePanel('roleSelect');
+    document.getElementById('loginEmail').value = '';
+    document.getElementById('loginPassword').value = '';
+    document.getElementById('staffLoginId').value = '';
+    document.getElementById('staffLoginPassword').value = '';
+  }
+  function showSubscriptionGate(sub){
+    document.getElementById('gateScreen').style.display = 'none';
+    document.getElementById('appLayout').classList.remove('show');
+    var status = sub ? sub.status : 'inactive';
+    var eyebrow = document.getElementById('subGateEyebrow');
+    var title = document.getElementById('subGateTitle');
+    var sub_ = document.getElementById('subGateSub');
+    var note = document.getElementById('subGateNote');
+    note.textContent = '';
+    document.getElementById('subGateError').classList.remove('show');
+    if(status === 'expired'){
+      eyebrow.textContent = 'Subscription expired';
+      title.textContent = 'Your subscription has expired';
+      sub_.textContent = 'Renew your RoyalStay Annual plan to get back into your dashboard — your data is safe and waiting for you.';
+    } else if(status === 'pending'){
+      eyebrow.textContent = 'Payment pending';
+      title.textContent = 'Finish setting up your subscription';
+      sub_.textContent = 'Your last subscription attempt didn\'t complete. Subscribe again to activate full access.';
+    } else if(status === 'cancelled'){
+      eyebrow.textContent = 'Subscription cancelled';
+      title.textContent = 'Reactivate your subscription';
+      sub_.textContent = 'Your RoyalStay subscription was cancelled. Subscribe again any time to regain access.';
+    } else {
+      eyebrow.textContent = 'Subscription required';
+      title.textContent = 'Activate your RoyalStay subscription';
+      sub_.textContent = 'Your dashboard, Room/Banquet/Restaurant management, staff accounts, and invoicing are all included in one simple annual plan.';
+    }
+    document.getElementById('subscriptionGate').classList.add('show');
+  }
+  document.getElementById('subGateSubscribeBtn').addEventListener('click', function(){
+    var btn = this;
+    var err = document.getElementById('subGateError');
+    var note = document.getElementById('subGateNote');
+    err.classList.remove('show');
+    setBtnLoading(btn, true, 'Please wait…');
+    // FUTURE RAZORPAY: this is where Razorpay Checkout gets opened, using the
+    // order details api.subscribeToPlan() will return once that route creates
+    // a real Razorpay order (see subscription.js on the backend). The
+    // Checkout success callback then calls a new api.verifySubscriptionPayment(...)
+    // — only THAT verified response should ever mark the subscription active.
+    api.subscribeToPlan().then(function(){
+      setBtnLoading(btn, false, null, 'Subscribe for ₹12,000 / Year');
+      note.textContent = 'Payment gateway integration will be connected here.';
+      showToast('Payment gateway integration will be connected here.');
+    }).catch(function(e){
+      setBtnLoading(btn, false, null, 'Subscribe for ₹12,000 / Year');
+      err.textContent = e.message; err.classList.add('show');
+    });
+  });
+  document.getElementById('subGateCloseBtn').addEventListener('click', signOutToLogin);
+  document.getElementById('subGateCancelBtn').addEventListener('click', signOutToLogin);
 
   function enterApp(){
     document.getElementById('gateScreen').style.display = 'none';
@@ -7064,7 +7220,7 @@ tr.top-row td{background:var(--accent-tint);}
       }
       return loadTenantData(u.adminId);
     }).then(function(){
-      enterApp();
+      proceedAfterLogin();
     }).catch(function(){
       // token missing/expired/invalid — api.js already cleared it on a 401
       state.session = null;

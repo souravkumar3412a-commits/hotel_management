@@ -10,6 +10,7 @@ const banquetRoutes = require('./routes/banquets');
 const restaurantRoutes = require('./routes/restaurant');
 const invoiceRoutes = require('./routes/invoices');
 const settingsRoutes = require('./routes/settings');
+const subscriptionRoutes = require('./routes/subscription');
 
 const app = express();
 
@@ -45,6 +46,7 @@ app.use('/api/banquets', banquetRoutes);
 app.use('/api/restaurant', restaurantRoutes);
 app.use('/api/invoices', invoiceRoutes);
 app.use('/api/settings', settingsRoutes);
+app.use('/api/subscription', subscriptionRoutes);
 
 app.get('/api/health', (req, res) => res.json({ ok: true }));
 

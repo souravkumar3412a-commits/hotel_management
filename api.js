@@ -9,7 +9,8 @@
 // ============================================================
 (function (global) {
   // Change this to your deployed backend URL once you deploy (Phase 9).
-  const API_BASE =  'https://resort-backend-lb7u.onrender.com/api';
+  const API_BASE = 'https://resort-backend-lb7u.onrender.com/api';
+
   let authToken = null;
   try { authToken = window.localStorage.getItem('invoice-desk:auth-token'); } catch (e) {}
 
@@ -146,7 +147,14 @@
     getHotelSettings: () => request('GET', '/settings/hotel'),
     updateHotelSettings: (settings) => request('PUT', '/settings/hotel', settings),
     getRestaurantSettings: () => request('GET', '/settings/restaurant'),
-    updateRestaurantSettings: (settings) => request('PUT', '/settings/restaurant', settings)
+    updateRestaurantSettings: (settings) => request('PUT', '/settings/restaurant', settings),
+
+    // ---------- subscription ----------
+    getSubscription: () => request('GET', '/subscription'),
+    subscribeToPlan: () => request('POST', '/subscription/subscribe')
+    // FUTURE RAZORPAY: after Checkout succeeds, call a new
+    // api.verifySubscriptionPayment(razorpayResponse) here that POSTs to
+    // /api/subscription/verify — see subscription.js on the backend.
   };
 
   global.api = api;

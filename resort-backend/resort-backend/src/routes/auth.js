@@ -36,6 +36,7 @@ router.post('/admin/signup', async (req, res) => {
     const admin = result.rows[0];
     // Give every new tenant an empty settings row so later reads never 404.
     await pool.query('INSERT INTO hotel_settings (admin_id) VALUES ($1)', [admin.id]);
+    await pool.query('INSERT INTO subscriptions (admin_id) VALUES ($1)', [admin.id]);
     await pool.query('INSERT INTO restaurant_settings (admin_id) VALUES ($1)', [admin.id]);
 
     const token = sign({ role: 'admin', adminId: admin.id, email: admin.email });
@@ -105,6 +106,7 @@ router.post('/admin/google', async (req, res) => {
       );
       admin = result.rows[0];
       await pool.query('INSERT INTO hotel_settings (admin_id) VALUES ($1)', [admin.id]);
+      await pool.query('INSERT INTO subscriptions (admin_id) VALUES ($1)', [admin.id]);
       await pool.query('INSERT INTO restaurant_settings (admin_id) VALUES ($1)', [admin.id]);
     }
 
