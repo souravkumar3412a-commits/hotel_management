@@ -491,6 +491,29 @@ main{flex:1;padding:30px 32px 60px;max-width:100%;width:100%;}
 .dash-list-row .dlr-meta{color:var(--text-muted);font-size:12px;}
 .dash-list-row .dlr-amt{font-family:'IBM Plex Mono',monospace;font-weight:700;flex-shrink:0;}
 
+/* room picker: rich card dropdown, replaces a plain <select> for choosing a room */
+.room-picker{position:relative;}
+.room-picker-btn{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 14px;border:1px solid var(--border-strong);border-radius:var(--radius-sm);background:var(--surface);color:var(--text-primary);font:inherit;font-size:14px;cursor:pointer;text-align:left;}
+.room-picker-btn:hover{border-color:var(--accent);}
+.room-picker-chevron{color:var(--text-muted);font-size:11px;transition:transform .15s;}
+.room-picker.open .room-picker-chevron{transform:rotate(180deg);}
+.room-picker-panel{display:none;position:absolute;z-index:40;top:calc(100% + 6px);left:0;right:0;max-height:360px;overflow-y:auto;background:var(--surface);border:1px solid var(--border-strong);border-radius:var(--radius-md);box-shadow:var(--shadow-lg);padding:8px;}
+.room-picker.open .room-picker-panel{display:block;}
+.room-picker-card{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding:11px 12px;border-radius:var(--radius-sm);cursor:pointer;border:1px solid transparent;}
+.room-picker-card:hover{background:var(--primary-tint);border-color:var(--border);}
+.room-picker-card + .room-picker-card{margin-top:4px;}
+.room-picker-card .rpc-left{min-width:0;}
+.room-picker-card .rpc-title{font-weight:700;font-size:14.5px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.room-picker-card .rpc-badge{font-size:10.5px;font-weight:700;letter-spacing:.03em;padding:2px 7px;border-radius:99px;background:var(--accent-tint);color:var(--accent);}
+.room-picker-card .rpc-badge.ac{background:var(--info-bg);color:var(--info);}
+.room-picker-card .rpc-meta{font-size:12px;color:var(--text-secondary);margin-top:3px;}
+.room-picker-card .rpc-amenities{margin-top:5px;display:flex;flex-wrap:wrap;gap:5px;}
+.room-picker-card .rpc-amenity{font-size:10.5px;color:var(--text-muted);background:var(--primary-tint);border-radius:6px;padding:2px 6px;}
+.room-picker-card .rpc-warn{font-size:11px;color:var(--warning,#a15c00);margin-top:3px;}
+.room-picker-card .rpc-price{flex-shrink:0;text-align:right;font-family:'IBM Plex Mono',monospace;font-weight:700;white-space:nowrap;}
+.room-picker-card .rpc-price small{display:block;font-family:inherit;font-weight:500;color:var(--text-muted);font-size:10.5px;}
+.room-picker-empty{padding:16px;text-align:center;color:var(--text-muted);font-size:13px;}
+
 /* ============================================================
    MENU
    ============================================================ */
@@ -1530,7 +1553,14 @@ tr.top-row td{background:var(--accent-tint);}
               <div class="grid-3">
                 <div class="field" style="margin-bottom:0;">
                   <label for="roomNo">Room</label>
-                  <select id="roomNo"></select>
+                  <div class="room-picker" id="roomPickerWrap">
+                    <button type="button" class="room-picker-btn" id="roomPickerBtn">
+                      <span id="roomPickerBtnText">Select a room</span>
+                      <span class="room-picker-chevron">▾</span>
+                    </button>
+                    <div class="room-picker-panel" id="roomPickerPanel"></div>
+                  </div>
+                  <select id="roomNo" style="display:none;"></select>
                 </div>
                 <div class="field" style="margin-bottom:0;">
                   <label for="roomCheckIn">Check-in date</label>
@@ -4575,9 +4605,73 @@ tr.top-row td{background:var(--accent-tint);}
       }).join('');
       if(rooms.some(function(r){ return r.id === prevVal; })) sel.value = prevVal;
     }
+    renderRoomPickerPanel(rooms, sel.value);
     updateRoomSelectedInfo();
     renderOccupiedRoomsList();
   }
+  // Builds the rich, card-based room picker (Room Booking page). Keeps the
+  // underlying <select id="roomNo"> as the real source of truth — clicking a
+  // card just sets the select's value and fires 'change', so every existing
+  // handler (autofill, occupancy checks, etc.) keeps working unchanged.
+  function renderRoomPickerPanel(rooms, selectedId){
+    var btn = document.getElementById('roomPickerBtn');
+    var btnText = document.getElementById('roomPickerBtnText');
+    var panel = document.getElementById('roomPickerPanel');
+    var wrap = document.getElementById('roomPickerWrap');
+    if(!panel || !btn || !wrap) return;
+
+    if(rooms.length === 0){
+      panel.innerHTML = '<div class="room-picker-empty">No rooms available right now.</div>';
+    } else {
+      panel.innerHTML = rooms.map(function(r){
+        var catName = roomCategoryName(r.categoryId);
+        var needsSetup = !r.categoryId || !r.price;
+        var amenities = (r.amenities || []).slice(0, 4).map(function(a){ return '<span class="rpc-amenity">'+escapeHtml(a)+'</span>'; }).join('');
+        var moreCount = (r.amenities || []).length - 4;
+        if(moreCount > 0) amenities += '<span class="rpc-amenity">+'+moreCount+' more</span>';
+        return '<div class="room-picker-card" data-room-id="'+r.id+'">'
+          + '<div class="rpc-left">'
+          + '<div class="rpc-title">Room '+escapeHtml(String(r.roomNo))+' <span class="rpc-badge">'+escapeHtml(catName)+'</span> <span class="rpc-badge ac">'+(r.ac?'AC':'Non-AC')+'</span></div>'
+          + '<div class="rpc-meta">Floor '+escapeHtml(String(r.floor))+' · '+escapeHtml(r.bedType||'Bed type not set')+' · Sleeps '+r.maxAdults+' adult'+(r.maxAdults===1?'':'s')+(r.maxChildren ? ' + '+r.maxChildren+' child'+(r.maxChildren===1?'':'ren') : '')+(r.extraBedAllowed ? ' · Extra bed '+money(r.extraBedPrice) : '')+'</div>'
+          + (amenities ? '<div class="rpc-amenities">'+amenities+'</div>' : '')
+          + (needsSetup ? '<div class="rpc-warn">⚠ Category/price not set — finish this in Room Setup</div>' : '')
+          + '</div>'
+          + '<div class="rpc-price">'+money(r.price)+'<small>/night</small></div>'
+          + '</div>';
+      }).join('');
+    }
+    panel.querySelectorAll('.room-picker-card').forEach(function(card){
+      card.addEventListener('click', function(){
+        var sel = document.getElementById('roomNo');
+        sel.value = card.dataset.roomId;
+        sel.dispatchEvent(new Event('change'));
+        wrap.classList.remove('open');
+        updateRoomPickerBtnText(rooms, card.dataset.roomId);
+      });
+    });
+
+    updateRoomPickerBtnText(rooms, selectedId);
+  }
+  function updateRoomPickerBtnText(rooms, selectedId){
+    var btnText = document.getElementById('roomPickerBtnText');
+    if(!btnText) return;
+    var selectedRoom = rooms.find(function(r){ return r.id === selectedId; });
+    btnText.textContent = selectedRoom
+      ? 'Room ' + selectedRoom.roomNo + ' — ' + roomCategoryName(selectedRoom.categoryId) + ' (' + (selectedRoom.ac?'AC':'Non-AC') + ') — ' + money(selectedRoom.price) + '/night'
+      : (rooms.length === 0 ? 'No rooms available' : 'Select a room');
+  }
+  (function(){
+    var wrap = document.getElementById('roomPickerWrap');
+    var btn = document.getElementById('roomPickerBtn');
+    if(!wrap || !btn) return;
+    btn.addEventListener('click', function(e){
+      e.stopPropagation();
+      wrap.classList.toggle('open');
+    });
+    document.addEventListener('click', function(e){
+      if(wrap.classList.contains('open') && !wrap.contains(e.target)) wrap.classList.remove('open');
+    });
+  })();
   var roomNoSelectEl = document.getElementById('roomNo');
   if(roomNoSelectEl) roomNoSelectEl.addEventListener('change', function(){ updateRoomSelectedInfo(); autofillRoomCharge(); });
   var roomCheckInEl = document.getElementById('roomCheckIn');
