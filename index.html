@@ -9,6 +9,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 <script src="api.js"></script>
 <style>
 /* ============================================================
@@ -177,7 +178,18 @@ button{font-family:'Inter',sans-serif;cursor:pointer;}
 .sub-gate-price{font-family:'Playfair Display',serif;font-weight:700;font-size:38px;color:var(--primary);line-height:1;margin-bottom:10px;}
 .sub-gate-currency{font-size:22px;vertical-align:top;position:relative;top:4px;}
 .sub-gate-per{font-family:'Inter',sans-serif;font-size:14px;font-weight:500;color:var(--text-muted);}
+.sub-gate-gst-line{font-size:12.5px;color:var(--text-secondary);margin-bottom:14px;}
+.sub-gate-gst-line b{color:var(--primary);}
 .sub-gate-includes{font-size:12.5px;color:var(--text-secondary);line-height:1.6;margin:0;}
+.sub-gate-promo{text-align:left;margin-bottom:18px;}
+.sub-gate-promo label{display:block;font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:6px;}
+.sub-gate-promo-row{display:flex;gap:8px;}
+.sub-gate-promo-row input{flex:1;padding:10px 12px;border:1px solid var(--border-strong);border-radius:var(--radius-sm);background:var(--surface);color:var(--text-primary);font:inherit;font-size:13.5px;text-transform:uppercase;}
+.sub-gate-promo-row input:focus{outline:none;border-color:var(--accent);}
+.sub-gate-promo-row .btn{padding:0 18px;font-size:13px;height:auto;flex-shrink:0;}
+.sub-gate-promo-msg{font-size:12px;margin:8px 0 0;min-height:15px;}
+.sub-gate-promo-msg.ok{color:var(--success);}
+.sub-gate-promo-msg.bad{color:var(--danger);}
 .sub-gate-note{font-size:12px;color:var(--text-muted);margin:14px 0 4px;min-height:16px;}
 .sub-gate-cancel-link{margin-top:8px;background:none;border:none;color:var(--text-muted);font-size:12.5px;text-decoration:underline;cursor:pointer;padding:6px;}
 .sub-gate-cancel-link:hover{color:var(--danger);}
@@ -1048,8 +1060,18 @@ tr.top-row td{background:var(--accent-tint);}
         <span class="sub-gate-plan-name">RoyalStay Annual</span>
         <span class="sub-gate-plan-badge">Best value</span>
       </div>
-      <div class="sub-gate-price"><span class="sub-gate-currency">₹</span>12,000<span class="sub-gate-per">/ year</span></div>
+      <div class="sub-gate-price"><span class="sub-gate-currency">₹</span><span id="subGateBaseAmount">12,000</span><span class="sub-gate-per">/ year</span></div>
+      <div class="sub-gate-gst-line" id="subGateGstLine">+ 18% GST (₹2,160) &nbsp;=&nbsp; <b>₹14,160 total</b></div>
       <p class="sub-gate-includes">Includes full access to the Resort Management System — Rooms, Banquets, Restaurant, Staff, Invoicing, and Reports.</p>
+    </div>
+
+    <div class="sub-gate-promo">
+      <label for="subGatePromoInput">Have a promo code?</label>
+      <div class="sub-gate-promo-row">
+        <input type="text" id="subGatePromoInput" placeholder="Enter code" autocomplete="off">
+        <button type="button" class="btn ghost" id="subGatePromoApplyBtn">Apply</button>
+      </div>
+      <p class="sub-gate-promo-msg" id="subGatePromoMsg"></p>
     </div>
 
     <p class="error-text" id="subGateError"></p>
@@ -3001,7 +3023,7 @@ tr.top-row td{background:var(--accent-tint);}
   // ---------- "Continue with Google" (admin only) ----------
   // Set this to the OAuth Client ID from Google Cloud Console (see README) —
   // it's not a secret, it's meant to be public in frontend code.
- var GOOGLE_CLIENT_ID = '516202983818-1il4sbfers16cuee2i46v4harn7an026.apps.googleusercontent.com';
+  var GOOGLE_CLIENT_ID = '516202983818-1il4sbfers16cuee2i46v4harn7an026.apps.googleusercontent.com';
 
   var googleTokenClient = null;
   function getGoogleTokenClient(){
@@ -3447,6 +3469,11 @@ tr.top-row td{background:var(--accent-tint);}
   function showSubscriptionGate(sub){
     document.getElementById('gateScreen').style.display = 'none';
     document.getElementById('appLayout').classList.remove('show');
+    appliedPromoCode = null;
+    document.getElementById('subGatePromoInput').value = '';
+    var promoMsg = document.getElementById('subGatePromoMsg');
+    promoMsg.className = 'sub-gate-promo-msg';
+    promoMsg.textContent = '';
     var status = sub ? sub.status : 'inactive';
     var eyebrow = document.getElementById('subGateEyebrow');
     var title = document.getElementById('subGateTitle');
@@ -3454,6 +3481,13 @@ tr.top-row td{background:var(--accent-tint);}
     var note = document.getElementById('subGateNote');
     note.textContent = '';
     document.getElementById('subGateError').classList.remove('show');
+    if(sub){
+      var base = Number(sub.amount) || 12000;
+      var gst = sub.gstAmount != null ? Number(sub.gstAmount) : Math.round(base * 0.18 * 100) / 100;
+      var total = sub.totalAmount != null ? Number(sub.totalAmount) : Math.round((base + gst) * 100) / 100;
+      document.getElementById('subGateBaseAmount').textContent = base.toLocaleString('en-IN');
+      document.getElementById('subGateGstLine').innerHTML = '+ 18% GST (' + money(gst) + ') &nbsp;=&nbsp; <b>' + money(total) + ' total</b>';
+    }
     if(status === 'expired'){
       eyebrow.textContent = 'Subscription expired';
       title.textContent = 'Your subscription has expired';
@@ -3473,21 +3507,98 @@ tr.top-row td{background:var(--accent-tint);}
     }
     document.getElementById('subscriptionGate').classList.add('show');
   }
+  // Set this to your Razorpay Key ID (the public one — safe in frontend code).
+  // Find it in Razorpay Dashboard -> Settings -> API Keys. The Key SECRET goes
+  // ONLY in the backend's .env file (RAZORPAY_KEY_SECRET) — never here.
+  var RAZORPAY_KEY_ID = 'rzp_live_T30ux1vLXgkLFL';
+
+  var appliedPromoCode = null;
+  document.getElementById('subGatePromoApplyBtn').addEventListener('click', function(){
+    var btn = this;
+    var input = document.getElementById('subGatePromoInput');
+    var msg = document.getElementById('subGatePromoMsg');
+    var code = input.value.trim();
+    if(!code){ return; }
+    msg.className = 'sub-gate-promo-msg';
+    msg.textContent = '';
+    setBtnLoading(btn, true, '…');
+    api.validateSubscriptionPromo(code).then(function(res){
+      setBtnLoading(btn, false, null, 'Apply');
+      appliedPromoCode = res.code;
+      msg.className = 'sub-gate-promo-msg ok';
+      msg.textContent = res.free
+        ? '✓ Code applied — ' + res.discountPercent + '% off. This subscription will be FREE.'
+        : '✓ Code applied — ' + res.discountPercent + '% off. New total: ' + money(res.payableAmount);
+    }).catch(function(e){
+      setBtnLoading(btn, false, null, 'Apply');
+      appliedPromoCode = null;
+      msg.className = 'sub-gate-promo-msg bad';
+      msg.textContent = e.message;
+    });
+  });
+
   document.getElementById('subGateSubscribeBtn').addEventListener('click', function(){
     var btn = this;
     var err = document.getElementById('subGateError');
     var note = document.getElementById('subGateNote');
     err.classList.remove('show');
+    note.textContent = '';
     setBtnLoading(btn, true, 'Please wait…');
-    // FUTURE RAZORPAY: this is where Razorpay Checkout gets opened, using the
-    // order details api.subscribeToPlan() will return once that route creates
-    // a real Razorpay order (see subscription.js on the backend). The
-    // Checkout success callback then calls a new api.verifySubscriptionPayment(...)
-    // — only THAT verified response should ever mark the subscription active.
-    api.subscribeToPlan().then(function(){
+    api.subscribeToPlan(appliedPromoCode).then(function(order){
+      // A 100%-off promo code activates instantly — no payment to actually make.
+      if(order.free){
+        setBtnLoading(btn, false, null, 'Subscribe for ₹12,000 / Year');
+        showToast('Subscription activated — welcome to RoyalStay!');
+        if(order.status === 'active'){ enterApp(); } else { proceedAfterLogin(); }
+        return;
+      }
+      if(typeof Razorpay === 'undefined'){
+        setBtnLoading(btn, false, null, 'Subscribe for ₹12,000 / Year');
+        err.textContent = 'Payment library failed to load — check your internet connection and try again.';
+        err.classList.add('show');
+        return;
+      }
       setBtnLoading(btn, false, null, 'Subscribe for ₹12,000 / Year');
-      note.textContent = 'Payment gateway integration will be connected here.';
-      showToast('Payment gateway integration will be connected here.');
+      var rzp = new Razorpay({
+        key: order.keyId || RAZORPAY_KEY_ID,
+        amount: order.amountPaise,
+        currency: order.currency,
+        name: 'RoyalStay',
+        description: order.planName + ' — annual subscription',
+        order_id: order.orderId,
+        theme: { color: '#bd7e2b' },
+        handler: function(response){
+          // Razorpay only calls this after the user actually completes payment.
+          // We still don't trust it as "success" until the backend verifies
+          // the signature — see api.verifySubscriptionPayment / POST /verify.
+          note.textContent = 'Verifying payment…';
+          api.verifySubscriptionPayment({
+            razorpay_order_id: response.razorpay_order_id,
+            razorpay_payment_id: response.razorpay_payment_id,
+            razorpay_signature: response.razorpay_signature
+          }).then(function(sub){
+            note.textContent = '';
+            showToast('Subscription activated — welcome to RoyalStay!');
+            if(sub && sub.status === 'active'){ enterApp(); }
+            else { proceedAfterLogin(); }
+          }).catch(function(e){
+            note.textContent = '';
+            err.textContent = e.message || 'Payment could not be verified. Please contact support before retrying.';
+            err.classList.add('show');
+          });
+        },
+        modal: {
+          ondismiss: function(){
+            note.textContent = 'Payment window closed — no charge was made.';
+          }
+        }
+      });
+      rzp.on('payment.failed', function(resp){
+        note.textContent = '';
+        err.textContent = 'Payment failed: ' + (resp.error && resp.error.description ? resp.error.description : 'Please try again.');
+        err.classList.add('show');
+      });
+      rzp.open();
     }).catch(function(e){
       setBtnLoading(btn, false, null, 'Subscribe for ₹12,000 / Year');
       err.textContent = e.message; err.classList.add('show');

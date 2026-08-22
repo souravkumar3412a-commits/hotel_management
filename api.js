@@ -151,10 +151,9 @@
 
     // ---------- subscription ----------
     getSubscription: () => request('GET', '/subscription'),
-    subscribeToPlan: () => request('POST', '/subscription/subscribe')
-    // FUTURE RAZORPAY: after Checkout succeeds, call a new
-    // api.verifySubscriptionPayment(razorpayResponse) here that POSTs to
-    // /api/subscription/verify — see subscription.js on the backend.
+    validateSubscriptionPromo: (code) => request('POST', '/subscription/validate-promo', { code }),
+    subscribeToPlan: (promoCode) => request('POST', '/subscription/subscribe', { promoCode: promoCode || null }),
+    verifySubscriptionPayment: (payload) => request('POST', '/subscription/verify', payload)
   };
 
   global.api = api;
