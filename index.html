@@ -175,14 +175,13 @@ button{font-family:'Inter',sans-serif;cursor:pointer;}
 .sub-gate-plan-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
 .sub-gate-plan-name{font-weight:700;font-size:14.5px;}
 .sub-gate-plan-badge{font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;background:var(--accent);color:var(--text-on-primary);padding:3px 9px;border-radius:99px;}
-.sub-gate-price{font-family:'Playfair Display',serif;font-weight:700;font-size:38px;color:var(--primary);line-height:1;margin-bottom:10px;}
-.sub-gate-currency{font-size:22px;vertical-align:top;position:relative;top:4px;}
+.sub-gate-price{font-family:'Inter',sans-serif;font-weight:800;font-size:40px;color:var(--primary);line-height:1;margin-bottom:10px;letter-spacing:-.01em;}
+.sub-gate-currency{font-size:24px;font-weight:700;margin-right:1px;}
 .sub-gate-per{font-family:'Inter',sans-serif;font-size:14px;font-weight:500;color:var(--text-muted);}
 .sub-gate-gst-line{font-size:12.5px;color:var(--text-secondary);margin-bottom:14px;}
 .sub-gate-gst-line b{color:var(--primary);}
 .sub-gate-includes{font-size:12.5px;color:var(--text-secondary);line-height:1.6;margin:0;}
-.sub-gate-promo{text-align:left;margin-bottom:18px;}
-.sub-gate-promo label{display:block;font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:6px;}
+.sub-gate-promo{text-align:left;margin:14px 0 4px;}
 .sub-gate-promo-row{display:flex;gap:8px;}
 .sub-gate-promo-row input{flex:1;padding:10px 12px;border:1px solid var(--border-strong);border-radius:var(--radius-sm);background:var(--surface);color:var(--text-primary);font:inherit;font-size:13.5px;text-transform:uppercase;}
 .sub-gate-promo-row input:focus{outline:none;border-color:var(--accent);}
@@ -1049,15 +1048,15 @@ tr.top-row td{background:var(--accent-tint);}
     <button type="button" class="sub-gate-close" id="subGateCloseBtn" title="Close and sign out" aria-label="Close and sign out">&times;</button>
     <div class="sub-gate-brand">
       <span class="sub-gate-crest">&#9813;</span>
-      <span>RoyalStay</span>
+      <span>Resort Management</span>
     </div>
     <p class="sub-gate-eyebrow" id="subGateEyebrow">Subscription required</p>
-    <h2 id="subGateTitle">Activate your RoyalStay subscription</h2>
+    <h2 id="subGateTitle">Activate your subscription</h2>
     <p class="sub-gate-sub" id="subGateSub">Your dashboard, Room/Banquet/Restaurant management, staff accounts, and invoicing are all included in one simple annual plan.</p>
 
     <div class="sub-gate-plan">
       <div class="sub-gate-plan-head">
-        <span class="sub-gate-plan-name">RoyalStay Annual</span>
+        <span class="sub-gate-plan-name">Resort Management Annual</span>
         <span class="sub-gate-plan-badge">Best value</span>
       </div>
       <div class="sub-gate-price"><span class="sub-gate-currency">₹</span><span id="subGateBaseAmount">12,000</span><span class="sub-gate-per">/ year</span></div>
@@ -1065,8 +1064,12 @@ tr.top-row td{background:var(--accent-tint);}
       <p class="sub-gate-includes">Includes full access to the Resort Management System — Rooms, Banquets, Restaurant, Staff, Invoicing, and Reports.</p>
     </div>
 
-    <div class="sub-gate-promo">
-      <label for="subGatePromoInput">Have a promo code?</label>
+    <p class="error-text" id="subGateError"></p>
+    <button type="button" class="btn accent full" id="subGateSubscribeBtn" style="height:50px;font-size:15px;">Subscribe for ₹12,000 / Year</button>
+    <p class="sub-gate-note" id="subGateNote"></p>
+
+    <button type="button" class="sub-gate-cancel-link" id="subGatePromoToggleBtn">Have a promo code?</button>
+    <div class="sub-gate-promo" id="subGatePromoWrap" style="display:none;">
       <div class="sub-gate-promo-row">
         <input type="text" id="subGatePromoInput" placeholder="Enter code" autocomplete="off">
         <button type="button" class="btn ghost" id="subGatePromoApplyBtn">Apply</button>
@@ -1074,9 +1077,6 @@ tr.top-row td{background:var(--accent-tint);}
       <p class="sub-gate-promo-msg" id="subGatePromoMsg"></p>
     </div>
 
-    <p class="error-text" id="subGateError"></p>
-    <button type="button" class="btn accent full" id="subGateSubscribeBtn" style="height:50px;font-size:15px;">Subscribe for ₹12,000 / Year</button>
-    <p class="sub-gate-note" id="subGateNote"></p>
     <button type="button" class="sub-gate-cancel-link" id="subGateCancelBtn">Cancel and sign out</button>
   </div>
 </div>
@@ -3471,6 +3471,7 @@ tr.top-row td{background:var(--accent-tint);}
     document.getElementById('appLayout').classList.remove('show');
     appliedPromoCode = null;
     document.getElementById('subGatePromoInput').value = '';
+    document.getElementById('subGatePromoWrap').style.display = 'none';
     var promoMsg = document.getElementById('subGatePromoMsg');
     promoMsg.className = 'sub-gate-promo-msg';
     promoMsg.textContent = '';
@@ -3491,7 +3492,7 @@ tr.top-row td{background:var(--accent-tint);}
     if(status === 'expired'){
       eyebrow.textContent = 'Subscription expired';
       title.textContent = 'Your subscription has expired';
-      sub_.textContent = 'Renew your RoyalStay Annual plan to get back into your dashboard — your data is safe and waiting for you.';
+      sub_.textContent = 'Renew your annual plan to get back into your dashboard — your data is safe and waiting for you.';
     } else if(status === 'pending'){
       eyebrow.textContent = 'Payment pending';
       title.textContent = 'Finish setting up your subscription';
@@ -3499,10 +3500,10 @@ tr.top-row td{background:var(--accent-tint);}
     } else if(status === 'cancelled'){
       eyebrow.textContent = 'Subscription cancelled';
       title.textContent = 'Reactivate your subscription';
-      sub_.textContent = 'Your RoyalStay subscription was cancelled. Subscribe again any time to regain access.';
+      sub_.textContent = 'Your subscription was cancelled. Subscribe again any time to regain access.';
     } else {
       eyebrow.textContent = 'Subscription required';
-      title.textContent = 'Activate your RoyalStay subscription';
+      title.textContent = 'Activate your subscription';
       sub_.textContent = 'Your dashboard, Room/Banquet/Restaurant management, staff accounts, and invoicing are all included in one simple annual plan.';
     }
     document.getElementById('subscriptionGate').classList.add('show');
@@ -3513,6 +3514,12 @@ tr.top-row td{background:var(--accent-tint);}
   var RAZORPAY_KEY_ID = 'rzp_live_T30ux1vLXgkLFL';
 
   var appliedPromoCode = null;
+  document.getElementById('subGatePromoToggleBtn').addEventListener('click', function(){
+    var wrap = document.getElementById('subGatePromoWrap');
+    var isOpen = wrap.style.display !== 'none';
+    wrap.style.display = isOpen ? 'none' : 'block';
+    if(!isOpen) document.getElementById('subGatePromoInput').focus();
+  });
   document.getElementById('subGatePromoApplyBtn').addEventListener('click', function(){
     var btn = this;
     var input = document.getElementById('subGatePromoInput');
@@ -3548,7 +3555,7 @@ tr.top-row td{background:var(--accent-tint);}
       // A 100%-off promo code activates instantly — no payment to actually make.
       if(order.free){
         setBtnLoading(btn, false, null, 'Subscribe for ₹12,000 / Year');
-        showToast('Subscription activated — welcome to RoyalStay!');
+        showToast('Subscription activated — welcome aboard!');
         if(order.status === 'active'){ enterApp(); } else { proceedAfterLogin(); }
         return;
       }
@@ -3563,7 +3570,7 @@ tr.top-row td{background:var(--accent-tint);}
         key: order.keyId || RAZORPAY_KEY_ID,
         amount: order.amountPaise,
         currency: order.currency,
-        name: 'RoyalStay',
+        name: 'Resort Management System',
         description: order.planName + ' — annual subscription',
         order_id: order.orderId,
         theme: { color: '#bd7e2b' },
@@ -3578,7 +3585,7 @@ tr.top-row td{background:var(--accent-tint);}
             razorpay_signature: response.razorpay_signature
           }).then(function(sub){
             note.textContent = '';
-            showToast('Subscription activated — welcome to RoyalStay!');
+            showToast('Subscription activated — welcome aboard!');
             if(sub && sub.status === 'active'){ enterApp(); }
             else { proceedAfterLogin(); }
           }).catch(function(e){
