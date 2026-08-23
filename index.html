@@ -159,6 +159,14 @@ button{font-family:'Inter',sans-serif;cursor:pointer;}
   background-size:26px 26px;
 }
 #subscriptionGate.show{display:flex;}
+#subSuccessGate{
+  display:none;position:fixed;inset:0;z-index:950;overflow-y:auto;
+  align-items:center;justify-content:center;padding:32px 20px;
+  background:radial-gradient(circle at 22% 18%, #25392f 0%, var(--primary) 55%, #0f1813 100%);
+}
+#subSuccessGate.show{display:flex;}
+.sub-success-icon{width:64px;height:64px;border-radius:50%;background:var(--success-bg);color:var(--success);display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:700;margin:0 auto 20px;animation:popIn .4s cubic-bezier(.34,1.56,.64,1);}
+@keyframes popIn{from{transform:scale(0);opacity:0;}to{transform:scale(1);opacity:1;}}
 .sub-gate-card{
   position:relative;width:100%;max-width:460px;background:var(--surface);border-radius:var(--radius-lg);
   box-shadow:0 30px 80px rgba(0,0,0,.45);padding:44px 40px 36px;text-align:center;
@@ -422,6 +430,11 @@ nav.tabs{display:flex;flex-direction:column;gap:2px;padding:0 12px;}
 .topbar-titles .crumb{font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted);}
 .topbar-titles h2{font-size:17px;font-weight:700;}
 .topbar-right{margin-left:auto;display:flex;align-items:center;gap:14px;}
+.sub-badge{display:flex;align-items:center;gap:6px;font-size:11.5px;font-weight:600;padding:6px 12px;border-radius:99px;background:var(--success-bg);color:var(--success);white-space:nowrap;cursor:pointer;border:none;font-family:inherit;}
+.sub-badge::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0;}
+.sub-badge.warn{background:var(--warning-bg);color:var(--warning);}
+.sub-badge.danger{background:var(--danger-bg);color:var(--danger);}
+@media (max-width:720px){.sub-badge span.sb-text{display:none;}.sub-badge{padding:8px;}}
 .profile-menu{position:relative;}
 .profile-btn{display:flex;align-items:center;gap:9px;background:var(--surface);border:1px solid var(--border);border-radius:999px;padding:5px 12px 5px 5px;}
 .profile-btn:hover{border-color:var(--accent);}
@@ -1081,6 +1094,17 @@ tr.top-row td{background:var(--accent-tint);}
   </div>
 </div>
 
+<!-- Subscription success modal — shown after a real payment is verified OR a
+     100%-off promo code activates instantly, right before entering the dashboard. -->
+<div id="subSuccessGate">
+  <div class="sub-gate-card" style="text-align:center;">
+    <div class="sub-success-icon">✓</div>
+    <h2>Subscription activated!</h2>
+    <p class="sub-gate-sub" id="subSuccessMsg">Welcome aboard — your subscription is now active.</p>
+    <button type="button" class="btn accent full" id="subSuccessContinueBtn" style="height:50px;font-size:15px;">Continue to Dashboard</button>
+  </div>
+</div>
+
 <!-- ============== APP ============== -->
 <div id="appLayout">
   <div class="layout">
@@ -1117,6 +1141,7 @@ tr.top-row td{background:var(--accent-tint);}
           <h2 id="topbarTitle">Dashboard</h2>
         </div>
         <div class="topbar-right">
+          <button type="button" class="sub-badge" id="subBadge" style="display:none;" title=""></button>
           <div class="profile-menu" id="profileMenu">
             <button type="button" class="profile-btn" id="profileBtn">
               <span class="profile-avatar" id="profileAvatar">A</span>
@@ -2368,6 +2393,7 @@ tr.top-row td{background:var(--accent-tint);}
     roomCategories: [],  // [{ id, name }] — set by Admin
     rooms: [],            // [{ id, roomNo, floor, categoryId, bedType, ac, maxAdults, maxChildren, price, amenities, extraBedAllowed, extraBedPrice, outOfOrder, status:'available'|'occupied', booking:null|{guestName,guestPhone,checkIn,checkOut,invoiceId,createdByStaffId,createdAt} }]
     roomInvoices: [],      // server-backed room booking invoices — see renderRoomHistory()
+    subscription: null,    // this admin's subscription row — see renderSubscriptionBadge()
     restaurantInvoices: [], // server-backed restaurant invoices — see renderHistory()
     // ---- banquet management: Admin configures halls (Setup); Staff (banquet dept) books them ----
     banquetHalls: [],     // [{ id, name, capacity, facilities:[], outOfOrder, pricing:{hour:{enabled,price}, day:{enabled,price}, week:{enabled,price}} }]
@@ -3444,6 +3470,7 @@ tr.top-row td{background:var(--accent-tint);}
     }
     api.getSubscription().then(function(sub){
       if(sub && sub.status === 'active'){
+        state.subscription = sub;
         enterApp();
       } else {
         showSubscriptionGate(sub);
@@ -3454,6 +3481,32 @@ tr.top-row td{background:var(--accent-tint);}
       showSubscriptionGate(null);
     });
   }
+  // Shows a small pill in the topbar (Admin only) with subscription status
+  // and renewal date, so it's never a surprise when the paywall reappears.
+  function renderSubscriptionBadge(){
+    var badge = document.getElementById('subBadge');
+    if(!badge) return;
+    if(!state.session || state.session.role !== 'admin' || !state.subscription || state.subscription.status !== 'active'){
+      badge.style.display = 'none';
+      return;
+    }
+    var expiry = state.subscription.expiry_date ? new Date(state.subscription.expiry_date) : null;
+    var dateStr = expiry ? expiry.toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' }) : '—';
+    var daysLeft = expiry ? Math.ceil((expiry - new Date()) / 86400000) : null;
+    badge.classList.remove('warn', 'danger');
+    if(daysLeft !== null && daysLeft <= 14){ badge.classList.add('warn'); }
+    badge.innerHTML = '<span class="sb-text">Subscription active · Renews ' + dateStr + '</span>';
+    badge.title = daysLeft !== null && daysLeft <= 14
+      ? 'Renews ' + dateStr + ' — ' + daysLeft + ' day' + (daysLeft===1?'':'s') + ' left'
+      : 'Active — renews ' + dateStr;
+    badge.style.display = 'flex';
+  }
+  document.getElementById('subBadge').addEventListener('click', function(){
+    if(!state.subscription) return;
+    var expiry = state.subscription.expiry_date ? new Date(state.subscription.expiry_date) : null;
+    var dateStr = expiry ? expiry.toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' }) : 'unknown';
+    showToast((state.subscription.plan_name || 'Subscription') + ' is active. Renews ' + dateStr + ' — after that you\'ll be asked to subscribe again.');
+  });
   function signOutToLogin(){
     state.session = null;
     api.logout();
@@ -3475,6 +3528,7 @@ tr.top-row td{background:var(--accent-tint);}
     var promoMsg = document.getElementById('subGatePromoMsg');
     promoMsg.className = 'sub-gate-promo-msg';
     promoMsg.textContent = '';
+    document.getElementById('subGateSubscribeBtn').textContent = 'Subscribe for ₹12,000 / Year';
     var status = sub ? sub.status : 'inactive';
     var eyebrow = document.getElementById('subGateEyebrow');
     var title = document.getElementById('subGateTitle');
@@ -3524,6 +3578,7 @@ tr.top-row td{background:var(--accent-tint);}
     var btn = this;
     var input = document.getElementById('subGatePromoInput');
     var msg = document.getElementById('subGatePromoMsg');
+    var subscribeBtn = document.getElementById('subGateSubscribeBtn');
     var code = input.value.trim();
     if(!code){ return; }
     msg.className = 'sub-gate-promo-msg';
@@ -3533,15 +3588,36 @@ tr.top-row td{background:var(--accent-tint);}
       setBtnLoading(btn, false, null, 'Apply');
       appliedPromoCode = res.code;
       msg.className = 'sub-gate-promo-msg ok';
-      msg.textContent = res.free
-        ? '✓ Code applied — ' + res.discountPercent + '% off. This subscription will be FREE.'
-        : '✓ Code applied — ' + res.discountPercent + '% off. New total: ' + money(res.payableAmount);
+      if(res.free){
+        msg.textContent = '✓ Code applied — ' + res.discountPercent + '% off. This subscription will be FREE.';
+        subscribeBtn.textContent = 'Subscribe for Free';
+      } else {
+        msg.textContent = '✓ Code applied — ' + res.discountPercent + '% off. New total: ' + money(res.payableAmount);
+        subscribeBtn.textContent = 'Subscribe for ' + money(res.payableAmount) + ' / Year';
+      }
     }).catch(function(e){
       setBtnLoading(btn, false, null, 'Apply');
       appliedPromoCode = null;
+      subscribeBtn.textContent = 'Subscribe for ₹12,000 / Year';
       msg.className = 'sub-gate-promo-msg bad';
       msg.textContent = e.message;
     });
+  });
+
+  // Shown right before the dashboard, after a payment is verified or a
+  // 100%-off promo activates the subscription instantly.
+  function showSubscriptionSuccess(sub){
+    document.getElementById('subscriptionGate').classList.remove('show');
+    var expiry = sub && sub.expiry_date ? new Date(sub.expiry_date) : null;
+    var dateStr = expiry ? expiry.toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' }) : null;
+    document.getElementById('subSuccessMsg').textContent = dateStr
+      ? 'Welcome aboard — your ' + (sub.plan_name || 'subscription') + ' is now active until ' + dateStr + '.'
+      : 'Welcome aboard — your subscription is now active.';
+    document.getElementById('subSuccessGate').classList.add('show');
+  }
+  document.getElementById('subSuccessContinueBtn').addEventListener('click', function(){
+    document.getElementById('subSuccessGate').classList.remove('show');
+    if(state.session && state.session.role === 'admin'){ enterApp(); } else { proceedAfterLogin(); }
   });
 
   document.getElementById('subGateSubscribeBtn').addEventListener('click', function(){
@@ -3555,8 +3631,8 @@ tr.top-row td{background:var(--accent-tint);}
       // A 100%-off promo code activates instantly — no payment to actually make.
       if(order.free){
         setBtnLoading(btn, false, null, 'Subscribe for ₹12,000 / Year');
-        showToast('Subscription activated — welcome aboard!');
-        if(order.status === 'active'){ enterApp(); } else { proceedAfterLogin(); }
+        state.subscription = order;
+        showSubscriptionSuccess(order);
         return;
       }
       if(typeof Razorpay === 'undefined'){
@@ -3585,9 +3661,8 @@ tr.top-row td{background:var(--accent-tint);}
             razorpay_signature: response.razorpay_signature
           }).then(function(sub){
             note.textContent = '';
-            showToast('Subscription activated — welcome aboard!');
-            if(sub && sub.status === 'active'){ enterApp(); }
-            else { proceedAfterLogin(); }
+            state.subscription = sub;
+            showSubscriptionSuccess(sub);
           }).catch(function(e){
             note.textContent = '';
             err.textContent = e.message || 'Payment could not be verified. Please contact support before retrying.';
@@ -3619,6 +3694,7 @@ tr.top-row td{background:var(--accent-tint);}
     document.getElementById('appLayout').classList.add('show');
     renderBrandHeader();
     renderSessionPill();
+    renderSubscriptionBadge();
     renderNav();
     fillSetupForm();
     renderMenu();
