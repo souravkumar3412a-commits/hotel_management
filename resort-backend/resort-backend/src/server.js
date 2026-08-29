@@ -57,4 +57,4 @@ app.use((err, req, res, next) => {
 });
 
 const PORT = process.env.PORT || 4000;
-app.listen(PORT, () => console.log(`Resort API listening on port ${PORT}`));
+app.listen(PORT, () => console.log(`Hotel API listening on port ${PORT}`));

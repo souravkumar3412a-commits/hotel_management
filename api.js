@@ -1,5 +1,5 @@
 // ============================================================
-// api.js — service layer for the Resort Management System frontend.
+// api.js — service layer for the Hotel Management System frontend.
 // All network calls to the backend live here. index.html should call
 // these functions instead of storageGet/storageSet for anything that
 // used to be tenant/account data (rooms, bookings, staff, invoices, etc).
@@ -11,14 +11,28 @@
   // Change this to your deployed backend URL once you deploy (Phase 9).
   const API_BASE = 'https://resort-backend-lb7u.onrender.com/api';
 
-  let authToken = null;
-  try { authToken = window.localStorage.getItem('invoice-desk:auth-token'); } catch (e) {}
+  const TOKEN_KEY = 'invoice-desk:auth-token';
 
-  function setToken(token) {
+  let authToken = null;
+  // "Remember Me" on the login screen decides where the token lives: checked
+  // (default) persists it in localStorage across browser restarts; unchecked
+  // keeps it in sessionStorage only, so it's gone once the tab/browser closes.
+  // On load we check both, since we don't yet know which one the person used.
+  try { authToken = window.sessionStorage.getItem(TOKEN_KEY) || window.localStorage.getItem(TOKEN_KEY); } catch (e) {}
+
+  function setToken(token, remember) {
     authToken = token;
     try {
-      if (token) window.localStorage.setItem('invoice-desk:auth-token', token);
-      else window.localStorage.removeItem('invoice-desk:auth-token');
+      if (!token) {
+        window.localStorage.removeItem(TOKEN_KEY);
+        window.sessionStorage.removeItem(TOKEN_KEY);
+      } else if (remember === false) {
+        window.sessionStorage.setItem(TOKEN_KEY, token);
+        window.localStorage.removeItem(TOKEN_KEY);
+      } else {
+        window.localStorage.setItem(TOKEN_KEY, token);
+        window.sessionStorage.removeItem(TOKEN_KEY);
+      }
     } catch (e) {}
   }
 
@@ -66,17 +80,17 @@
       request('POST', '/auth/admin/signup', { firstName, lastName, email, password })
         .then(r => { setToken(r.token); return r.user; }),
 
-    adminLogin: (email, password) =>
+    adminLogin: (email, password, remember) =>
       request('POST', '/auth/admin/login', { email, password })
-        .then(r => { setToken(r.token); return r.user; }),
+        .then(r => { setToken(r.token, remember); return r.user; }),
 
-    adminGoogleLogin: (accessToken) =>
+    adminGoogleLogin: (accessToken, remember) =>
       request('POST', '/auth/admin/google', { accessToken })
-        .then(r => { setToken(r.token); return r.user; }),
+        .then(r => { setToken(r.token, remember); return r.user; }),
 
-    staffLogin: (staffId, password) =>
+    staffLogin: (staffId, password, remember) =>
       request('POST', '/auth/staff/login', { staffId, password })
-        .then(r => { setToken(r.token); return r.user; }),
+        .then(r => { setToken(r.token, remember); return r.user; }),
 
     me: () => request('GET', '/auth/me'),
     updateAdminProfile: (firstName, lastName, photo) => request('PUT', '/auth/admin/profile', { firstName, lastName, photo }),

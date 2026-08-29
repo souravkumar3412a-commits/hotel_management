@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Resort Management System — Rooms, Banquets &amp; Restaurant</title>
+<title>Hotel Management System — Rooms, Banquets &amp; Restaurant</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -16,11 +16,11 @@
    DESIGN TOKENS
    ============================================================ */
 :root{
-  --primary:#182620;
-  --primary-2:#22352c;
-  --primary-tint:#e9efe9;
-  --accent:#bd7e2b;
-  --accent-hover:#a06a20;
+  --primary:#10233d;
+  --primary-2:#17375e;
+  --primary-tint:#e8edf5;
+  --accent:#d9a441;
+  --accent-hover:#b98a2f;
   --accent-tint:#faf1e2;
   --bg:#f4f3ef;
   --surface:#ffffff;
@@ -31,7 +31,7 @@
   --text-secondary:#615c52;
   --text-muted:#928c7e;
   --text-on-primary:#f3efe6;
-  --text-on-primary-muted:#a9b6ad;
+  --text-on-primary-muted:#a9b8cc;
   --success:#2f7d52;
   --success-bg:#e7f3ec;
   --warning:#b8860b;
@@ -61,8 +61,8 @@ html[data-theme="dark"]{
   --text-primary:#f2ede2;
   --text-secondary:#b7b0a1;
   --text-muted:#8a8375;
-  --primary-tint:rgba(189,126,43,.14);
-  --accent-tint:rgba(189,126,43,.16);
+  --primary-tint:rgba(217,164,65,.14);
+  --accent-tint:rgba(217,164,65,.16);
   --success-bg:rgba(47,125,82,.22);
   --warning-bg:rgba(184,134,11,.2);
   --danger-bg:rgba(176,58,46,.22);
@@ -95,17 +95,20 @@ button{font-family:'Inter',sans-serif;cursor:pointer;}
 #splashScreen{
   position:fixed;inset:0;z-index:1000;
   display:flex;align-items:center;justify-content:center;
-  background:radial-gradient(circle at 30% 20%, #24382e 0%, var(--primary) 55%, #0e1712 100%);
+  background:radial-gradient(circle at 30% 20%, #1d3b61 0%, var(--primary) 55%, #060f1e 100%);
   transition:opacity .5s ease;
   opacity:1;
 }
 #splashScreen.hide{opacity:0;pointer-events:none;}
 .splash-inner{text-align:center;color:var(--text-on-primary);}
 .splash-emblem{color:var(--accent);margin:0 auto 20px;display:block;}
-.splash-emblem .draw{stroke-dasharray:40;stroke-dashoffset:40;animation:splashDraw 1.1s ease forwards;}
-.splash-emblem .draw:nth-child(2){animation-delay:.22s;}
-.splash-emblem .draw:nth-child(3){animation-delay:.44s;}
-@keyframes splashDraw{ to{ stroke-dashoffset:0; } }
+.splash-emblem .pop{opacity:0;transform:scale(.4);transform-box:fill-box;transform-origin:center;animation:splashPop .5s cubic-bezier(.34,1.56,.64,1) forwards;}
+.splash-emblem .pop:nth-child(1){animation-delay:.05s;}
+.splash-emblem .pop:nth-child(2){animation-delay:.15s;}
+.splash-emblem .pop:nth-child(3){animation-delay:.05s;}
+.splash-emblem .pop:nth-child(4){animation-delay:.28s;}
+.splash-emblem .pop:nth-child(5){animation-delay:.42s;}
+@keyframes splashPop{to{opacity:1;transform:scale(1);}}
 .splash-eyebrow{font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.24em;text-transform:uppercase;color:var(--accent);margin:0 0 12px;opacity:0;animation:splashFadeUp .5s ease forwards;animation-delay:.45s;}
 .splash-title{font-family:'Playfair Display',serif;font-size:40px;font-weight:800;margin:0 0 12px;opacity:0;animation:splashFadeUp .55s ease forwards;animation-delay:.6s;}
 .splash-tagline{font-size:14px;color:var(--text-on-primary-muted);margin:0 0 32px;opacity:0;animation:splashFadeUp .55s ease forwards;animation-delay:.8s;}
@@ -122,47 +125,86 @@ button{font-family:'Inter',sans-serif;cursor:pointer;}
    AUTH GATE — split screen
    ============================================================ */
 #gateScreen{min-height:100vh;display:flex;}
+#gateScreen{min-height:100vh;display:flex;flex-direction:column;}
+.gate-security-banner{
+  flex:0 0 auto;display:flex;align-items:center;justify-content:center;gap:14px;
+  background:#050c18;border-bottom:1px solid rgba(217,164,65,.25);
+  padding:10px 44px 10px 20px;position:relative;
+}
+.gsb-msg{display:flex;align-items:center;gap:9px;font-size:12.5px;color:var(--text-on-primary);text-align:center;}
+.gsb-msg svg{color:var(--accent);flex-shrink:0;}
+.gsb-close{position:absolute;right:14px;top:50%;transform:translateY(-50%);background:none;border:none;color:rgba(243,239,230,.55);padding:4px;display:flex;border-radius:6px;}
+.gsb-close:hover{color:var(--text-on-primary);background:rgba(255,255,255,.08);}
+
+.gate-topnav{flex:0 0 auto;display:flex;align-items:center;gap:18px;background:#0a1830;border-bottom:1px solid rgba(217,164,65,.18);padding:13px 32px;}
+.gtn-brand{display:flex;align-items:center;gap:10px;flex-shrink:0;}
+.gtn-emblem{color:var(--accent);display:flex;flex-shrink:0;}
+.gtn-brand-text{display:flex;flex-direction:column;line-height:1.3;}
+.gtn-word{font-family:'Playfair Display',serif;font-size:16px;font-weight:700;color:var(--text-on-primary);}
+.gtn-tag{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);}
+.gtn-links{display:flex;align-items:center;gap:28px;margin-left:16px;flex:1;}
+.gtn-links-end{flex:1;justify-content:flex-end;margin-left:16px;}
+.gtn-link{background:none;border:none;font-family:'Inter',sans-serif;font-size:13px;font-weight:600;color:var(--text-on-primary-muted);cursor:pointer;padding:0;}
+.gtn-link:hover{color:var(--accent);}
+@media (max-width:760px){
+  .gate-topnav{padding:11px 16px;gap:12px;}
+  .gtn-links{display:none;}
+  .gtn-tag{display:none;}
+}
+.gate-panels{flex:1;display:flex;min-height:0;}
 .gate-brand-panel{
-  flex:1 1 46%;min-height:100vh;position:relative;overflow:hidden;
-  background:radial-gradient(circle at 20% 15%, #25392f 0%, var(--primary) 55%, #0f1813 100%);
+  flex:1 1 46%;position:relative;overflow:hidden;
+  background:
+    linear-gradient(180deg, rgba(4,10,20,.62) 0%, rgba(5,12,24,.58) 40%, rgba(4,10,20,.88) 100%),
+    linear-gradient(155deg, rgba(16,35,61,.7) 0%, rgba(10,25,45,.45) 60%),
+    url('https://images.unsplash.com/photo-1698653223783-d6cce8281606?q=80&w=1400&auto=format&fit=crop') center/cover no-repeat;
+  background-blend-mode:normal, multiply, normal;
   color:var(--text-on-primary);display:flex;flex-direction:column;justify-content:space-between;
   padding:48px 56px;
 }
 .gate-brand-panel::before{
-  content:"";position:absolute;inset:0;opacity:.5;pointer-events:none;
-  background-image:radial-gradient(circle at 1px 1px, rgba(189,126,43,.16) 1px, transparent 0);
+  content:"";position:absolute;inset:0;opacity:.35;pointer-events:none;z-index:0;
+  background-image:radial-gradient(circle at 1px 1px, rgba(217,164,65,.16) 1px, transparent 0);
   background-size:26px 26px;
 }
-.gbp-top{position:relative;display:flex;align-items:center;gap:12px;}
+.gbp-top{position:relative;z-index:1;display:flex;align-items:center;gap:12px;}
 .gbp-top .emblem{color:var(--accent);}
 .gbp-top .word{font-family:'Playfair Display',serif;font-size:19px;font-weight:700;letter-spacing:.01em;}
-.gbp-mid{position:relative;max-width:440px;}
+.gbp-mid{position:relative;z-index:1;max-width:440px;}
 .gbp-mid .eyebrow{font-family:'IBM Plex Mono',monospace;font-size:11.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--accent);margin:0 0 18px;}
 .gbp-mid h1{font-family:'Playfair Display',serif;font-size:44px;line-height:1.14;font-weight:700;margin:0 0 20px;}
+.gbp-mid h1 .hl{color:var(--accent);}
 .gbp-mid p{font-size:15px;line-height:1.7;color:var(--text-on-primary-muted);margin:0;}
 .gbp-feats{position:relative;display:flex;flex-direction:column;gap:14px;margin-top:34px;}
 .gbp-feat{display:flex;align-items:center;gap:12px;font-size:13.5px;color:var(--text-on-primary-muted);}
-.gbp-feat svg{color:var(--accent);flex-shrink:0;}
-.gbp-bottom{position:relative;font-family:'IBM Plex Mono',monospace;font-size:11px;color:rgba(243,239,230,.4);letter-spacing:.05em;}
+.gbp-feat .gf-ico{width:34px;height:34px;flex-shrink:0;border-radius:50%;background:rgba(217,164,65,.14);color:var(--accent);display:flex;align-items:center;justify-content:center;}
+.gbp-stats{position:relative;z-index:1;display:flex;flex-wrap:wrap;gap:10px;margin-top:30px;}
+.gbp-stat{display:flex;align-items:center;gap:9px;background:rgba(6,15,30,.55);border:1px solid rgba(217,164,65,.22);border-radius:12px;padding:10px 14px;}
+.gbp-stat svg{color:var(--accent);flex-shrink:0;}
+.gbp-stat b{display:block;font-size:13px;font-weight:700;color:var(--text-on-primary);line-height:1.3;}
+.gbp-stat span{display:block;font-size:10.5px;color:var(--text-on-primary-muted);}
+.gbp-bottom{position:relative;z-index:1;font-family:'IBM Plex Mono',monospace;font-size:11px;color:rgba(243,239,230,.4);letter-spacing:.05em;}
 
-.gate-form-panel{flex:1 1 54%;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:40px 24px;background:var(--bg);}
+.gate-form-panel{flex:1 1 54%;display:flex;align-items:center;justify-content:center;padding:40px 24px;overflow-y:auto;
+  background:radial-gradient(circle at 78% 22%, #1c3f66 0%, #0d2038 55%, #050c18 100%);
+}
 
 /* ---------- subscription paywall ---------- */
 #subscriptionGate{
   display:none;position:fixed;inset:0;z-index:900;overflow-y:auto;
   align-items:center;justify-content:center;padding:32px 20px;
-  background:radial-gradient(circle at 22% 18%, #25392f 0%, var(--primary) 55%, #0f1813 100%);
+  background:radial-gradient(circle at 22% 18%, #1d3b61 0%, var(--primary) 55%, #060f1e 100%);
 }
 #subscriptionGate::before{
   content:"";position:fixed;inset:0;opacity:.5;pointer-events:none;
-  background-image:radial-gradient(circle at 1px 1px, rgba(189,126,43,.16) 1px, transparent 0);
+  background-image:radial-gradient(circle at 1px 1px, rgba(217,164,65,.16) 1px, transparent 0);
   background-size:26px 26px;
 }
 #subscriptionGate.show{display:flex;}
 #subSuccessGate{
   display:none;position:fixed;inset:0;z-index:950;overflow-y:auto;
   align-items:center;justify-content:center;padding:32px 20px;
-  background:radial-gradient(circle at 22% 18%, #25392f 0%, var(--primary) 55%, #0f1813 100%);
+  background:radial-gradient(circle at 22% 18%, #1d3b61 0%, var(--primary) 55%, #060f1e 100%);
 }
 #subSuccessGate.show{display:flex;}
 .sub-success-icon{width:64px;height:64px;border-radius:50%;background:var(--success-bg);color:var(--success);display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:700;margin:0 auto 20px;animation:popIn .4s cubic-bezier(.34,1.56,.64,1);}
@@ -201,46 +243,66 @@ button{font-family:'Inter',sans-serif;cursor:pointer;}
 .sub-gate-cancel-link{margin-top:8px;background:none;border:none;color:var(--text-muted);font-size:12.5px;text-decoration:underline;cursor:pointer;padding:6px;}
 .sub-gate-cancel-link:hover{color:var(--danger);}
 @media (max-width:480px){.sub-gate-card{padding:36px 24px 28px;}.sub-gate-price{font-size:32px;}}
-.gate-box{width:100%;max-width:420px;}
-.gate-box-mobile-brand{display:none;}
+.gate-box{
+  width:100%;max-width:440px;position:relative;color:var(--text-on-primary);
+  background:linear-gradient(180deg, rgba(28,63,102,.55) 0%, rgba(8,20,37,.85) 100%);
+  border:1px solid rgba(217,164,65,.4);border-radius:22px;
+  padding:36px 32px 28px;backdrop-filter:blur(8px);
+  box-shadow:0 0 0 1px rgba(217,164,65,.06), 0 30px 70px rgba(0,0,0,.5), 0 0 46px rgba(217,164,65,.10);
+}
 .gate-panel{display:none;}
 .gate-panel.active{display:block;animation:fadeInUp .35s ease;}
 @keyframes fadeInUp{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
 
-.role-cards{display:flex;flex-direction:column;gap:14px;margin-top:8px;}
-.gate-heading{margin-bottom:26px;}
-.gate-heading .eyebrow{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);margin:0 0 8px;}
-.gate-heading h1{font-family:'Playfair Display',serif;font-size:28px;font-weight:700;}
-.gate-heading p{font-size:13.5px;color:var(--text-secondary);margin-top:6px;}
+.gate-card-logo{text-align:center;margin-bottom:24px;}
+.gate-card-logo .emblem-wrap{width:52px;height:52px;margin:0 auto 10px;border-radius:50%;background:rgba(217,164,65,.14);display:flex;align-items:center;justify-content:center;color:var(--accent);}
+.gate-card-logo h2{font-family:'Playfair Display',serif;font-size:21px;font-weight:700;margin:0 0 4px;color:var(--text-on-primary);}
+.gate-card-logo p{font-size:12px;color:var(--text-on-primary-muted);margin:0;}
 
-.role-card{
-  display:flex;align-items:center;gap:16px;width:100%;text-align:left;
-  background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-md);
-  padding:20px 22px;box-shadow:var(--shadow-sm);transition:border-color .15s ease, box-shadow .15s ease, transform .15s ease;
-}
-.role-card:hover{border-color:var(--accent);box-shadow:var(--shadow-md);transform:translateY(-1px);}
-.role-card .rc-icon{
-  width:44px;height:44px;flex-shrink:0;border-radius:var(--radius-sm);background:var(--primary-tint);
-  display:flex;align-items:center;justify-content:center;color:var(--primary);
-}
-.role-card .rc-title{font-size:15.5px;font-weight:700;margin:0 0 3px;}
-.role-card .rc-sub{font-size:12.5px;color:var(--text-secondary);margin:0;line-height:1.5;}
-.role-card .rc-arrow{margin-left:auto;color:var(--text-muted);flex-shrink:0;}
+.gate-tabs{display:flex;background:rgba(5,12,24,.55);border:1px solid rgba(217,164,65,.18);border-radius:12px;padding:4px;margin-bottom:24px;gap:4px;}
+.gate-tab{flex:1;display:flex;align-items:center;justify-content:center;gap:7px;padding:10px 8px;border-radius:9px;background:transparent;border:none;color:var(--text-on-primary-muted);font-size:12.5px;font-weight:600;cursor:pointer;transition:background .18s ease, color .18s ease, box-shadow .18s ease;}
+.gate-tab svg{flex-shrink:0;}
+.gate-tab.active{background:rgba(217,164,65,.14);color:var(--accent);box-shadow:inset 0 0 0 1px rgba(217,164,65,.35);}
+.gate-tab:not(.active):hover{color:var(--text-on-primary);}
 
-.auth-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:32px 30px;box-shadow:var(--shadow-sm);}
-.auth-card h3{font-size:19px;font-weight:700;margin:0 0 4px;}
-.auth-card .auth-sub{font-size:13px;color:var(--text-secondary);margin:0 0 22px;}
-.auth-toggle{font-size:12.5px;color:var(--text-secondary);margin-top:16px;text-align:center;}
-.auth-divider{display:flex;align-items:center;gap:12px;margin:16px 0;color:var(--text-muted);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;}
-.auth-divider::before,.auth-divider::after{content:"";flex:1;height:1px;background:var(--border);}
+.gate-role-panel{display:none;}
+.gate-role-panel.active{display:block;animation:fadeInUp .3s ease;}
+.gate-role-panel h3{font-size:16.5px;font-weight:700;margin:0 0 4px;color:var(--text-on-primary);}
+.gate-role-panel .auth-sub{font-size:12.5px;color:var(--text-on-primary-muted);margin:0 0 20px;}
+
+.if-row{position:relative;}
+.if-row .if-ico{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-on-primary-muted);display:flex;pointer-events:none;}
+.if-row input{padding-left:38px !important;}
+.if-row.pw-field-wrap .pw-toggle{right:10px;}
+
+.gate-box input[type=text],.gate-box input[type=email],.gate-box input[type=password]{
+  background:rgba(5,12,24,.55);border:1px solid rgba(217,164,65,.22);color:var(--text-on-primary);
+}
+.gate-box input::placeholder{color:var(--text-on-primary-muted);}
+.gate-box input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(217,164,65,.16);}
+.gate-box label{color:var(--text-on-primary-muted);}
+.gate-box .btn.ghost{background:rgba(255,255,255,.04);color:var(--text-on-primary);border-color:rgba(217,164,65,.3);}
+.gate-box .btn.ghost:hover{background:rgba(217,164,65,.1);border-color:var(--accent);}
+.gate-box .error-text{color:#ef8478;}
+
+.gate-form-row{display:flex;align-items:center;justify-content:space-between;margin:-6px 0 18px;font-size:12px;}
+.gate-remember{display:flex;align-items:center;gap:7px;color:var(--text-on-primary-muted);cursor:pointer;user-select:none;}
+.gate-remember input{width:15px;height:15px;accent-color:var(--accent);cursor:pointer;margin:0;}
+.gate-forgot{background:none;border:none;color:var(--accent);font-size:12px;font-weight:600;cursor:pointer;padding:0;}
+.gate-forgot:hover{text-decoration:underline;}
+
+.gate-secure-note{display:flex;align-items:center;justify-content:center;gap:6px;font-size:11px;color:var(--text-on-primary-muted);margin-top:20px;padding-top:16px;border-top:1px solid rgba(217,164,65,.16);}
+.gate-secure-note svg{color:var(--accent);flex-shrink:0;}
+
+.auth-toggle{font-size:12.5px;color:var(--text-on-primary-muted);margin-top:16px;text-align:center;}
+.auth-divider{display:flex;align-items:center;gap:12px;margin:16px 0;color:var(--text-on-primary-muted);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;}
+.auth-divider::before,.auth-divider::after{content:"";flex:1;height:1px;background:rgba(217,164,65,.18);}
 .auth-toggle a{color:var(--accent);cursor:pointer;font-weight:600;text-decoration:none;}
 .auth-toggle a:hover{text-decoration:underline;}
-.back-link{display:inline-flex;align-items:center;gap:6px;margin-bottom:18px;font-size:12.5px;color:var(--text-secondary);cursor:pointer;font-weight:600;}
-.back-link:hover{color:var(--accent);}
-.auth-notice{font-size:12.5px;background:var(--info-bg);border:1px solid rgba(47,102,144,.18);border-radius:var(--radius-sm);padding:11px 13px;color:var(--info);margin-bottom:18px;}
+.auth-notice{font-size:12.5px;background:rgba(47,102,144,.2);border:1px solid rgba(47,102,144,.35);border-radius:var(--radius-sm);padding:11px 13px;color:#bfdcef;margin-bottom:18px;}
 .pw-field-wrap{position:relative;}
-.pw-toggle{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text-muted);padding:4px;display:flex;}
-.pw-toggle:hover{color:var(--text-primary);}
+.pw-toggle{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text-on-primary-muted);padding:4px;display:flex;}
+.pw-toggle:hover{color:var(--text-on-primary);}
 
 /* ============================================================
    SHARED FORM / BUTTON / BADGE SYSTEM
@@ -273,17 +335,18 @@ textarea{resize:vertical;min-height:70px;font-family:'Inter',sans-serif;}
 .btn:hover::before{transform:translateX(140%);}
 .btn svg{position:relative;z-index:2;flex-shrink:0;}
 .btn{transition:background .2s ease, border-color .2s ease, transform .12s cubic-bezier(.2,.8,.2,1), box-shadow .25s ease;}
-.btn:hover{background:linear-gradient(180deg, #26402f 0%, var(--primary-2) 100%);box-shadow:0 1px 0 rgba(255,255,255,.09) inset, 0 12px 26px -10px rgba(15,20,15,.55);transform:translateY(-2px);}
+.btn.sm{height:34px;padding:0 15px;font-size:12.5px;}
+.btn:hover{background:linear-gradient(180deg, #1e4066 0%, var(--primary-2) 100%);box-shadow:0 1px 0 rgba(255,255,255,.09) inset, 0 12px 26px -10px rgba(15,20,15,.55);transform:translateY(-2px);}
 .btn:active{transform:translateY(0) scale(.97);box-shadow:0 1px 0 rgba(255,255,255,.05) inset, 0 2px 6px rgba(15,20,15,.35);transition-duration:.06s;}
 .btn .ripple{position:absolute;z-index:3;border-radius:50%;background:rgba(255,255,255,.55);transform:scale(0);opacity:.55;pointer-events:none;animation:btnRipple .6s ease-out forwards;}
 @keyframes btnRipple{to{transform:scale(1);opacity:0;}}
-.btn.accent{background:linear-gradient(180deg, #cd9145 0%, var(--accent) 100%);border-color:var(--accent);}
-.btn.accent:hover{background:linear-gradient(180deg, #d69f52 0%, var(--accent-hover) 100%);border-color:var(--accent-hover);box-shadow:0 1px 0 rgba(255,255,255,.18) inset, 0 12px 26px -8px rgba(189,126,43,.55);}
-.btn.accent:active{box-shadow:0 1px 0 rgba(255,255,255,.1) inset, 0 2px 6px rgba(189,126,43,.4);}
+.btn.accent{background:linear-gradient(180deg, #e0b25a 0%, var(--accent) 100%);border-color:var(--accent);}
+.btn.accent:hover{background:linear-gradient(180deg, #e8bb66 0%, var(--accent-hover) 100%);border-color:var(--accent-hover);box-shadow:0 1px 0 rgba(255,255,255,.18) inset, 0 12px 26px -8px rgba(217,164,65,.55);}
+.btn.accent:active{box-shadow:0 1px 0 rgba(255,255,255,.1) inset, 0 2px 6px rgba(217,164,65,.4);}
 .btn.ghost{background:transparent;color:var(--text-primary);border:1px solid var(--border-strong);box-shadow:none;}
-.btn.ghost::before{background:linear-gradient(115deg, transparent 30%, rgba(24,38,32,.05) 45%, rgba(24,38,32,.09) 50%, rgba(24,38,32,.05) 55%, transparent 70%);}
+.btn.ghost::before{background:linear-gradient(115deg, transparent 30%, rgba(16,35,61,.05) 45%, rgba(16,35,61,.09) 50%, rgba(16,35,61,.05) 55%, transparent 70%);}
 .btn.ghost:hover{border-color:var(--text-primary);background:var(--primary-tint);box-shadow:var(--shadow-sm);}
-.btn.ghost .ripple{background:rgba(24,38,32,.14);}
+.btn.ghost .ripple{background:rgba(16,35,61,.14);}
 .btn.danger-ghost{background:transparent;color:var(--danger);border:1px solid #e6b9b2;box-shadow:none;}
 .btn.danger-ghost:hover{background:var(--danger-bg);border-color:var(--danger);box-shadow:var(--shadow-sm);}
 .btn.danger-ghost .ripple{background:rgba(176,58,46,.18);}
@@ -326,7 +389,7 @@ textarea{resize:vertical;min-height:70px;font-family:'Inter',sans-serif;}
 
 .sidebar{
   width:var(--sidebar-w);flex-shrink:0;position:sticky;top:0;height:100vh;overflow-y:auto;z-index:40;
-  background:linear-gradient(190deg, var(--primary-2) 0%, var(--primary) 65%, #0f1813 100%);
+  background:linear-gradient(190deg, var(--primary-2) 0%, var(--primary) 65%, #060f1e 100%);
   border-right:1px solid rgba(255,255,255,.06);
   padding:22px 0 18px;display:flex;flex-direction:column;gap:6px;
   transition:width .18s ease;
@@ -361,13 +424,13 @@ nav.tabs{display:flex;flex-direction:column;gap:2px;padding:0 12px;}
   transition:background .15s ease, color .15s ease;
 }
 .nav-tab:hover{color:var(--text-on-primary);background:rgba(255,255,255,.05);}
-.nav-tab.active{background:rgba(189,126,43,.16);color:#f0d6a8;font-weight:700;box-shadow:inset 0 0 0 1px rgba(189,126,43,.18);}
-.nav-tab.active::before{content:"";position:absolute;left:-12px;top:8px;bottom:8px;width:3px;border-radius:2px;background:var(--accent);box-shadow:0 0 8px 1px rgba(189,126,43,.55);}
+.nav-tab.active{background:rgba(217,164,65,.16);color:#f0d6a8;font-weight:700;box-shadow:inset 0 0 0 1px rgba(217,164,65,.18);}
+.nav-tab.active::before{content:"";position:absolute;left:-12px;top:8px;bottom:8px;width:3px;border-radius:2px;background:var(--accent);box-shadow:0 0 8px 1px rgba(217,164,65,.55);}
 .nav-tab .ico{flex-shrink:0;display:flex;color:inherit;}
 .nav-tab .num{margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:10px;color:rgba(243,239,230,.28);}
 .nav-tab.active .num{color:var(--accent);}
 .table-status-dot{margin-left:auto;width:8px;height:8px;border-radius:50%;background:rgba(243,239,230,.22);flex-shrink:0;transition:background .15s ease, box-shadow .15s ease;}
-.table-status-dot.active{background:var(--accent);box-shadow:0 0 0 3px rgba(189,126,43,.22);}
+.table-status-dot.active{background:var(--accent);box-shadow:0 0 0 3px rgba(217,164,65,.22);}
 .sidebar.collapsed .table-status-dot{display:none;}
 
 .table-status-head{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;}
@@ -395,17 +458,17 @@ nav.tabs{display:flex;flex-direction:column;gap:2px;padding:0 12px;}
 .nav-group-label .num{font-family:'IBM Plex Mono',monospace;font-size:10px;color:rgba(243,239,230,.28);}
 .nav-group-label .chev{margin-left:auto;color:rgba(243,239,230,.4);transition:transform .15s ease;display:flex;}
 .nav-group.expanded > .nav-group-label .chev{transform:rotate(180deg);}
-.nav-group.active > .nav-group-label{background:rgba(189,126,43,.12);color:#f0d6a8;font-weight:700;}
+.nav-group.active > .nav-group-label{background:rgba(217,164,65,.12);color:#f0d6a8;font-weight:700;}
 .nav-subtab{padding:9px 14px 9px 44px;font-size:12.5px;font-weight:500;display:none;}
 .nav-group.expanded > .nav-subtab{display:flex;}
 .nav-subtab.active{color:#f0d6a8;font-weight:700;position:relative;}
-.nav-subtab.active::before{content:"";position:absolute;left:-12px;top:8px;bottom:8px;width:3px;border-radius:2px;background:var(--accent);box-shadow:0 0 8px 1px rgba(189,126,43,.55);}
+.nav-subtab.active::before{content:"";position:absolute;left:-12px;top:8px;bottom:8px;width:3px;border-radius:2px;background:var(--accent);box-shadow:0 0 8px 1px rgba(217,164,65,.55);}
 
 /* nested sub-group, e.g. Restaurant > Menu > Add new item / Deleted items */
 .nav-group.nested{display:none;}
 .nav-group.expanded > .nav-group.nested{display:flex;}
 .nav-group.nested > .nav-group-label{padding:9px 14px 9px 44px;font-size:12.5px;font-weight:500;}
-.nav-group.nested.active > .nav-group-label{background:rgba(189,126,43,.12);color:#f0d6a8;font-weight:700;}
+.nav-group.nested.active > .nav-group-label{background:rgba(217,164,65,.12);color:#f0d6a8;font-weight:700;}
 .nav-group.nested > .nav-tab.nav-subtab{padding-left:66px;}
 
 .sidebar-foot{margin-top:auto;padding:16px 22px 0;border-top:1px solid rgba(255,255,255,.07);display:flex;flex-direction:column;gap:10px;}
@@ -430,6 +493,35 @@ nav.tabs{display:flex;flex-direction:column;gap:2px;padding:0 12px;}
 .topbar-titles .crumb{font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted);}
 .topbar-titles h2{font-size:17px;font-weight:700;}
 .topbar-right{margin-left:auto;display:flex;align-items:center;gap:14px;}
+.topbar-search{position:relative;flex:1;max-width:380px;margin:0 8px;}
+.topbar-search-box{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:999px;padding:8px 12px;transition:border-color .15s ease, box-shadow .15s ease;}
+.topbar-search-box:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-tint);}
+.topbar-search-box svg{flex-shrink:0;color:var(--text-muted);}
+.topbar-search-box input{flex:1;min-width:0;border:none;background:none;outline:none;font-size:13px;color:var(--text-primary);font-family:inherit;}
+.topbar-search-box input::placeholder{color:var(--text-muted);}
+.topbar-search-clear{display:none;flex-shrink:0;background:none;border:none;padding:2px;color:var(--text-muted);border-radius:50%;align-items:center;}
+.topbar-search-clear:hover{color:var(--text-primary);background:var(--bg);}
+.topbar-search-box.has-value .topbar-search-clear{display:flex;}
+.topbar-search-kbd{flex-shrink:0;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--text-muted);background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:2px 6px;}
+.topbar-search-box.has-value .topbar-search-kbd{display:none;}
+.topbar-search-toggle{display:none;}
+.search-results{position:absolute;top:calc(100% + 8px);left:0;right:0;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-md);box-shadow:var(--shadow-lg);max-height:min(60vh,440px);overflow-y:auto;display:none;z-index:60;padding:6px;}
+.search-results.show{display:block;animation:fadeInUp .15s ease;}
+.search-group-label{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);padding:10px 10px 4px;}
+.search-group-label:first-child{padding-top:6px;}
+.search-result-item{display:flex;align-items:center;gap:10px;width:100%;padding:9px 10px;border-radius:var(--radius-sm);background:none;border:none;text-align:left;font-size:13px;color:var(--text-primary);font-family:inherit;}
+.search-result-item .sri-ico{flex-shrink:0;width:26px;height:26px;border-radius:8px;background:var(--accent-tint);color:var(--accent);display:flex;align-items:center;justify-content:center;}
+.search-result-item .sri-label{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.search-result-item .sri-sub{color:var(--text-muted);font-size:11.5px;margin-left:auto;flex-shrink:0;padding-left:8px;}
+.search-result-item:hover,.search-result-item.active{background:var(--bg);}
+.search-empty{padding:22px 10px;text-align:center;font-size:12.5px;color:var(--text-muted);}
+.search-hint{padding:8px 10px 2px;text-align:center;font-size:11px;color:var(--text-muted);}
+@media (max-width:900px){
+  .topbar-search{display:none;}
+  .topbar-search.mobile-open{display:block;position:fixed;top:var(--header-h);left:0;right:0;margin:0;max-width:none;background:var(--surface);border-bottom:1px solid var(--border);padding:10px 14px;box-shadow:var(--shadow-md);z-index:40;}
+  .topbar-search.mobile-open .search-results{position:fixed;top:calc(var(--header-h) + 56px);left:14px;right:14px;}
+  .topbar-search-toggle{display:flex;}
+}
 .sub-badge{display:flex;align-items:center;gap:6px;font-size:11.5px;font-weight:600;padding:6px 12px;border-radius:99px;background:var(--success-bg);color:var(--success);white-space:nowrap;cursor:pointer;border:none;font-family:inherit;}
 .sub-badge::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0;}
 .sub-badge.warn{background:var(--warning-bg);color:var(--warning);}
@@ -725,9 +817,9 @@ table.dtable tr.row-selected{background:var(--accent-tint);}
 .chart-card .chart-sub{font-size:11.5px;color:var(--text-muted);margin-bottom:16px;}
 .chart-card .chart-wrap{position:relative;height:230px;}
 .analysis-split{display:grid;grid-template-columns:240px 1fr;gap:22px;align-items:start;}
-.top-dish-card{background:linear-gradient(135deg, var(--primary) 0%, #0f1813 100%);color:var(--text-on-primary);border-radius:var(--radius-lg);padding:22px 20px;position:relative;overflow:hidden;box-shadow:var(--shadow-sm);transition:box-shadow .25s ease, transform .25s ease;}
+.top-dish-card{background:linear-gradient(135deg, var(--primary) 0%, #060f1e 100%);color:var(--text-on-primary);border-radius:var(--radius-lg);padding:22px 20px;position:relative;overflow:hidden;box-shadow:var(--shadow-sm);transition:box-shadow .25s ease, transform .25s ease;}
 .top-dish-card:hover{box-shadow:var(--shadow-lg);transform:translateY(-3px);}
-.top-dish-card::before{content:"";position:absolute;top:-30px;right:-30px;width:110px;height:110px;border-radius:50%;background:rgba(189,126,43,.18);}
+.top-dish-card::before{content:"";position:absolute;top:-30px;right:-30px;width:110px;height:110px;border-radius:50%;background:rgba(217,164,65,.18);}
 .top-dish-card .td-eyebrow{position:relative;font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin-bottom:10px;}
 .top-dish-card .td-name{position:relative;font-family:'Playfair Display',serif;font-size:21px;font-weight:700;margin:0 0 8px;line-height:1.25;}
 .top-dish-card .td-meta{position:relative;font-size:12.5px;color:var(--text-on-primary-muted);margin:0;}
@@ -765,10 +857,10 @@ tr.top-row td{background:var(--accent-tint);}
 .receipt::before,.receipt::after{content:"";display:block;height:12px;margin:0 -26px 14px;background-image:radial-gradient(circle at 6px 6px, rgba(15,17,14,.5) 4px, transparent 4.2px);background-size:12px 12px;background-position:-3px 0;}
 .receipt::after{margin:14px -26px 0;}
 .r-brand{text-align:center;margin-bottom:6px;}
-.r-brand h3{font-family:'Playfair Display',serif;font-weight:700;font-size:22px;margin:0 0 4px;color:#182620;}
+.r-brand h3{font-family:'Playfair Display',serif;font-weight:700;font-size:22px;margin:0 0 4px;color:#10233d;}
 .r-brand p{font-size:11.5px;color:#615c52;margin:2px 0;line-height:1.5;}
 .r-divider{border-top:1px dashed #d5d0c4;margin:14px 0;}
-.r-stamp{display:inline-block;border:2px solid #bd7e2b;color:#a06a20;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;font-size:12px;letter-spacing:.06em;padding:5px 12px;border-radius:4px;}
+.r-stamp{display:inline-block;border:2px solid #d9a441;color:#b98a2f;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;font-size:12px;letter-spacing:.06em;padding:5px 12px;border-radius:4px;}
 .r-meta-row{display:flex;justify-content:space-between;font-size:12px;margin-top:12px;}
 .r-meta-row .label{color:#615c52;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;font-size:10px;letter-spacing:.06em;}
 .r-meta-row .value{font-family:'IBM Plex Mono',monospace;font-weight:700;color:#1b1a17;}
@@ -785,7 +877,7 @@ tr.top-row td{background:var(--accent-tint);}
 .r-totals .row{display:flex;justify-content:space-between;padding:3px 0;}
 .r-totals .row.grand{font-size:17px;font-weight:800;border-top:1px solid #1b1a17;margin-top:6px;padding-top:9px;}
 .r-payment{text-align:center;margin-top:10px;font-family:'IBM Plex Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#615c52;}
-.r-payment b{color:#a06a20;}
+.r-payment b{color:#b98a2f;}
 .r-footer{text-align:center;margin-top:18px;font-size:12px;color:#615c52;font-style:italic;}
 .r-barcode{margin-top:16px;height:34px;background-image:repeating-linear-gradient(90deg, #1b1a17 0 2px, transparent 2px 5px, #1b1a17 5px 6px, transparent 6px 11px);}
 .receipt-actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;max-width:420px;}
@@ -797,13 +889,13 @@ tr.top-row td{background:var(--accent-tint);}
    ------------------------------------------------------------ */
 .receipt.pro{width:680px;max-width:94vw;background:#ffffff;padding:0;border-radius:var(--radius-md);overflow:hidden;}
 .receipt.pro::before,.receipt.pro::after{display:none;}
-.pro-head{background:#182620;color:#f3efe6;padding:30px 38px;display:flex;justify-content:space-between;align-items:flex-start;gap:20px;}
+.pro-head{background:#10233d;color:#f3efe6;padding:30px 38px;display:flex;justify-content:space-between;align-items:flex-start;gap:20px;}
 .pro-head .biz h3{font-family:'Playfair Display',serif;font-size:23px;font-weight:800;margin:0 0 6px;color:#f3efe6;}
-.pro-head .biz p{font-size:11.5px;color:#a9b6ad;margin:2px 0;line-height:1.6;}
+.pro-head .biz p{font-size:11.5px;color:#a9b8cc;margin:2px 0;line-height:1.6;}
 .pro-head .doc{text-align:right;flex-shrink:0;}
-.pro-head .doc .tag{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:#bd7e2b;margin:0 0 8px;}
+.pro-head .doc .tag{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:#d9a441;margin:0 0 8px;}
 .pro-head .doc h4{font-family:'Playfair Display',serif;font-size:19px;margin:0 0 6px;color:#f3efe6;}
-.pro-head .doc p{font-size:11.5px;color:#a9b6ad;margin:2px 0;}
+.pro-head .doc p{font-size:11.5px;color:#a9b8cc;margin:2px 0;}
 .pro-body{padding:30px 38px 6px;}
 .pro-parties{display:grid;grid-template-columns:1fr 1fr;gap:28px;margin-bottom:26px;}
 .pro-party h5{font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:#928c7e;margin:0 0 10px;}
@@ -868,9 +960,6 @@ tr.top-row td{background:var(--accent-tint);}
 @media (max-width:900px){
   .gate-brand-panel{display:none;}
   .gate-form-panel{flex:1 1 100%;}
-  .gate-box-mobile-brand{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:28px;}
-  .gate-box-mobile-brand .word{font-family:'Playfair Display',serif;font-weight:700;font-size:19px;color:var(--primary);}
-  .gate-box-mobile-brand svg{color:var(--accent);}
 }
 </style>
 </head>
@@ -879,13 +968,15 @@ tr.top-row td{background:var(--accent-tint);}
 <!-- ============== WELCOME SPLASH ============== -->
 <div id="splashScreen">
   <div class="splash-inner">
-    <svg class="splash-emblem" width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
-      <path class="draw" d="M4 21V6a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v15"/>
-      <path class="draw" d="M17 8h3a2 2 0 0 1 2 2v11"/>
-      <path class="draw" d="M9 21v-4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v4"/>
+    <svg class="splash-emblem" width="52" height="52" viewBox="0 0 24 24" fill="currentColor">
+      <circle class="pop" cx="7" cy="2.6" r="1.1"/>
+      <circle class="pop" cx="12" cy="1.7" r="1.3"/>
+      <circle class="pop" cx="17" cy="2.6" r="1.1"/>
+      <path class="pop" d="M12 5.2 21.6 12.8H2.4Z"/>
+      <rect class="pop" x="6" y="12.4" width="12" height="9.6" rx="1.3"/>
     </svg>
-    <p class="splash-eyebrow">Resort Front Desk</p>
-    <h1 class="splash-title">Resort Management System</h1>
+    <p class="splash-eyebrow">Hotel Front Desk</p>
+    <h1 class="splash-title">Hotel Management System</h1>
     <p class="splash-tagline">One system for hotel rooms, banquet halls and the restaurant.</p>
     <div class="splash-loader"><span></span><span></span><span></span></div>
   </div>
@@ -909,67 +1000,113 @@ tr.top-row td{background:var(--accent-tint);}
 
 <!-- ============== AUTH GATE ============== -->
 <div id="gateScreen">
-  <div class="gate-brand-panel">
-    <div class="gbp-top">
-      <svg class="emblem" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M4 21V6a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v15"/>
-        <path d="M17 8h3a2 2 0 0 1 2 2v11"/>
-        <path d="M9 21v-4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v4"/>
-        <path d="M8 9h1"/><path d="M8 13h1"/><path d="M13 9h1"/><path d="M13 13h1"/>
-      </svg>
-      <span class="word">Resort Desk</span>
-    </div>
-    <div class="gbp-mid">
-      <p class="eyebrow">Resort management</p>
-      <h1>One system for rooms, banquets and the restaurant.</h1>
-      <p>One dashboard for hotel room bookings, banquet hall events, restaurant billing, staff and every invoice you print — built for the pace of real service.</p>
-      <div class="gbp-feats">
-        <div class="gbp-feat"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Booking or order to invoice in under a minute</div>
-        <div class="gbp-feat"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> GST-ready tax splits, built in</div>
-        <div class="gbp-feat"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Separate logins for room, banquet &amp; restaurant staff</div>
+  <div class="gate-security-banner" id="gateSecurityBanner">
+    <span class="gsb-msg">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      Your data is safe and secure with us — Encrypted by AES 256-bit Encryption
+    </span>
+    <button type="button" class="gsb-close" id="gateSecurityBannerClose" aria-label="Dismiss">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+
+  <nav class="gate-topnav">
+    <div class="gtn-brand">
+      <span class="gtn-emblem"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+        <circle cx="7" cy="2.6" r="1.1"/><circle cx="12" cy="1.7" r="1.3"/><circle cx="17" cy="2.6" r="1.1"/>
+        <path d="M12 5.2 21.6 12.8H2.4Z"/>
+        <rect x="6" y="12.4" width="12" height="9.6" rx="1.3"/>
+      </svg></span>
+      <div class="gtn-brand-text">
+        <span class="gtn-word">Hotel Desk</span>
+        <span class="gtn-tag">Smart Hotel Management System</span>
       </div>
     </div>
-    <p class="gbp-bottom">DATA SAVED SECURELY IN THIS BROWSER</p>
+    <div class="gtn-links gtn-links-end">
+      <button type="button" class="gtn-link" id="gtnModulesBtn">Key Modules</button>
+      <button type="button" class="gtn-link" id="gtnDemoBtn">Dashboard Demo</button>
+      <button type="button" class="gtn-link" id="gtnPricingBtn">Pricing</button>
+    </div>
+  </nav>
+
+  <div class="gate-panels">
+  <div class="gate-brand-panel">
+    <div class="gbp-mid">
+      <p class="eyebrow">Smart Hotel Management System</p>
+      <h1>Manage your hotel business <span class="hl">smarter</span>.</h1>
+      <p>All-in-one solution for room booking, banquet hall management, restaurant sales and every invoice you print — built for the pace of real service.</p>
+      <div class="gbp-feats">
+        <div class="gbp-feat"><span class="gf-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21V8l9-5 9 5v13"/><path d="M9 21v-7h6v7"/></svg></span> Room booking — seamless &amp; hassle-free</div>
+        <div class="gbp-feat"><span class="gf-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><line x1="9" y1="21" x2="9" y2="12"/><line x1="15" y1="21" x2="15" y2="12"/></svg></span> Banquet hall booking — perfect for every occasion</div>
+        <div class="gbp-feat"><span class="gf-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h2a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M17 2v9c-2 0-3 1-3 3v8"/></svg></span> Restaurant management — digital order tracking</div>
+        <div class="gbp-feat"><span class="gf-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg></span> Reports &amp; analytics — real-time insight</div>
+      </div>
+      <div class="gbp-stats">
+        <div class="gbp-stat"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="9 12 11 14 15 10"/></svg><span><b>100%</b><span>Business organized</span></span></div>
+        <div class="gbp-stat"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><span><b>24/7</b><span>Secure access</span></span></div>
+        <div class="gbp-stat"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg><span><b>Smart</b><span>Growth</span></span></div>
+      </div>
+    </div>
+    <p class="gbp-bottom">DATA SAVED SECURELY IN THE CLOUD</p>
   </div>
 
   <div class="gate-form-panel">
     <div class="gate-box">
-      <div class="gate-box-mobile-brand">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V6a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v15"/><path d="M17 8h3a2 2 0 0 1 2 2v11"/><path d="M9 21v-4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v4"/><path d="M8 9h1"/><path d="M8 13h1"/><path d="M13 9h1"/><path d="M13 13h1"/></svg>
-        <span class="word">Resort Desk</span>
+      <div class="gate-card-logo">
+        <span class="emblem-wrap"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+          <circle cx="7" cy="2.6" r="1.1"/><circle cx="12" cy="1.7" r="1.3"/><circle cx="17" cy="2.6" r="1.1"/>
+          <path d="M12 5.2 21.6 12.8H2.4Z"/>
+          <rect x="6" y="12.4" width="12" height="9.6" rx="1.3"/>
+        </svg></span>
+        <h2>Hotel Desk</h2>
+        <p>Smart Hotel Management System</p>
       </div>
 
-      <!-- Role select -->
-      <div class="gate-panel active" data-gate="roleSelect">
-        <div class="gate-heading">
-          <p class="eyebrow">Sign in</p>
-          <h1>Welcome back</h1>
-          <p>Choose how you're accessing the desk today.</p>
-        </div>
-        <div class="role-cards">
-          <button class="role-card" id="pickAdmin">
-            <span class="rc-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 5v6c0 5 3.4 8.7 8 11 4.6-2.3 8-6 8-11V5l-8-3Z"/></svg></span>
-            <span>
-              <p class="rc-title">Admin</p>
-              <p class="rc-sub">Set up the property, manage the menu, review history and staff across rooms, banquets and the restaurant.</p>
-            </span>
-            <span class="rc-arrow"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
-          </button>
-          <button class="role-card" id="pickStaff">
-            <span class="rc-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg></span>
-            <span>
-              <p class="rc-title">Staff</p>
-              <p class="rc-sub">Log in to take orders and generate invoices.</p>
-            </span>
-            <span class="rc-arrow"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
-          </button>
-        </div>
+      <div class="gate-tabs">
+        <button type="button" class="gate-tab active" id="tabAdmin" data-role-tab="admin">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 5v6c0 5 3.4 8.7 8 11 4.6-2.3 8-6 8-11V5l-8-3Z"/></svg>
+          Admin Login
+        </button>
+        <button type="button" class="gate-tab" id="tabStaff" data-role-tab="staff">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+          Staff Login
+        </button>
       </div>
 
       <!-- Admin auth -->
-      <div class="gate-panel" data-gate="adminAuth">
-        <span class="back-link" id="adminBack"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg> Back</span>
-        <div class="auth-card">
+      <div class="gate-panel active" data-gate="adminAuth">
+        <div class="gate-role-panel active" data-role-panel="admin">
+          <div id="adminAuthLogin">
+            <h3>Admin login</h3>
+            <p class="auth-sub">Sign in with your admin email and password.</p>
+            <div class="field">
+              <label for="loginEmail">Email</label>
+              <div class="if-row">
+                <span class="if-ico"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z" opacity="0"/><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg></span>
+                <input type="email" id="loginEmail" placeholder="owner@restaurant.com">
+              </div>
+            </div>
+            <div class="field">
+              <label for="loginPassword">Password</label>
+              <div class="if-row pw-field-wrap">
+                <span class="if-ico"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>
+                <input type="password" id="loginPassword" placeholder="Your password">
+                <button type="button" class="pw-toggle" data-toggle-pw="loginPassword">👁</button>
+              </div>
+            </div>
+            <div class="gate-form-row">
+              <label class="gate-remember"><input type="checkbox" id="loginRemember" checked><span>Remember Me</span></label>
+              <button type="button" class="gate-forgot" id="adminForgotBtn">Forgot Password?</button>
+            </div>
+            <p class="error-text" id="loginError"></p>
+            <button class="btn accent full" id="loginBtn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg> Login</button>
+            <div class="auth-divider"><span>or</span></div>
+            <button class="btn ghost full" id="googleLoginBtn" type="button">
+              <svg width="18" height="18" viewBox="0 0 18 18" style="flex-shrink:0;"><path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.62Z"/><path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.81.54-1.85.86-3.04.86-2.34 0-4.32-1.58-5.03-3.7H.96v2.33A9 9 0 0 0 9 18Z"/><path fill="#FBBC05" d="M3.97 10.72A5.4 5.4 0 0 1 3.68 9c0-.6.1-1.18.29-1.72V4.95H.96A9 9 0 0 0 0 9c0 1.45.35 2.83.96 4.05l3.01-2.33Z"/><path fill="#EA4335" d="M9 3.58c1.32 0 2.51.46 3.44 1.35l2.59-2.59C13.46.89 11.43 0 9 0A9 9 0 0 0 .96 4.95l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58Z"/></svg>
+              <span>Continue with Google</span>
+            </button>
+            <p class="auth-toggle">Need to create an account? <a id="showAdminSignup">Create one</a></p>
+          </div>
           <div id="adminAuthSignup" style="display:none;">
             <h3>Create admin account</h3>
             <p class="auth-sub">Set up a new admin login for the business owner/manager.</p>
@@ -1004,49 +1141,40 @@ tr.top-row td{background:var(--accent-tint);}
             </button>
             <p class="auth-toggle">Already have an account? <a id="showAdminLogin">Log in</a></p>
           </div>
-          <div id="adminAuthLogin" style="display:none;">
-            <h3>Admin login</h3>
-            <p class="auth-sub">Sign in with your admin email and password.</p>
-            <div class="field">
-              <label for="loginEmail">Email</label>
-              <input type="email" id="loginEmail" placeholder="owner@restaurant.com">
-            </div>
-            <div class="field">
-              <label for="loginPassword">Password</label>
-              <div class="pw-field-wrap"><input type="password" id="loginPassword" placeholder="Your password"><button type="button" class="pw-toggle" data-toggle-pw="loginPassword">👁</button></div>
-            </div>
-            <p class="error-text" id="loginError"></p>
-            <button class="btn accent full" id="loginBtn">Log in</button>
-            <div class="auth-divider"><span>or</span></div>
-            <button class="btn ghost full" id="googleLoginBtn" type="button">
-              <svg width="18" height="18" viewBox="0 0 18 18" style="flex-shrink:0;"><path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.62Z"/><path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.81.54-1.85.86-3.04.86-2.34 0-4.32-1.58-5.03-3.7H.96v2.33A9 9 0 0 0 9 18Z"/><path fill="#FBBC05" d="M3.97 10.72A5.4 5.4 0 0 1 3.68 9c0-.6.1-1.18.29-1.72V4.95H.96A9 9 0 0 0 0 9c0 1.45.35 2.83.96 4.05l3.01-2.33Z"/><path fill="#EA4335" d="M9 3.58c1.32 0 2.51.46 3.44 1.35l2.59-2.59C13.46.89 11.43 0 9 0A9 9 0 0 0 .96 4.95l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58Z"/></svg>
-              <span>Continue with Google</span>
-            </button>
-            <p class="auth-toggle">Need to create an account? <a id="showAdminSignup">Create one</a></p>
-          </div>
         </div>
-      </div>
 
-      <!-- Staff auth -->
-      <div class="gate-panel" data-gate="staffAuth">
-        <span class="back-link" id="staffBack"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg> Back</span>
-        <div class="auth-card">
+        <!-- Staff auth -->
+        <div class="gate-role-panel" data-role-panel="staff">
           <h3>Staff login</h3>
           <p class="auth-sub">Use the Staff ID and password your admin gave you.</p>
           <p class="auth-notice" id="noStaffNotice" style="display:none;">No staff accounts have been created yet. Ask your admin to add one from Staff Management.</p>
           <div class="field">
             <label for="staffLoginId">Staff ID</label>
-            <input type="text" id="staffLoginId" placeholder="e.g. staff01">
+            <div class="if-row">
+              <span class="if-ico"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg></span>
+              <input type="text" id="staffLoginId" placeholder="e.g. staff01">
+            </div>
           </div>
           <div class="field">
             <label for="staffLoginPassword">Password</label>
-            <div class="pw-field-wrap"><input type="password" id="staffLoginPassword" placeholder="Your password"><button type="button" class="pw-toggle" data-toggle-pw="staffLoginPassword">👁</button></div>
+            <div class="if-row pw-field-wrap">
+              <span class="if-ico"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>
+              <input type="password" id="staffLoginPassword" placeholder="Your password">
+              <button type="button" class="pw-toggle" data-toggle-pw="staffLoginPassword">👁</button>
+            </div>
+          </div>
+          <div class="gate-form-row">
+            <label class="gate-remember"><input type="checkbox" id="staffLoginRemember" checked><span>Remember Me</span></label>
+            <button type="button" class="gate-forgot" id="staffForgotBtn">Forgot Password?</button>
           </div>
           <p class="error-text" id="staffLoginError"></p>
-          <button class="btn accent full" id="staffLoginBtn">Log in</button>
+          <button class="btn accent full" id="staffLoginBtn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg> Login</button>
         </div>
       </div>
+
+      <p class="gate-secure-note"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Secure &amp; Encrypted Access</p>
     </div>
+  </div>
   </div>
 </div>
 
@@ -1061,7 +1189,7 @@ tr.top-row td{background:var(--accent-tint);}
     <button type="button" class="sub-gate-close" id="subGateCloseBtn" title="Close and sign out" aria-label="Close and sign out">&times;</button>
     <div class="sub-gate-brand">
       <span class="sub-gate-crest">&#9813;</span>
-      <span>Resort Management</span>
+      <span>Hotel Management</span>
     </div>
     <p class="sub-gate-eyebrow" id="subGateEyebrow">Subscription required</p>
     <h2 id="subGateTitle">Activate your subscription</h2>
@@ -1069,12 +1197,12 @@ tr.top-row td{background:var(--accent-tint);}
 
     <div class="sub-gate-plan">
       <div class="sub-gate-plan-head">
-        <span class="sub-gate-plan-name">Resort Management Annual</span>
+        <span class="sub-gate-plan-name">Hotel Management Annual</span>
         <span class="sub-gate-plan-badge">Best value</span>
       </div>
       <div class="sub-gate-price"><span class="sub-gate-currency">₹</span><span id="subGateBaseAmount">12,000</span><span class="sub-gate-per">/ year</span></div>
       <div class="sub-gate-gst-line" id="subGateGstLine">+ 18% GST (₹2,160) &nbsp;=&nbsp; <b>₹14,160 total</b></div>
-      <p class="sub-gate-includes">Includes full access to the Resort Management System — Rooms, Banquets, Restaurant, Staff, Invoicing, and Reports.</p>
+      <p class="sub-gate-includes">Includes full access to the Hotel Management System — Rooms, Banquets, Restaurant, Staff, Invoicing, and Reports.</p>
     </div>
 
     <p class="error-text" id="subGateError"></p>
@@ -1140,7 +1268,21 @@ tr.top-row td{background:var(--accent-tint);}
           <span class="crumb" id="topbarCrumb">Overview</span>
           <h2 id="topbarTitle">Dashboard</h2>
         </div>
+        <div class="topbar-search" id="topbarSearch">
+          <div class="topbar-search-box" id="topbarSearchBox">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="globalSearchInput" placeholder="Search rooms, staff, invoices, pages…" autocomplete="off">
+            <button type="button" class="topbar-search-clear" id="globalSearchClear" aria-label="Clear search">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+            <kbd class="topbar-search-kbd" id="globalSearchKbd">Ctrl K</kbd>
+          </div>
+          <div class="search-results" id="globalSearchResults"></div>
+        </div>
         <div class="topbar-right">
+          <button type="button" class="btn ghost icon-only topbar-search-toggle" id="searchToggleBtn" aria-label="Search">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          </button>
           <button type="button" class="sub-badge" id="subBadge" style="display:none;" title=""></button>
           <div class="profile-menu" id="profileMenu">
             <button type="button" class="profile-btn" id="profileBtn">
@@ -2950,6 +3092,9 @@ tr.top-row td{background:var(--accent-tint);}
   });
 
   // ================= AUTH GATE =================
+  // Only two panels now (adminAuth / staffAuth) — kept as a name->panel toggle
+  // since a couple of other flows (logout, session-restore) just want to
+  // reset back to the admin login view via resetGateToDefault() below.
   var gatePanels = document.querySelectorAll('.gate-panel');
   function showGatePanel(name){
     gatePanels.forEach(function(p){ p.classList.toggle('active', p.dataset.gate === name); });
@@ -2967,19 +3112,66 @@ tr.top-row td{background:var(--accent-tint);}
     document.getElementById('adminAuthSignup').style.display = 'none';
     document.getElementById('adminAuthLogin').style.display = 'block';
   }
-  document.getElementById('pickAdmin').addEventListener('click', function(){
-    showGatePanel('adminAuth');
-    if(state.admins.length > 0){ showAdminLoginPanel(); } else { showAdminSignupPanel(); }
-  });
   document.getElementById('showAdminLogin').addEventListener('click', showAdminLoginPanel);
   document.getElementById('showAdminSignup').addEventListener('click', showAdminSignupPanel);
-  document.getElementById('pickStaff').addEventListener('click', function(){
-    showGatePanel('staffAuth');
+
+  // Admin Login / Staff Login tabs — sit at the top of the single gate card
+  // and swap which role's fields are shown, instead of the old separate
+  // "choose a role" screen.
+  var gateTabs = document.querySelectorAll('.gate-tab');
+  var gateRolePanels = document.querySelectorAll('.gate-role-panel');
+  function setGateTab(role){
+    gateTabs.forEach(function(t){ t.classList.toggle('active', t.dataset.roleTab === role); });
+    gateRolePanels.forEach(function(p){ p.classList.toggle('active', p.dataset.rolePanel === role); });
+    if(role === 'staff'){
+      document.getElementById('staffLoginError').classList.remove('show');
+      document.getElementById('noStaffNotice').style.display = state.staff.length === 0 ? 'block' : 'none';
+    }
+  }
+  document.getElementById('tabAdmin').addEventListener('click', function(){ setGateTab('admin'); });
+  document.getElementById('tabStaff').addEventListener('click', function(){ setGateTab('staff'); });
+
+  // Used by logout / failed-session-restore to land back on a clean,
+  // logged-out gate screen (Admin tab, login view — not signup).
+  function resetGateToDefault(){
+    setGateTab('admin');
+    showAdminLoginPanel();
+    document.getElementById('loginError').classList.remove('show');
     document.getElementById('staffLoginError').classList.remove('show');
-    document.getElementById('noStaffNotice').style.display = state.staff.length === 0 ? 'block' : 'none';
+  }
+
+  function gateForgotNotice(){
+    showToast('Self-service password reset isn\'t available yet — please contact support to reset your password.', 'info');
+  }
+  document.getElementById('adminForgotBtn').addEventListener('click', gateForgotNotice);
+  document.getElementById('staffForgotBtn').addEventListener('click', gateForgotNotice);
+
+  // Security reassurance banner above the gate screen — dismissible, and
+  // stays dismissed on this browser once closed.
+  (function(){
+    var BANNER_KEY = 'hotel-desk:security-banner-dismissed';
+    var banner = document.getElementById('gateSecurityBanner');
+    var dismissed = false;
+    try { dismissed = window.localStorage.getItem(BANNER_KEY) === '1'; } catch(e){}
+    if(dismissed) banner.style.display = 'none';
+    document.getElementById('gateSecurityBannerClose').addEventListener('click', function(){
+      banner.style.display = 'none';
+      try { window.localStorage.setItem(BANNER_KEY, '1'); } catch(e){}
+    });
+  })();
+
+  // Top nav info links on the gate screen — short honest notes rather than
+  // fake pages, since this app doesn't have a separate public marketing
+  // site with real Modules/Demo/Pricing pages yet.
+  document.getElementById('gtnModulesBtn').addEventListener('click', function(){
+    showToast('Room booking, banquet halls, restaurant billing, staff management, invoicing and reports — all in one dashboard.', 'info');
   });
-  document.getElementById('adminBack').addEventListener('click', function(){ showGatePanel('roleSelect'); });
-  document.getElementById('staffBack').addEventListener('click', function(){ showGatePanel('roleSelect'); });
+  document.getElementById('gtnDemoBtn').addEventListener('click', function(){
+    showToast('There isn\'t a separate demo mode yet — create a free admin account to explore the live dashboard.', 'info');
+  });
+  document.getElementById('gtnPricingBtn').addEventListener('click', function(){
+    showToast('Pricing is shown right inside your dashboard after you create an admin account.', 'info');
+  });
 
   function setBtnLoading(btn, loading, loadingLabel, normalLabel){
     if(loading){
@@ -3032,8 +3224,9 @@ tr.top-row td{background:var(--accent-tint);}
     var pw = document.getElementById('loginPassword').value;
     var err = document.getElementById('loginError');
 
+    var remember = document.getElementById('loginRemember').checked;
     setBtnLoading(btn, true, 'Signing in…');
-    api.adminLogin(email, pw).then(function(user){
+    api.adminLogin(email, pw, remember).then(function(user){
       err.classList.remove('show');
       state.session = { role:'admin', adminId: user.adminId, email: user.email, firstName: user.firstName, lastName: user.lastName, photo: user.photo || null };
       return loadTenantData(user.adminId);
@@ -3106,8 +3299,9 @@ tr.top-row td{background:var(--accent-tint);}
     var pw = document.getElementById('staffLoginPassword').value;
     var err = document.getElementById('staffLoginError');
 
+    var remember = document.getElementById('staffLoginRemember').checked;
     setBtnLoading(btn, true, 'Signing in…');
-    api.staffLogin(staffId, pw).then(function(user){
+    api.staffLogin(staffId, pw, remember).then(function(user){
       err.classList.remove('show');
       state.session = { role:'staff', staffId: user.staffId, name: user.name, department: user.department, adminId: user.adminId, photo: user.photo || null };
       return loadTenantData(user.adminId);
@@ -3129,7 +3323,7 @@ tr.top-row td{background:var(--accent-tint);}
     api.logout();
     document.getElementById('appLayout').classList.remove('show');
     document.getElementById('gateScreen').style.display = 'flex';
-    showGatePanel('roleSelect');
+    resetGateToDefault();
     document.getElementById('loginEmail').value = '';
     document.getElementById('loginPassword').value = '';
     document.getElementById('staffLoginId').value = '';
@@ -3391,6 +3585,163 @@ tr.top-row td{background:var(--accent-tint);}
     toggleTheme();
   });
 
+  // ---------- global search ----------
+  var SEARCH_ICONS = {
+    page:'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>',
+    room:'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21V8l9-5 9 5v13"/><path d="M9 21v-7h6v7"/></svg>',
+    staff:'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
+    menu:'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h2a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M17 2v9c-2 0-3 1-3 3v8"/></svg>',
+    hall:'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><line x1="9" y1="21" x2="9" y2="12"/><line x1="15" y1="21" x2="15" y2="12"/></svg>',
+    promo:'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m20.59 13.41-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82Z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>',
+    invoice:'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>'
+  };
+  function flattenTabsForSearch(list, out){
+    out = out || [];
+    (list || []).forEach(function(t){
+      if(t.children) flattenTabsForSearch(t.children, out);
+      else out.push(t);
+    });
+    return out;
+  }
+  function buildSearchGroups(query){
+    var q = query.trim().toLowerCase();
+    if(!q) return [];
+    var groups = [];
+    var isAdmin = state.session && state.session.role === 'admin';
+    var tabs = isAdmin ? ADMIN_TABS : (state.session ? buildStaffTabsForSession() : []);
+    var pageHits = flattenTabsForSearch(tabs).filter(function(t){
+      return t.label.toLowerCase().indexOf(q) !== -1;
+    }).slice(0, 6).map(function(t){
+      return { icon:'page', label:t.label, sub:'Page', go:function(){ switchTab(t.key); } };
+    });
+    if(pageHits.length) groups.push({ label:'Pages', items:pageHits });
+
+    if(isAdmin){
+      var roomHits = (state.rooms || []).filter(function(r){
+        var guest = r.booking ? (r.booking.guestName || '') : '';
+        return String(r.roomNo).indexOf(q) !== -1 || guest.toLowerCase().indexOf(q) !== -1;
+      }).slice(0, 6).map(function(r){
+        return { icon:'room', label:'Room ' + r.roomNo, sub: r.booking ? ('Occupied · ' + r.booking.guestName) : 'Available', go:function(){ switchTab('room-availability'); } };
+      });
+      if(roomHits.length) groups.push({ label:'Rooms', items:roomHits });
+
+      var staffHits = (state.staff || []).filter(function(s){
+        return (s.name || '').toLowerCase().indexOf(q) !== -1 || (s.staffId || '').toLowerCase().indexOf(q) !== -1 || (s.department || '').toLowerCase().indexOf(q) !== -1;
+      }).slice(0, 6).map(function(s){
+        return { icon:'staff', label:s.name, sub:(s.department ? s.department.charAt(0).toUpperCase() + s.department.slice(1) + ' · ' : '') + s.staffId, go:function(){ switchTab('staff'); } };
+      });
+      if(staffHits.length) groups.push({ label:'Staff', items:staffHits });
+
+      var menuHits = (state.menu || []).filter(function(m){
+        return !m.deletedAt && ((m.name || '').toLowerCase().indexOf(q) !== -1 || (m.category || '').toLowerCase().indexOf(q) !== -1);
+      }).slice(0, 6).map(function(m){
+        return { icon:'menu', label:m.name, sub:m.category || 'Menu item', go:function(){ switchTab('menu'); } };
+      });
+      if(menuHits.length) groups.push({ label:'Menu items', items:menuHits });
+
+      var hallHits = (state.banquetHalls || []).filter(function(h){
+        return (h.name || '').toLowerCase().indexOf(q) !== -1;
+      }).slice(0, 6).map(function(h){
+        return { icon:'hall', label:h.name, sub:'Banquet hall', go:function(){ switchTab('banquet-availability'); } };
+      });
+      if(hallHits.length) groups.push({ label:'Banquet halls', items:hallHits });
+
+      var promoHits = (state.promoCodes || []).filter(function(p){
+        return (p.code || '').toLowerCase().indexOf(q) !== -1;
+      }).slice(0, 6).map(function(p){
+        return { icon:'promo', label:p.code, sub:'Promo code', go:function(){ switchTab('promos'); } };
+      });
+      if(promoHits.length) groups.push({ label:'Promo codes', items:promoHits });
+
+      var invHits = (state.invoices || []).filter(function(i){
+        return (i.invoiceNo || '').toLowerCase().indexOf(q) !== -1 || (i.customerName || '').toLowerCase().indexOf(q) !== -1;
+      }).slice(0, 6).map(function(i){
+        return { icon:'invoice', label:i.invoiceNo, sub:i.customerName || 'Invoice', go:function(){ switchTab('history'); } };
+      });
+      if(invHits.length) groups.push({ label:'Invoices', items:invHits });
+    }
+    return groups;
+  }
+  function renderSearchResults(query){
+    var wrap = document.getElementById('globalSearchResults');
+    var groups = buildSearchGroups(query);
+    if(!query.trim()){
+      wrap.innerHTML = '';
+      wrap.classList.remove('show');
+      return;
+    }
+    if(!groups.length){
+      wrap.innerHTML = '<p class="search-empty">No matches for "' + escapeHtml(query.trim()) + '"</p>';
+      wrap.classList.add('show');
+      return;
+    }
+    var html = '';
+    groups.forEach(function(g){
+      html += '<p class="search-group-label">' + escapeHtml(g.label) + '</p>';
+      g.items.forEach(function(it, i){
+        html += '<button type="button" class="search-result-item" data-gidx="' + groups.indexOf(g) + '" data-iidx="' + i + '">'
+          + '<span class="sri-ico">' + (SEARCH_ICONS[it.icon] || SEARCH_ICONS.page) + '</span>'
+          + '<span class="sri-label">' + escapeHtml(it.label) + '</span>'
+          + '<span class="sri-sub">' + escapeHtml(it.sub) + '</span>'
+          + '</button>';
+      });
+    });
+    wrap.innerHTML = html;
+    wrap.classList.add('show');
+    Array.prototype.forEach.call(wrap.querySelectorAll('.search-result-item'), function(btn, idx){
+      btn.addEventListener('click', function(){
+        var g = groups[parseInt(btn.dataset.gidx, 10)];
+        var it = g.items[parseInt(btn.dataset.iidx, 10)];
+        it.go();
+        closeGlobalSearch();
+      });
+    });
+  }
+  function closeGlobalSearch(){
+    var input = document.getElementById('globalSearchInput');
+    var wrap = document.getElementById('globalSearchResults');
+    input.value = '';
+    document.getElementById('topbarSearchBox').classList.remove('has-value');
+    wrap.innerHTML = '';
+    wrap.classList.remove('show');
+    document.getElementById('topbarSearch').classList.remove('mobile-open');
+  }
+  var globalSearchInput = document.getElementById('globalSearchInput');
+  globalSearchInput.addEventListener('input', function(){
+    document.getElementById('topbarSearchBox').classList.toggle('has-value', !!this.value);
+    renderSearchResults(this.value);
+  });
+  globalSearchInput.addEventListener('focus', function(){
+    if(this.value.trim()) renderSearchResults(this.value);
+  });
+  globalSearchInput.addEventListener('click', function(e){ e.stopPropagation(); });
+  document.getElementById('globalSearchResults').addEventListener('click', function(e){ e.stopPropagation(); });
+  document.getElementById('globalSearchClear').addEventListener('click', function(e){
+    e.stopPropagation();
+    closeGlobalSearch();
+    globalSearchInput.focus();
+  });
+  document.getElementById('searchToggleBtn').addEventListener('click', function(e){
+    e.stopPropagation();
+    document.getElementById('topbarSearch').classList.add('mobile-open');
+    globalSearchInput.focus();
+  });
+  document.addEventListener('click', function(){ closeGlobalSearch(); });
+  document.addEventListener('keydown', function(e){
+    var isCombo = (e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K');
+    if(isCombo){
+      e.preventDefault();
+      document.getElementById('topbarSearch').classList.add('mobile-open');
+      globalSearchInput.focus();
+      globalSearchInput.select();
+      return;
+    }
+    if(e.key === 'Escape' && document.activeElement === globalSearchInput){
+      closeGlobalSearch();
+      globalSearchInput.blur();
+    }
+  });
+
   // ---------- profile photo ----------
   var profilePhotoInput = document.getElementById('profilePhotoInput');
   document.getElementById('pdAvatarWrap').addEventListener('click', function(e){
@@ -3513,7 +3864,7 @@ tr.top-row td{background:var(--accent-tint);}
     document.getElementById('subscriptionGate').classList.remove('show');
     document.getElementById('appLayout').classList.remove('show');
     document.getElementById('gateScreen').style.display = 'flex';
-    showGatePanel('roleSelect');
+    resetGateToDefault();
     document.getElementById('loginEmail').value = '';
     document.getElementById('loginPassword').value = '';
     document.getElementById('staffLoginId').value = '';
@@ -3646,10 +3997,10 @@ tr.top-row td{background:var(--accent-tint);}
         key: order.keyId || RAZORPAY_KEY_ID,
         amount: order.amountPaise,
         currency: order.currency,
-        name: 'Resort Management System',
+        name: 'Hotel Management System',
         description: order.planName + ' — annual subscription',
         order_id: order.orderId,
-        theme: { color: '#bd7e2b' },
+        theme: { color: '#d9a441' },
         handler: function(response){
           // Razorpay only calls this after the user actually completes payment.
           // We still don't trust it as "success" until the backend verifies
@@ -6013,7 +6364,7 @@ tr.top-row td{background:var(--accent-tint);}
     var margin = 8;
     var contentWidth = pageWidth - margin * 2;
     var cx = pageWidth / 2;
-    var ink = [27, 26, 23], soft = [97, 92, 82], accent = [160, 106, 32];
+    var ink = [27, 26, 23], soft = [97, 92, 82], accent = [185, 138, 47];
 
     var measureDoc = new jsPDFCtor({ unit: 'mm', format: [pageWidth, 400] });
     measureDoc.setFont('helvetica', 'normal'); measureDoc.setFontSize(8.5);
@@ -6162,7 +6513,7 @@ tr.top-row td{background:var(--accent-tint);}
     var doc = new jsPDFCtor({ unit: 'mm', format: 'a4' });
     var pageWidth = 210, pageHeight = 297, margin = 16;
     var contentWidth = pageWidth - margin * 2;
-    var ink = [27,26,23], soft = [97,92,82], muted = [146,140,126], border = [229,226,218], primaryBg = [24,38,32];
+    var ink = [27,26,23], soft = [97,92,82], muted = [146,140,126], border = [229,226,218], primaryBg = [16,35,61];
 
     // ---- header band ----
     var headH = 40;
@@ -6180,12 +6531,12 @@ tr.top-row td{background:var(--accent-tint);}
     }
     doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.setTextColor(243,239,230);
     doc.text(r.name || 'Business', bx, 19);
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(169,182,173);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(169,184,204);
     if(r.address) doc.text(r.address, bx, 25, { maxWidth: 105 });
     var infoLine = [r.phone ? ('Ph: '+r.phone) : null, r.email || null, r.gstin ? ('GSTIN: '+r.gstin) : null].filter(Boolean).join('   |   ');
     if(infoLine) doc.text(infoLine, bx, 31, { maxWidth: 105 });
 
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(13); doc.setTextColor(212,166,94);
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(13); doc.setTextColor(224,178,96);
     doc.text('INVOICE', pageWidth - margin, 16, { align: 'right' });
     doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(200,196,188);
     doc.text(inv.invoiceNo, pageWidth - margin, 23, { align: 'right' });
@@ -6967,7 +7318,7 @@ tr.top-row td{background:var(--accent-tint);}
         type: 'line',
         data: { labels: labels, datasets: [{
           label: 'Revenue', data: dayKeys.map(function(d){ return byDay[d]; }),
-          borderColor: c.accent, backgroundColor: 'rgba(189,126,43,.14)', fill: true, tension: .35,
+          borderColor: c.accent, backgroundColor: 'rgba(217,164,65,.14)', fill: true, tension: .35,
           pointRadius: 3, pointBackgroundColor: c.accent, borderWidth: 2.4
         }]},
         options: {
@@ -7085,7 +7436,7 @@ tr.top-row td{background:var(--accent-tint);}
   }
 
   function chartColors(){
-    return { accent:'#bd7e2b', primary:'#22352c', muted:'#928c7e', success:'#2f7d52', info:'#2f6690', grid:'#e5e2da' };
+    return { accent:'#d9a441', primary:'#17375e', muted:'#928c7e', success:'#2f7d52', info:'#2f6690', grid:'#e5e2da' };
   }
   function renderAnalysisCharts(list){
     if(typeof Chart === 'undefined') return;
@@ -7108,7 +7459,7 @@ tr.top-row td{background:var(--accent-tint);}
         type: 'line',
         data: { labels: labels, datasets: [{
           label: 'Revenue', data: days.map(function(d){ return byDay[d]; }),
-          borderColor: c.accent, backgroundColor: 'rgba(189,126,43,.12)', fill: true, tension: .35,
+          borderColor: c.accent, backgroundColor: 'rgba(217,164,65,.12)', fill: true, tension: .35,
           pointRadius: 3, pointBackgroundColor: c.accent, borderWidth: 2.4
         }]},
         options: {
@@ -7402,7 +7753,7 @@ tr.top-row td{background:var(--accent-tint);}
   loadAll().then(function(){
     if(!api.getToken()){
       state.session = null;
-      showGatePanel('roleSelect');
+      resetGateToDefault();
       return;
     }
     api.me().then(function(res){
@@ -7418,7 +7769,7 @@ tr.top-row td{background:var(--accent-tint);}
     }).catch(function(){
       // token missing/expired/invalid — api.js already cleared it on a 401
       state.session = null;
-      showGatePanel('roleSelect');
+      resetGateToDefault();
     });
   });
 

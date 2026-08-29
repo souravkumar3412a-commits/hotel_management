@@ -1,4 +1,4 @@
-# Resort Management System — Backend Setup (Phases 3–5)
+# Hotel Management System — Backend Setup (Phases 3–5)
 
 Follow these steps in order. Do each one, confirm it worked, then move to the next.
 
@@ -47,7 +47,7 @@ Open the new `.env` file and fill in:
 npm run dev
 ```
 
-**Expected result:** the terminal prints `Resort API listening on port 4000` and stays running (don't close this terminal — leave it open).
+**Expected result:** the terminal prints `Hotel API listening on port 4000` and stays running (don't close this terminal — leave it open).
 
 If you see an error instead, stop here and send me the exact terminal output — don't try to fix multiple things at once.
 

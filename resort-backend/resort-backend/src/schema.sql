@@ -1,5 +1,5 @@
 -- ============================================================
--- Resort Management System — Database Schema (PostgreSQL / Supabase)
+-- Hotel Management System — Database Schema (PostgreSQL / Supabase)
 -- Run this once in the Supabase SQL editor to create every table.
 -- ============================================================
 
