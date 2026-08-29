@@ -136,7 +136,7 @@ button{font-family:'Inter',sans-serif;cursor:pointer;}
 .gsb-close{position:absolute;right:14px;top:50%;transform:translateY(-50%);background:none;border:none;color:rgba(243,239,230,.55);padding:4px;display:flex;border-radius:6px;}
 .gsb-close:hover{color:var(--text-on-primary);background:rgba(255,255,255,.08);}
 
-.gate-topnav{flex:0 0 auto;display:flex;align-items:center;gap:18px;background:#0a1830;border-bottom:1px solid rgba(217,164,65,.18);padding:13px 32px;}
+.gate-topnav{flex:0 0 auto;display:flex;align-items:center;gap:18px;background:#ffffff;border-bottom:1px solid #e6e8ec;padding:13px 32px;}
 .gtn-brand{display:flex;align-items:center;gap:10px;flex-shrink:0;}
 .gtn-emblem{color:var(--accent);display:flex;flex-shrink:0;}
 .gtn-brand-text{display:flex;flex-direction:column;line-height:1.3;}
@@ -144,8 +144,8 @@ button{font-family:'Inter',sans-serif;cursor:pointer;}
 .gtn-tag{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);}
 .gtn-links{display:flex;align-items:center;gap:28px;margin-left:16px;flex:1;}
 .gtn-links-end{flex:1;justify-content:flex-end;margin-left:16px;}
-.gtn-link{background:none;border:none;font-family:'Inter',sans-serif;font-size:13px;font-weight:600;color:var(--text-on-primary-muted);cursor:pointer;padding:0;}
-.gtn-link:hover{color:var(--accent);}
+.gtn-link{background:none;border:none;font-family:'Inter',sans-serif;font-size:13px;font-weight:600;color:#4b5768;cursor:pointer;padding:0;}
+.gtn-link:hover{color:#b98a2f;}
 @media (max-width:760px){
   .gate-topnav{padding:11px 16px;gap:12px;}
   .gtn-links{display:none;}
@@ -968,14 +968,7 @@ tr.top-row td{background:var(--accent-tint);}
 <!-- ============== WELCOME SPLASH ============== -->
 <div id="splashScreen">
   <div class="splash-inner">
-    <svg class="splash-emblem" width="52" height="52" viewBox="0 0 24 24" fill="currentColor">
-      <circle class="pop" cx="7" cy="2.6" r="1.1"/>
-      <circle class="pop" cx="12" cy="1.7" r="1.3"/>
-      <circle class="pop" cx="17" cy="2.6" r="1.1"/>
-      <path class="pop" d="M12 5.2 21.6 12.8H2.4Z"/>
-      <rect class="pop" x="6" y="12.4" width="12" height="9.6" rx="1.3"/>
-    </svg>
-    <p class="splash-eyebrow">Hotel Front Desk</p>
+    <img class="splash-emblem" src="assets/eazzio-logo.png" alt="Eazzio" style="width:200px;height:auto;margin:0 auto 24px;display:block;">
     <h1 class="splash-title">Hotel Management System</h1>
     <p class="splash-tagline">One system for hotel rooms, banquet halls and the restaurant.</p>
     <div class="splash-loader"><span></span><span></span><span></span></div>
@@ -1012,15 +1005,7 @@ tr.top-row td{background:var(--accent-tint);}
 
   <nav class="gate-topnav">
     <div class="gtn-brand">
-      <span class="gtn-emblem"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
-        <circle cx="7" cy="2.6" r="1.1"/><circle cx="12" cy="1.7" r="1.3"/><circle cx="17" cy="2.6" r="1.1"/>
-        <path d="M12 5.2 21.6 12.8H2.4Z"/>
-        <rect x="6" y="12.4" width="12" height="9.6" rx="1.3"/>
-      </svg></span>
-      <div class="gtn-brand-text">
-        <span class="gtn-word">Hotel Desk</span>
-        <span class="gtn-tag">Smart Hotel Management System</span>
-      </div>
+      <span class="gtn-emblem"><img src="assets/eazzio-logo.png" alt="Eazzio" style="height:42px;width:auto;display:block;"></span>
     </div>
     <div class="gtn-links gtn-links-end">
       <button type="button" class="gtn-link" id="gtnModulesBtn">Key Modules</button>
@@ -1032,7 +1017,7 @@ tr.top-row td{background:var(--accent-tint);}
   <div class="gate-panels">
   <div class="gate-brand-panel">
     <div class="gbp-mid">
-      <p class="eyebrow">Smart Hotel Management System</p>
+      <p class="eyebrow">Hotel Management System</p>
       <h1>Manage your hotel business <span class="hl">smarter</span>.</h1>
       <p>All-in-one solution for room booking, banquet hall management, restaurant sales and every invoice you print — built for the pace of real service.</p>
       <div class="gbp-feats">
@@ -1053,13 +1038,7 @@ tr.top-row td{background:var(--accent-tint);}
   <div class="gate-form-panel">
     <div class="gate-box">
       <div class="gate-card-logo">
-        <span class="emblem-wrap"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-          <circle cx="7" cy="2.6" r="1.1"/><circle cx="12" cy="1.7" r="1.3"/><circle cx="17" cy="2.6" r="1.1"/>
-          <path d="M12 5.2 21.6 12.8H2.4Z"/>
-          <rect x="6" y="12.4" width="12" height="9.6" rx="1.3"/>
-        </svg></span>
-        <h2>Hotel Desk</h2>
-        <p>Smart Hotel Management System</p>
+        <img src="assets/eazzio-logo.png" alt="Eazzio" style="width:210px;height:auto;margin:0 auto 6px;display:block;border-radius:8px;">
       </div>
 
       <div class="gate-tabs">
