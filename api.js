@@ -100,8 +100,8 @@
 
     // ---------- staff management ----------
     getStaff: () => request('GET', '/staff'),
-    createStaff: (staffId, name, department, password) =>
-      request('POST', '/staff', { staffId, name, department, password }),
+    createStaff: (staffId, name, email, phone, department, password) =>
+      request('POST', '/staff', { staffId, name, email, phone, department, password }),
     deleteStaff: (id) => request('DELETE', '/staff/' + id),
     resetStaffPassword: (id, password) => request('PUT', '/staff/' + id + '/reset-password', { password }),
 

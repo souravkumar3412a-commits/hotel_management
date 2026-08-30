@@ -13,17 +13,29 @@ router.use(requireAuth);
 // GET /api/staff — list this admin's staff
 router.get('/', requireAdmin, async (req, res) => {
   const result = await pool.query(
-    'SELECT id, staff_id, name, department, created_at FROM staff WHERE admin_id = $1 ORDER BY created_at',
+    'SELECT id, staff_id, name, email, phone, department, created_at FROM staff WHERE admin_id = $1 ORDER BY created_at',
     [req.user.adminId]
   );
   res.json(result.rows);
 });
 
+// Very light validation — good enough to catch obvious typos without being
+// a strict/annoying email or phone-number parser.
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+function digitsOnly(s) { return String(s || '').replace(/\D/g, ''); }
+
 // POST /api/staff — create a staff account
 router.post('/', requireAdmin, async (req, res) => {
-  const { staffId, name, department, password } = req.body;
-  if (!staffId || !name || !department || !password) {
-    return res.status(400).json({ error: 'Staff ID, name, department and password are all required.' });
+  const { staffId, name, email, phone, department, password } = req.body;
+  if (!staffId || !name || !email || !phone || !department || !password) {
+    return res.status(400).json({ error: 'Staff ID, name, email, phone, department and password are all required.' });
+  }
+  if (!EMAIL_RE.test(String(email).trim())) {
+    return res.status(400).json({ error: 'Enter a valid email address.' });
+  }
+  const phoneDigits = digitsOnly(phone);
+  if (phoneDigits.length < 7 || phoneDigits.length > 15) {
+    return res.status(400).json({ error: 'Enter a valid phone number.' });
   }
   if (!['room', 'banquet', 'restaurant'].includes(department)) {
     return res.status(400).json({ error: 'Invalid department.' });
@@ -39,9 +51,9 @@ router.post('/', requireAdmin, async (req, res) => {
     }
     const hash = await bcrypt.hash(password, SALT_ROUNDS);
     const result = await pool.query(
-      `INSERT INTO staff (admin_id, staff_id, name, department, password_hash)
-       VALUES ($1,$2,$3,$4,$5) RETURNING id, staff_id, name, department, created_at`,
-      [req.user.adminId, staffId, name, department, hash]
+      `INSERT INTO staff (admin_id, staff_id, name, email, phone, department, password_hash)
+       VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id, staff_id, name, email, phone, department, created_at`,
+      [req.user.adminId, staffId, name, String(email).trim().toLowerCase(), phoneDigits, department, hash]
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {

@@ -870,6 +870,12 @@ tr.top-row td{background:var(--accent-tint);}
 .modal-icon-wrap.danger{background:var(--danger-bg);color:var(--danger);}
 .modal-body-text{font-size:13.5px;color:var(--text-secondary);line-height:1.6;}
 .modal-body-text b{color:var(--text-primary);}
+.sd-row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 0;border-bottom:1px solid var(--border);}
+.sd-row:last-child{border-bottom:none;padding-bottom:0;}
+.sd-row:first-child{padding-top:0;}
+.sd-label{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted);flex-shrink:0;}
+.sd-value{font-size:14px;color:var(--text-primary);text-align:right;}
+.sd-value.code{font-family:'IBM Plex Mono',monospace;}
 
 /* ============================================================
    INVOICE RECEIPT OVERLAY
@@ -2255,6 +2261,16 @@ tr.top-row td{background:var(--accent-tint);}
         <label for="staffId">Staff ID</label>
         <input type="text" id="staffId" placeholder="staff01">
       </div>
+      <div class="grid-2">
+        <div class="field">
+          <label for="staffEmail">Email</label>
+          <input type="email" id="staffEmail" placeholder="amit@hotel.com">
+        </div>
+        <div class="field">
+          <label for="staffPhone">Phone number</label>
+          <input type="tel" id="staffPhone" placeholder="98765 43210">
+        </div>
+      </div>
       <div class="field">
         <label for="staffDepartment">Department</label>
         <select id="staffDepartment"></select>
@@ -2272,6 +2288,20 @@ tr.top-row td{background:var(--accent-tint);}
     <div class="modal-foot">
       <button class="btn ghost" id="staffModalCancel">Cancel</button>
       <button class="btn accent" id="addStaffBtn">Add staff</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============== STAFF DETAILS MODAL ============== -->
+<div class="modal-scrim" id="staffDetailsScrim">
+  <div class="modal-box">
+    <div class="modal-head">
+      <div><h3>Staff details</h3><p>Everything on file for this staff account.</p></div>
+      <button class="modal-close" id="staffDetailsClose" aria-label="Close"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="modal-body" id="staffDetailsBody"></div>
+    <div class="modal-foot">
+      <button class="btn accent" id="staffDetailsDone">Done</button>
     </div>
   </div>
 </div>
@@ -5881,7 +5911,33 @@ tr.top-row td{background:var(--accent-tint);}
       + '<td data-label="Staff">'+escapeHtml(b.createdByName||'—')+'</td>'
       + '<td data-label="Total" class="amt">'+money(b.totalAmount)+'</td>'
       + '<td data-label="Status"><span class="badge '+(statusMap[b.status]||'info')+'">'+b.status.toUpperCase()+'</span></td>'
+      + '<td data-label="Invoice">'+(b.invoiceId ? '<button class="btn ghost small" data-view-banquet-invoice="'+b.invoiceId+'">View</button>' : '<span style="color:var(--text-muted);font-size:12px;">Not billed yet</span>')+'</td>'
       + '</tr>';
+  }
+  // Fills in an invoice fetched via GET /api/invoices/:id with the hall
+  // name + schedule from the matching local booking, since those live on
+  // banquet_bookings rather than the invoice row itself.
+  function mapServerBanquetInvoiceListRow(row, booking){
+    var staffAcct = state.staff.find(function(s){ return s.staffId === row.created_by_staff_id; });
+    var tax = Number(row.total_amount) + Number(row.discount_amount) - Number(row.subtotal);
+    var hall = booking ? hallById(booking.hallId) : null;
+    var metaRows = [];
+    if(booking){
+      metaRows.push({ label:'Guests', value: String(booking.guestCount) });
+      metaRows.push({ label:'Schedule', value: new Date(booking.startISO).toLocaleString('en-IN',{dateStyle:'medium',timeStyle:'short'}) + ' – ' + new Date(booking.endISO).toLocaleString('en-IN',{dateStyle:'medium',timeStyle:'short'}) });
+    }
+    return {
+      id: row.id, invoiceNo: row.invoice_no, date: row.created_at,
+      customerName: row.customer_name, customerPhone: row.customer_phone,
+      refLabel: 'Banquet Hall', refValue: hall ? hall.name : (booking ? booking.bookingCode : null),
+      metaRows: metaRows, department: row.department,
+      subtotal: Number(row.subtotal), tax: tax, cgst: tax/2, sgst: tax/2,
+      preDiscountTotal: Number(row.subtotal) + tax, discountAmount: Number(row.discount_amount) || 0,
+      promoCode: row.promo_code, total: Number(row.total_amount), paymentMethod: row.payment_method,
+      items: (row.items || []).map(function(it){ return { name: it.name, price: Number(it.unit_price), qty: Number(it.quantity), amount: Number(it.line_total) }; }),
+      restaurant: Object.assign({}, state.restaurant),
+      createdByStaffId: row.created_by_staff_id, createdByName: staffAcct ? staffAcct.name : (row.created_by_staff_id || 'Admin')
+    };
   }
   function renderBanquetHistory(){
     var wrap = document.getElementById('banquetHistoryWrap');
@@ -5938,7 +5994,16 @@ tr.top-row td{background:var(--accent-tint);}
       return;
     }
     var rows = list.map(banquetBookingRow).join('');
-    wrap.innerHTML = '<div class="table-scroll"><table class="dtable"><thead><tr><th>Booking ID</th><th>Hall</th><th>Customer</th><th>Guests</th><th>Pricing</th><th>Schedule</th><th>Staff</th><th class="amt">Total</th><th>Status</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+    wrap.innerHTML = '<div class="table-scroll"><table class="dtable"><thead><tr><th>Booking ID</th><th>Hall</th><th>Customer</th><th>Guests</th><th>Pricing</th><th>Schedule</th><th>Staff</th><th class="amt">Total</th><th>Status</th><th>Invoice</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+    wrap.querySelectorAll('[data-view-banquet-invoice]').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var invoiceId = btn.dataset.viewBanquetInvoice;
+        var booking = state.banquetBookings.find(function(b){ return b.invoiceId === invoiceId; });
+        api.getInvoice(invoiceId).then(function(row){
+          openInvoiceOverlay(mapServerBanquetInvoiceListRow(row, booking));
+        }).catch(function(e){ showToast(e.message, 'error'); });
+      });
+    });
   }
 
   // ---------- Staff: booking flow ----------
@@ -7608,7 +7673,7 @@ tr.top-row td{background:var(--accent-tint);}
     return api.getStaff().then(function(list){
       // server returns snake_case columns — map to the field names the UI already uses
       state.staff = list.map(function(s){
-        return { id: s.id, staffId: s.staff_id, name: s.name, department: s.department, createdAt: s.created_at, adminId: tenantId() };
+        return { id: s.id, staffId: s.staff_id, name: s.name, email: s.email, phone: s.phone, department: s.department, createdAt: s.created_at, adminId: tenantId() };
       });
       renderStaffListFromCache();
     }).catch(function(e){
@@ -7636,6 +7701,7 @@ tr.top-row td{background:var(--accent-tint);}
         + '<td data-label="Status"><span class="badge success">'+ICONS.check+' Active</span></td>'
         + '<td data-label="Created">'+d+'</td>'
         + '<td data-label="Actions" style="white-space:nowrap;">'
+        + '<button class="btn ghost small" data-view-staff="'+s.id+'">View</button> '
         + '<button class="btn ghost small" data-reset="'+s.id+'">Reset password</button> '
         + '<button class="btn danger-ghost small" data-remove="'+s.id+'">Remove</button>'
         + '</td></tr>';
@@ -7654,6 +7720,12 @@ tr.top-row td{background:var(--accent-tint);}
     }).join('');
     wrap.innerHTML = '<div class="table-scroll"><table class="dtable"><thead><tr><th>Staff ID</th><th>Name</th><th>Department</th><th>Status</th><th>Created</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div>';
 
+    wrap.querySelectorAll('[data-view-staff]').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var s = state.staff.find(function(x){ return x.id === btn.dataset.viewStaff; });
+        if(s) openStaffDetails(s);
+      });
+    });
     wrap.querySelectorAll('[data-reset]').forEach(function(btn){
       btn.addEventListener('click', function(){
         staffResetOpenId = (staffResetOpenId === btn.dataset.reset) ? null : btn.dataset.reset;
@@ -7701,10 +7773,30 @@ tr.top-row td{background:var(--accent-tint);}
       });
     });
   }
+  function openStaffDetails(s){
+    var d = new Date(s.createdAt).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' });
+    document.getElementById('staffDetailsBody').innerHTML =
+      '<div class="sd-row"><span class="sd-label">Name</span><span class="sd-value">'+escapeHtml(s.name || '—')+'</span></div>'
+      + '<div class="sd-row"><span class="sd-label">Staff ID</span><span class="sd-value code">'+escapeHtml(s.staffId)+'</span></div>'
+      + '<div class="sd-row"><span class="sd-label">Department</span><span class="sd-value">'+escapeHtml(departmentLabel(s.department))+'</span></div>'
+      + '<div class="sd-row"><span class="sd-label">Email</span><span class="sd-value">'+(s.email ? escapeHtml(s.email) : '<span style="color:var(--text-muted);">Not on file</span>')+'</span></div>'
+      + '<div class="sd-row"><span class="sd-label">Phone</span><span class="sd-value">'+(s.phone ? escapeHtml(s.phone) : '<span style="color:var(--text-muted);">Not on file</span>')+'</span></div>'
+      + '<div class="sd-row"><span class="sd-label">Status</span><span class="sd-value"><span class="badge success">'+ICONS.check+' Active</span></span></div>'
+      + '<div class="sd-row"><span class="sd-label">Created</span><span class="sd-value">'+d+'</span></div>';
+    document.getElementById('staffDetailsScrim').classList.add('show');
+  }
+  document.getElementById('staffDetailsClose').addEventListener('click', function(){
+    document.getElementById('staffDetailsScrim').classList.remove('show');
+  });
+  document.getElementById('staffDetailsDone').addEventListener('click', function(){
+    document.getElementById('staffDetailsScrim').classList.remove('show');
+  });
   document.getElementById('addStaffBtn').addEventListener('click', function(){
     var btn = this;
     var name = document.getElementById('staffName').value.trim();
     var staffId = document.getElementById('staffId').value.trim();
+    var email = document.getElementById('staffEmail').value.trim();
+    var phone = document.getElementById('staffPhone').value.trim();
     var department = document.getElementById('staffDepartment').value;
     var pw = document.getElementById('staffPassword').value;
     var pw2 = document.getElementById('staffPasswordConfirm').value;
@@ -7712,22 +7804,28 @@ tr.top-row td{background:var(--accent-tint);}
 
     var tenantStaff = currentTenantStaff();
     if(tenantStaff.length >= MAX_STAFF_ACCOUNTS){ err.textContent = 'All departments are staffed. Remove one to add another.'; err.classList.add('show'); return; }
+    if(!name){ err.textContent = 'Enter the staff member\'s name.'; err.classList.add('show'); return; }
     if(!department){ err.textContent = 'Select a department.'; err.classList.add('show'); return; }
     var deptTaken = tenantStaff.some(function(s){ return s.department === department; });
     if(deptTaken){ err.textContent = departmentLabel(department)+' already has a staff account. Remove it to add another.'; err.classList.add('show'); return; }
     if(!staffId){ err.textContent = 'Enter a Staff ID.'; err.classList.add('show'); return; }
     var exists = state.staff.some(function(s){ return s.staffId.toLowerCase() === staffId.toLowerCase(); });
     if(exists){ err.textContent = 'That Staff ID is already in use.'; err.classList.add('show'); return; }
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ err.textContent = 'Enter a valid email address.'; err.classList.add('show'); return; }
+    var phoneDigits = phone.replace(/\D/g, '');
+    if(phoneDigits.length < 7 || phoneDigits.length > 15){ err.textContent = 'Enter a valid phone number.'; err.classList.add('show'); return; }
     if(pw.length < 6){ err.textContent = 'Password must be at least 6 characters.'; err.classList.add('show'); return; }
     if(pw !== pw2){ err.textContent = 'Passwords do not match.'; err.classList.add('show'); return; }
     err.classList.remove('show');
 
     setBtnLoading(btn, true, 'Adding…');
-    api.createStaff(staffId, name, department, pw).then(function(){
+    api.createStaff(staffId, name, email, phone, department, pw).then(function(){
       setBtnLoading(btn, false, null, 'Add staff');
       showToast('Staff account created');
       document.getElementById('staffName').value = '';
       document.getElementById('staffId').value = '';
+      document.getElementById('staffEmail').value = '';
+      document.getElementById('staffPhone').value = '';
       document.getElementById('staffPassword').value = '';
       document.getElementById('staffPasswordConfirm').value = '';
       staffModalScrim.classList.remove('show');
@@ -7738,7 +7836,7 @@ tr.top-row td{background:var(--accent-tint);}
       err.textContent = e.message; err.classList.add('show');
     });
   });
-  bindEnterToSubmit(['staffName','staffId','staffPassword','staffPasswordConfirm'], 'addStaffBtn');
+  bindEnterToSubmit(['staffName','staffId','staffEmail','staffPhone','staffPassword','staffPasswordConfirm'], 'addStaffBtn');
 
   // ---------- promo codes ----------
   function promoStatus(promo){

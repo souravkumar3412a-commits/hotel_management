@@ -18,6 +18,8 @@ CREATE TABLE staff (
   admin_id      UUID NOT NULL REFERENCES admins(id) ON DELETE CASCADE,
   staff_id      TEXT NOT NULL,          -- the human-chosen login id, e.g. "staff001"
   name          TEXT NOT NULL,
+  email         TEXT,
+  phone         TEXT,
   department    TEXT NOT NULL CHECK (department IN ('room','banquet','restaurant')),
   password_hash TEXT NOT NULL,
   created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -199,3 +201,39 @@ CREATE TABLE invoice_line_items (
 
 ALTER TABLE room_bookings    ADD CONSTRAINT fk_room_booking_invoice    FOREIGN KEY (invoice_id) REFERENCES invoices(id) ON DELETE SET NULL;
 ALTER TABLE banquet_bookings ADD CONSTRAINT fk_banquet_booking_invoice FOREIGN KEY (invoice_id) REFERENCES invoices(id) ON DELETE SET NULL;
+
+-- One subscription row per admin/tenant. Created automatically at signup
+-- (see routes/auth.js) with status defaulting to 'inactive', so a brand new
+-- admin is routed to the subscription paywall until they pay or a promo
+-- code activates it. amount defaults to the ₹12,000/year plan price shown
+-- on that paywall screen — change this default if the real price differs.
+CREATE TABLE subscriptions (
+  id                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  admin_id           UUID NOT NULL UNIQUE REFERENCES admins(id) ON DELETE CASCADE,
+  status             TEXT NOT NULL DEFAULT 'inactive' CHECK (status IN ('inactive','pending','active','expired')),
+  plan_name          TEXT NOT NULL DEFAULT 'Standard Plan',
+  amount             NUMERIC(10,2) NOT NULL DEFAULT 12000.00,
+  start_date         TIMESTAMPTZ,
+  expiry_date        TIMESTAMPTZ,
+  payment_provider   TEXT,
+  payment_id         TEXT,
+  razorpay_order_id  TEXT,
+  promo_code_used    TEXT,
+  created_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at         TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX idx_subscriptions_admin ON subscriptions(admin_id);
+
+-- Promo codes YOU (the platform operator) create to comp or discount a
+-- subscription for someone — separate from the per-tenant restaurant
+-- promo_codes table above. Not tied to any single admin/tenant.
+CREATE TABLE subscription_promo_codes (
+  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  code              TEXT NOT NULL UNIQUE,
+  discount_percent  NUMERIC(5,2) NOT NULL CHECK (discount_percent > 0 AND discount_percent <= 100),
+  active            BOOLEAN NOT NULL DEFAULT true,
+  expires_at        TIMESTAMPTZ,
+  max_uses          INTEGER,
+  used_count        INTEGER NOT NULL DEFAULT 0,
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT now()
+);
