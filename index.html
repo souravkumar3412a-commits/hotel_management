@@ -146,6 +146,32 @@ button{font-family:'Inter',sans-serif;cursor:pointer;}
 .gtn-links-end{flex:1;justify-content:flex-end;margin-left:16px;}
 .gtn-link{background:none;border:none;font-family:'Inter',sans-serif;font-size:13px;font-weight:600;color:#4b5768;cursor:pointer;padding:0;}
 .gtn-link:hover{color:#b98a2f;}
+
+.gate-info-scrim{position:fixed;inset:0;background:rgba(3,8,16,.65);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;z-index:300;padding:20px;}
+.gate-info-scrim.show{display:flex;animation:fadeInUp .15s ease;}
+.gate-info-card{
+  position:relative;width:100%;max-width:520px;max-height:86vh;overflow-y:auto;color:var(--text-on-primary);
+  background:linear-gradient(180deg, rgba(28,63,102,.65) 0%, rgba(8,20,37,.95) 100%);
+  border:1px solid rgba(217,164,65,.4);border-radius:20px;padding:34px 30px 28px;
+  box-shadow:0 0 0 1px rgba(217,164,65,.06), 0 30px 70px rgba(0,0,0,.55), 0 0 46px rgba(217,164,65,.1);
+  backdrop-filter:blur(8px);animation:modalPop .2s cubic-bezier(.2,.8,.2,1);
+}
+.gate-info-close{position:absolute;top:18px;right:18px;background:rgba(255,255,255,.06);border:1px solid rgba(217,164,65,.25);color:var(--text-on-primary-muted);border-radius:50%;width:30px;height:30px;display:flex;align-items:center;justify-content:center;}
+.gate-info-close:hover{color:var(--text-on-primary);background:rgba(217,164,65,.14);}
+.gi-title{font-family:'Playfair Display',serif;font-size:20px;font-weight:700;margin:0 0 6px;padding-right:30px;}
+.gi-sub{font-size:13px;color:var(--text-on-primary-muted);margin:0 0 22px;line-height:1.6;}
+.gi-module-list{display:flex;flex-direction:column;gap:14px;}
+.gi-module{display:flex;align-items:flex-start;gap:13px;}
+.gi-module .gf-ico{width:36px;height:36px;flex-shrink:0;border-radius:50%;background:rgba(217,164,65,.14);color:var(--accent);display:flex;align-items:center;justify-content:center;}
+.gi-module b{display:block;font-size:13.5px;margin-bottom:2px;}
+.gi-module span{font-size:12.5px;color:var(--text-on-primary-muted);line-height:1.55;}
+.gi-demo-cards{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px;}
+.gi-demo-card{background:rgba(5,12,24,.5);border:1px solid rgba(217,164,65,.2);border-radius:12px;padding:13px 14px;}
+.gi-demo-card b{display:block;font-size:16px;color:var(--accent);}
+.gi-demo-card span{font-size:11px;color:var(--text-on-primary-muted);}
+.gi-cta{margin-top:22px;padding-top:18px;border-top:1px solid rgba(217,164,65,.16);font-size:12.5px;color:var(--text-on-primary-muted);text-align:center;}
+.gi-cta a{color:var(--accent);font-weight:600;cursor:pointer;text-decoration:none;}
+.gi-cta a:hover{text-decoration:underline;}
 @media (max-width:760px){
   .gate-topnav{padding:11px 16px;gap:12px;}
   .gtn-links{display:none;}
@@ -1009,10 +1035,17 @@ tr.top-row td{background:var(--accent-tint);}
     </div>
     <div class="gtn-links gtn-links-end">
       <button type="button" class="gtn-link" id="gtnModulesBtn">Key Modules</button>
-      <button type="button" class="gtn-link" id="gtnDemoBtn">Dashboard Demo</button>
-      <button type="button" class="gtn-link" id="gtnPricingBtn">Pricing</button>
     </div>
   </nav>
+
+  <div class="gate-info-scrim" id="gateInfoScrim">
+    <div class="gate-info-card">
+      <button type="button" class="gate-info-close" id="gateInfoClose" aria-label="Close">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+      <div id="gateInfoContent"></div>
+    </div>
+  </div>
 
   <div class="gate-panels">
   <div class="gate-brand-panel">
@@ -2650,8 +2683,14 @@ tr.top-row td{background:var(--accent-tint);}
     }
     return arr.length ? arr : STAFF_TABS_FALLBACK;
   }
-  var ROOM_STAFF_TABS = [{ key:'room-booking', label:'Room Management', num:'01', icon:'billing' }];
-  var BANQUET_STAFF_TABS = [{ key:'banquet-booking', label:'Banquet Booking', num:'01', icon:'billing' }];
+  var ROOM_STAFF_TABS = [
+    { key:'room-booking', label:'Room Management', num:'01', icon:'billing' },
+    { key:'room-history', label:'History', num:'02', icon:'history' }
+  ];
+  var BANQUET_STAFF_TABS = [
+    { key:'banquet-booking', label:'Banquet Booking', num:'01', icon:'billing' },
+    { key:'banquet-history', label:'History', num:'02', icon:'history' }
+  ];
   // Routes a logged-in staff member to the tabs for their assigned department.
   // Staff with no department set (legacy accounts) fall back to the restaurant table view.
   function buildStaffTabsForSession(){
@@ -2659,7 +2698,8 @@ tr.top-row td{background:var(--accent-tint);}
     var dept = acct ? acct.department : null;
     if(dept === 'room') return ROOM_STAFF_TABS;
     if(dept === 'banquet') return BANQUET_STAFF_TABS;
-    return buildStaffTableTabs();
+    var tableTabs = buildStaffTableTabs();
+    return tableTabs.concat([{ key:'history', label:'History', num:String(tableTabs.length + 1).padStart(2,'0'), icon:'history' }]);
   }
   var SECTION_META = {
     dashboard:{crumb:'Overview', title:'Dashboard'},
@@ -3139,18 +3179,48 @@ tr.top-row td{background:var(--accent-tint);}
     });
   })();
 
-  // Top nav info links on the gate screen — short honest notes rather than
-  // fake pages, since this app doesn't have a separate public marketing
-  // site with real Modules/Demo/Pricing pages yet.
-  document.getElementById('gtnModulesBtn').addEventListener('click', function(){
-    showToast('Room booking, banquet halls, restaurant billing, staff management, invoicing and reports — all in one dashboard.', 'info');
-  });
-  document.getElementById('gtnDemoBtn').addEventListener('click', function(){
-    showToast('There isn\'t a separate demo mode yet — create a free admin account to explore the live dashboard.', 'info');
-  });
-  document.getElementById('gtnPricingBtn').addEventListener('click', function(){
-    showToast('Pricing is shown right inside your dashboard after you create an admin account.', 'info');
-  });
+  // Top nav info links on the gate screen — a proper modal with real,
+  // honest content about what's actually in the product (no fake demo,
+  // no promises of pages that don't exist).
+  var gateInfoContent = {
+    modules: {
+      title: 'Key modules',
+      sub: 'Everything a hotel needs to run day to day, in one dashboard.',
+      body:
+        '<div class="gi-module-list">' +
+        moduleRow('M3 21V8l9-5 9 5v13,M9 21v-7h6v7', 'Room booking', 'Floors, categories, inventory, check-in/checkout and guest lookup across departments.') +
+        moduleRow('M3 21h18,M5 21V7l7-4 7 4v14,M9 21v-9,M15 21v-9', 'Banquet hall booking', 'Halls, pricing by hour/day/week, and a live booking calendar.') +
+        moduleRow('M3 2v7c0 1.1.9 2 2 2h2a2 2 0 0 0 2-2V2,M7 2v20,M17 2v9c-2 0-3 1-3 3v8', 'Restaurant management', 'Menu, live table billing, promo codes and order tracking.') +
+        moduleRow('M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2,M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z', 'Staff management', 'One account per department, with role-based access to only what they need.') +
+        moduleRow('M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z,M14 2v6h6', 'Invoicing & reports', 'Sequential GST-ready invoices, PDF sharing, and daily sales breakdowns.') +
+        '</div>'
+    }
+  };
+  function moduleRow(iconPaths, title, desc){
+    var paths = iconPaths.split(',').map(function(d){ return '<path d="' + d + '"/>'; }).join('');
+    return '<div class="gi-module"><span class="gf-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + paths + '</svg></span><span><b>' + title + '</b><span>' + desc + '</span></span></div>';
+  }
+  var gateInfoScrim = document.getElementById('gateInfoScrim');
+  function openGateInfo(key){
+    var data = gateInfoContent[key];
+    document.getElementById('gateInfoContent').innerHTML =
+      '<h3 class="gi-title">' + data.title + '</h3><p class="gi-sub">' + data.sub + '</p>' + data.body;
+    gateInfoScrim.classList.add('show');
+    var createLink = document.getElementById('giCreateAccount');
+    if(createLink){
+      createLink.addEventListener('click', function(){
+        closeGateInfo();
+        setGateTab('admin');
+        showAdminSignupPanel();
+        document.getElementById('signupFirstName').focus();
+      });
+    }
+  }
+  function closeGateInfo(){ gateInfoScrim.classList.remove('show'); }
+  document.getElementById('gtnModulesBtn').addEventListener('click', function(){ openGateInfo('modules'); });
+  document.getElementById('gateInfoClose').addEventListener('click', closeGateInfo);
+  gateInfoScrim.addEventListener('click', function(e){ if(e.target === gateInfoScrim) closeGateInfo(); });
+  document.addEventListener('keydown', function(e){ if(e.key === 'Escape') closeGateInfo(); });
 
   function setBtnLoading(btn, loading, loadingLabel, normalLabel){
     if(loading){
@@ -3465,6 +3535,9 @@ tr.top-row td{background:var(--accent-tint);}
     var sectionKey = tableMatch ? 'billing' : name;
     document.querySelectorAll('.section').forEach(function(s){ s.classList.toggle('active', s.dataset.section === sectionKey); });
     var meta = tableMatch ? { crumb:'Staff', title:'Table ' + tableMatch[1] } : SECTION_META[name];
+    if(meta && state.session.role === 'staff' && meta.crumb && meta.crumb.indexOf('Admin') === 0){
+      meta = { crumb: meta.crumb.replace('Admin', 'Staff'), title: meta.title };
+    }
     if(meta){
       document.getElementById('topbarCrumb').textContent = meta.crumb;
       document.getElementById('topbarTitle').textContent = meta.title;
@@ -5834,6 +5907,10 @@ tr.top-row td{background:var(--accent-tint);}
     hallSel.value = curHallVal;
 
     var all = state.banquetBookings.slice().sort(function(a,b){ return new Date(b.createdAt) - new Date(a.createdAt); });
+    if(state.session.role === 'staff'){
+      var cutoff15b = Date.now() - 15 * 86400000;
+      all = all.filter(function(b){ return new Date(b.createdAt).getTime() >= cutoff15b; });
+    }
     if(all.length === 0){
       summaryWrap.innerHTML = '';
       wrap.innerHTML = emptyState(ICONS.history, 'No banquet bookings yet', 'Bookings Staff make will show up here.');
@@ -6787,7 +6864,12 @@ tr.top-row td{background:var(--accent-tint);}
     var wrap = document.getElementById('historyWrap');
     var summaryWrap = document.getElementById('historySummary');
     var filterDate = document.getElementById('histDate').value;
+    var isStaff = state.session.role === 'staff';
     var restaurantInvoices = state.restaurantInvoices || [];
+    if(isStaff){
+      var cutoff15r = Date.now() - 15 * 86400000;
+      restaurantInvoices = restaurantInvoices.filter(function(inv){ return new Date(inv.date).getTime() >= cutoff15r; });
+    }
     var list = restaurantInvoices;
     if(filterDate){
       list = list.filter(function(inv){ return localDateStr(new Date(inv.date)) === filterDate; });
@@ -6819,7 +6901,7 @@ tr.top-row td{background:var(--accent-tint);}
 
     var selectedCount = Object.keys(historySelected).length;
     var allSelected = selectedCount > 0 && selectedCount === list.length;
-    var bulkBarHtml = '<div class="bulk-bar'+(selectedCount>0?' show':'')+'" id="historyBulkBar">'
+    var bulkBarHtml = isStaff ? '' : '<div class="bulk-bar'+(selectedCount>0?' show':'')+'" id="historyBulkBar">'
       + '<span class="bulk-count" id="historyBulkCount">'+selectedCount+' selected</span>'
       + '<button type="button" class="btn ghost small" id="historyClearSelectionBtn">Clear</button>'
       + '<button type="button" class="btn danger small" id="historyBulkDeleteBtn" style="margin-left:auto;">'
@@ -6830,7 +6912,7 @@ tr.top-row td{background:var(--accent-tint);}
       var d = new Date(inv.date).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' });
       var checked = historySelected[inv.id] ? ' checked' : '';
       return '<tr class="'+(historySelected[inv.id]?'row-selected':'')+'">'
-        + '<td data-label="" class="select-col"><input type="checkbox" class="row-check" data-select-invoice="'+inv.id+'"'+checked+'></td>'
+        + (isStaff ? '' : '<td data-label="" class="select-col"><input type="checkbox" class="row-check" data-select-invoice="'+inv.id+'"'+checked+'></td>')
         + '<td data-label="Invoice" class="code">'+escapeHtml(inv.invoiceNo)+'</td>'
         + '<td data-label="Date">'+d+'</td>'
         + '<td data-label="Details">'+(inv.refValue ? escapeHtml(inv.refLabel || 'Table')+' '+escapeHtml(String(inv.refValue)) : (inv.tableNo ? 'Table '+escapeHtml(String(inv.tableNo)) : '—'))+'</td>'
@@ -6840,14 +6922,28 @@ tr.top-row td{background:var(--accent-tint);}
         + '<td data-label="Total" class="amt">'+money(inv.total)+'</td>'
         + '<td data-label="Actions" style="white-space:nowrap;">'
         + '<button class="btn ghost small" data-view="'+inv.id+'">View</button> '
-        + '<button class="btn danger-ghost small" data-delete-invoice="'+inv.id+'">Delete</button>'
+        + (isStaff ? '' : '<button class="btn danger-ghost small" data-delete-invoice="'+inv.id+'">Delete</button>')
         + '</td></tr>';
     }).join('');
     wrap.innerHTML = bulkBarHtml
       + '<div class="table-scroll"><table class="dtable"><thead><tr>'
-      + '<th class="select-col"><input type="checkbox" id="historySelectAll"'+(allSelected?' checked':'')+'></th>'
+      + (isStaff ? '' : '<th class="select-col"><input type="checkbox" id="historySelectAll"'+(allSelected?' checked':'')+'></th>')
       + '<th>Invoice</th><th>Date</th><th>Details</th><th>Customer</th><th>Staff</th><th>Payment</th><th class="amt">Total</th><th></th>'
       + '</tr></thead><tbody>'+rows+'</tbody></table></div>';
+
+    if(isStaff){
+      wrap.querySelectorAll('[data-view]').forEach(function(b){
+        b.addEventListener('click', function(){
+          var id = b.dataset.view;
+          api.getInvoice(id).then(function(row){
+            var inv = mapServerRestaurantInvoiceListRow(row);
+            inv.items = (row.items || []).map(function(it){ return { name: it.name, price: Number(it.unit_price), qty: Number(it.quantity), amount: Number(it.line_total) }; });
+            openInvoiceOverlay(inv);
+          }).catch(function(e){ showToast(e.message, 'error'); });
+        });
+      });
+      return;
+    }
 
     function updateBulkBar(){
       var count = Object.keys(historySelected).length;
@@ -6961,7 +7057,12 @@ tr.top-row td{background:var(--accent-tint);}
     var wrap = document.getElementById('roomHistoryWrap');
     var summaryWrap = document.getElementById('roomHistorySummary');
     var filterDate = document.getElementById('roomHistDate').value;
+    var isStaff = state.session.role === 'staff';
     var all = state.roomInvoices || [];
+    if(isStaff){
+      var cutoff15 = Date.now() - 15 * 86400000;
+      all = all.filter(function(inv){ return new Date(inv.date).getTime() >= cutoff15; });
+    }
     var list = all;
     if(filterDate){
       list = list.filter(function(inv){ return localDateStr(new Date(inv.date)) === filterDate; });
@@ -6990,7 +7091,7 @@ tr.top-row td{background:var(--accent-tint);}
 
     var selectedCount = Object.keys(roomHistorySelected).length;
     var allSelected = selectedCount > 0 && selectedCount === list.length;
-    var bulkBarHtml = '<div class="bulk-bar'+(selectedCount>0?' show':'')+'" id="roomHistoryBulkBar">'
+    var bulkBarHtml = isStaff ? '' : '<div class="bulk-bar'+(selectedCount>0?' show':'')+'" id="roomHistoryBulkBar">'
       + '<span class="bulk-count" id="roomHistoryBulkCount">'+selectedCount+' selected</span>'
       + '<button type="button" class="btn ghost small" id="roomHistoryClearSelectionBtn">Clear</button>'
       + '<button type="button" class="btn danger small" id="roomHistoryBulkDeleteBtn" style="margin-left:auto;">'
@@ -7003,7 +7104,7 @@ tr.top-row td{background:var(--accent-tint);}
       var checkIn = metaRowValue(inv, 'Check-in') || '—';
       var checkOut = metaRowValue(inv, 'Check-out') || '—';
       return '<tr class="'+(roomHistorySelected[inv.id]?'row-selected':'')+'">'
-        + '<td data-label="" class="select-col"><input type="checkbox" class="row-check" data-select-room-invoice="'+inv.id+'"'+checked+'></td>'
+        + (isStaff ? '' : '<td data-label="" class="select-col"><input type="checkbox" class="row-check" data-select-room-invoice="'+inv.id+'"'+checked+'></td>')
         + '<td data-label="Invoice" class="code">'+escapeHtml(inv.invoiceNo)+'</td>'
         + '<td data-label="Date">'+d+'</td>'
         + '<td data-label="Room">'+escapeHtml(inv.refValue ? String(inv.refValue) : '—')+'</td>'
@@ -7014,14 +7115,24 @@ tr.top-row td{background:var(--accent-tint);}
         + '<td data-label="Total" class="amt">'+money(inv.total)+'</td>'
         + '<td data-label="Actions" style="white-space:nowrap;">'
         + '<button class="btn ghost small" data-view-room="'+inv.id+'">View</button> '
-        + '<button class="btn danger-ghost small" data-delete-room-invoice="'+inv.id+'">Delete</button>'
+        + (isStaff ? '' : '<button class="btn danger-ghost small" data-delete-room-invoice="'+inv.id+'">Delete</button>')
         + '</td></tr>';
     }).join('');
     wrap.innerHTML = bulkBarHtml
       + '<div class="table-scroll"><table class="dtable"><thead><tr>'
-      + '<th class="select-col"><input type="checkbox" id="roomHistorySelectAll"'+(allSelected?' checked':'')+'></th>'
+      + (isStaff ? '' : '<th class="select-col"><input type="checkbox" id="roomHistorySelectAll"'+(allSelected?' checked':'')+'></th>')
       + '<th>Invoice</th><th>Date</th><th>Room</th><th>Guest</th><th>Check-in</th><th>Check-out</th><th>Staff</th><th class="amt">Total</th><th></th>'
       + '</tr></thead><tbody>'+rows+'</tbody></table></div>';
+
+    if(isStaff){
+      wrap.querySelectorAll('[data-view-room]').forEach(function(b){
+        b.addEventListener('click', function(){
+          var inv = state.roomInvoices.find(function(i){ return i.id === b.dataset.viewRoom; });
+          if(inv) openInvoiceOverlay(inv);
+        });
+      });
+      return;
+    }
 
     function updateBulkBar(){
       var count = Object.keys(roomHistorySelected).length;

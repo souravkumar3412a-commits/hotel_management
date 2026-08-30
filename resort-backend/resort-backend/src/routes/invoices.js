@@ -1,6 +1,7 @@
 const express = require('express');
 const { pool } = require('../db');
 const { requireAuth } = require('../middleware/auth');
+const { requireAdmin } = require('../middleware/rbac');
 
 const router = express.Router();
 router.use(requireAuth);
@@ -41,8 +42,11 @@ router.get('/:id', async (req, res) => {
   res.json({ ...inv.rows[0], items: items.rows });
 });
 
-// DELETE /api/invoices/:id
-router.delete('/:id', async (req, res) => {
+// DELETE /api/invoices/:id — admin only. Staff can view history but not
+// delete financial/invoice records (the frontend already hides this
+// control for staff; this enforces it server-side too, so it can't be
+// bypassed by calling the API directly).
+router.delete('/:id', requireAdmin, async (req, res) => {
   await pool.query('DELETE FROM invoices WHERE id = $1 AND admin_id = $2', [req.params.id, req.user.adminId]);
   res.status(204).end();
 });
