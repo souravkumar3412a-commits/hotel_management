@@ -145,24 +145,31 @@ CREATE TABLE banquet_halls (
 );
 
 CREATE TABLE banquet_bookings (
-  id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  admin_id            UUID NOT NULL REFERENCES admins(id) ON DELETE CASCADE,
-  booking_code        TEXT,
-  hall_id             UUID NOT NULL REFERENCES banquet_halls(id) ON DELETE CASCADE,
-  customer_name       TEXT NOT NULL,
-  customer_phone      TEXT,
-  guest_count         INTEGER,
-  pricing_basis       TEXT CHECK (pricing_basis IN ('hour','day','week')),
-  unit_price          NUMERIC(10,2),
-  duration_count      NUMERIC(10,2),
-  start_at            TIMESTAMPTZ NOT NULL,
-  end_at              TIMESTAMPTZ NOT NULL,
-  total_amount        NUMERIC(10,2),
-  status              TEXT NOT NULL DEFAULT 'booked' CHECK (status IN ('booked','completed','cancelled')),
-  invoice_id          UUID,
-  created_by_staff_id TEXT,
-  created_by_name     TEXT,
-  created_at          TIMESTAMPTZ NOT NULL DEFAULT now()
+  id                     UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  admin_id               UUID NOT NULL REFERENCES admins(id) ON DELETE CASCADE,
+  booking_code           TEXT,
+  hall_id                UUID NOT NULL REFERENCES banquet_halls(id) ON DELETE CASCADE,
+  customer_name          TEXT NOT NULL,
+  customer_phone         TEXT,
+  guest_count             INTEGER,
+  event_type             TEXT,                 -- Wedding, Birthday, Conference, etc. — descriptive only
+  food_package            TEXT,                 -- label of the chosen catering tier, e.g. "Veg Premium"
+  decoration_package      TEXT,                 -- label of the chosen decor tier, e.g. "Luxury"
+  pricing_basis           TEXT CHECK (pricing_basis IN ('hour','day','week')),
+  unit_price               NUMERIC(10,2),
+  duration_count           NUMERIC(10,2),
+  start_at                TIMESTAMPTZ NOT NULL,
+  end_at                  TIMESTAMPTZ NOT NULL,
+  total_amount             NUMERIC(10,2),
+  advance_amount           NUMERIC(10,2) NOT NULL DEFAULT 0,
+  advance_payment_method   TEXT,
+  balance_paid             BOOLEAN NOT NULL DEFAULT false,
+  balance_paid_at          TIMESTAMPTZ,
+  status                  TEXT NOT NULL DEFAULT 'booked' CHECK (status IN ('booked','completed','cancelled')),
+  invoice_id               UUID,
+  created_by_staff_id      TEXT,
+  created_by_name          TEXT,
+  created_at               TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX idx_banquet_bookings_hall ON banquet_bookings(hall_id);
 CREATE INDEX idx_banquet_bookings_admin ON banquet_bookings(admin_id);

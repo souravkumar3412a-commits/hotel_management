@@ -44,14 +44,23 @@ router.post('/bookings', requireDepartment('banquet'), async (req, res) => {
   const b = req.body;
   const staffId = req.user.role === 'staff' ? req.user.staffId : null;
   const staffName = req.user.role === 'staff' ? req.user.name : null;
+  const advanceAmount = Number(b.advanceAmount) || 0;
+  if (advanceAmount < 0 || advanceAmount > Number(b.totalAmount || 0)) {
+    return res.status(400).json({ error: 'Advance payment can\'t be negative or more than the total.' });
+  }
   try {
     const r = await pool.query(
       `INSERT INTO banquet_bookings (admin_id, booking_code, hall_id, customer_name, customer_phone, guest_count,
+                                      event_type, food_package, decoration_package,
                                       pricing_basis, unit_price, duration_count, start_at, end_at, total_amount,
+                                      advance_amount, advance_payment_method,
                                       created_by_staff_id, created_by_name)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING *`,
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19) RETURNING *`,
       [req.user.adminId, b.bookingCode, b.hallId, b.customerName, b.customerPhone, b.guestCount,
-       b.pricingBasis, b.unitPrice, b.durationCount, b.startISO, b.endISO, b.totalAmount, staffId, staffName]
+       b.eventType || null, b.foodPackage || null, b.decorationPackage || null,
+       b.pricingBasis, b.unitPrice, b.durationCount, b.startISO, b.endISO, b.totalAmount,
+       advanceAmount, advanceAmount > 0 ? (b.advancePaymentMethod || 'Cash') : null,
+       staffId, staffName]
     );
     res.status(201).json(r.rows[0]);
   } catch (err) {
@@ -64,6 +73,16 @@ router.put('/bookings/:id/status', requireDepartment('banquet'), async (req, res
   const r = await pool.query(
     'UPDATE banquet_bookings SET status=$1 WHERE id=$2 AND admin_id=$3 RETURNING *',
     [status, req.params.id, req.user.adminId]
+  );
+  if (!r.rows[0]) return res.status(404).json({ error: 'Booking not found.' });
+  res.json(r.rows[0]);
+});
+// PUT /api/banquets/bookings/:id/balance — mark the remaining balance as
+// collected (e.g. paid in person on the day of the event).
+router.put('/bookings/:id/balance', requireDepartment('banquet'), async (req, res) => {
+  const r = await pool.query(
+    "UPDATE banquet_bookings SET balance_paid = true, balance_paid_at = now() WHERE id=$1 AND admin_id=$2 RETURNING *",
+    [req.params.id, req.user.adminId]
   );
   if (!r.rows[0]) return res.status(404).json({ error: 'Booking not found.' });
   res.json(r.rows[0]);

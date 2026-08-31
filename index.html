@@ -456,6 +456,21 @@ nav.tabs{display:flex;flex-direction:column;gap:2px;padding:0 12px;}
 .nav-tab .num{margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:10px;color:rgba(243,239,230,.28);}
 .nav-tab.active .num{color:var(--accent);}
 .table-status-dot{margin-left:auto;width:8px;height:8px;border-radius:50%;background:rgba(243,239,230,.22);flex-shrink:0;transition:background .15s ease, box-shadow .15s ease;}
+.cal-grid-head{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:6px;}
+.cal-grid-head span{text-align:center;font-size:10.5px;font-weight:700;color:var(--text-muted);text-transform:uppercase;}
+.cal-grid-body{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;}
+.cal-cell{aspect-ratio:1;border:1px solid var(--border);border-radius:8px;background:var(--surface);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;padding:2px;font-family:inherit;}
+.cal-cell:hover{border-color:var(--accent);}
+.cal-cell.empty{visibility:hidden;pointer-events:none;}
+.cal-cell.today{box-shadow:inset 0 0 0 1.5px var(--accent);}
+.cal-cell.selected{background:var(--accent);border-color:var(--accent);}
+.cal-cell.selected .cal-day-num{color:#fff;}
+.cal-cell.selected .cal-dot{background:#fff;}
+.cal-cell.selected .cal-more{color:#fff;}
+.cal-day-num{font-size:12.5px;font-weight:600;color:var(--text-primary);}
+.cal-dot-wrap{display:flex;gap:2px;align-items:center;}
+.cal-dot{width:4px;height:4px;border-radius:50%;background:var(--accent);}
+.cal-more{font-size:8px;color:var(--text-muted);font-weight:700;}
 .table-status-dot.active{background:var(--accent);box-shadow:0 0 0 3px rgba(217,164,65,.22);}
 .sidebar.collapsed .table-status-dot{display:none;}
 
@@ -1946,15 +1961,17 @@ tr.top-row td{background:var(--accent-tint);}
 
         <div class="card section-block" style="margin-top:20px;">
           <div class="table-status-head">
-            <p class="section-block-label" style="margin-bottom:0;">Check a specific date</p>
+            <p class="section-block-label" style="margin-bottom:0;">Event calendar</p>
             <div style="display:flex;align-items:center;gap:10px;">
-              <label for="banquetAvailDate" style="font-size:12.5px;color:var(--text-secondary);">Date</label>
-              <input type="date" id="banquetAvailDate">
-              <button class="btn ghost small" id="banquetAvailDateClear">Clear</button>
+              <button class="btn ghost small" id="banquetCalPrev" type="button">‹</button>
+              <span id="banquetCalMonthLabel" style="font-weight:700;font-size:13.5px;min-width:120px;text-align:center;"></span>
+              <button class="btn ghost small" id="banquetCalNext" type="button">›</button>
+              <button class="btn ghost small" id="banquetCalToday" type="button">Today</button>
             </div>
           </div>
-          <p class="hint" style="margin:6px 0 16px;">Shows which halls have a booking overlapping the selected date.</p>
-          <div id="banquetAvailDateWrap"></div>
+          <p class="hint" style="margin:6px 0 16px;">Each dot is a booking that day. Click a date to see which halls are booked.</p>
+          <div id="banquetCalGrid"></div>
+          <div id="banquetCalDayWrap" style="margin-top:18px;"></div>
         </div>
       </section>
 
@@ -2056,6 +2073,18 @@ tr.top-row td{background:var(--accent-tint);}
           <p class="section-block-label" style="margin-bottom:16px;">Event schedule</p>
           <div class="grid-3">
             <div class="field" style="margin-bottom:0;">
+              <label for="banquetEventType">Event type</label>
+              <select id="banquetEventType">
+                <option value="">Select event type</option>
+                <option>Wedding</option>
+                <option>Engagement</option>
+                <option>Birthday Party</option>
+                <option>Anniversary</option>
+                <option>Conference / Corporate Event</option>
+                <option>Other</option>
+              </select>
+            </div>
+            <div class="field" style="margin-bottom:0;">
               <label for="banquetEventDate">Booking date</label>
               <input type="date" id="banquetEventDate">
             </div>
@@ -2067,6 +2096,8 @@ tr.top-row td{background:var(--accent-tint);}
                 <option value="week">Per Week</option>
               </select>
             </div>
+          </div>
+          <div class="grid-3" style="margin-top:16px;">
             <div class="field" style="margin-bottom:0;" id="banquetHourFieldWrap">
               <label for="banquetStartTime">Start time</label>
               <input type="time" id="banquetStartTime">
@@ -2090,6 +2121,42 @@ tr.top-row td{background:var(--accent-tint);}
           <button class="btn accent" id="findBanquetHallsBtn" type="button" style="margin-top:6px;">Find available halls</button>
         </div>
 
+        <div class="card" style="margin-bottom:20px;">
+          <p class="section-block-label" style="margin-bottom:6px;">Package &amp; add-ons</p>
+          <p class="hint" style="margin:0 0 16px;">Optional — pick a quick preset or choose catering/decoration individually. Adds straight onto the invoice as line items.</p>
+          <div class="field">
+            <label for="banquetPackagePreset">Event package</label>
+            <select id="banquetPackagePreset">
+              <option value="custom">Custom — choose below</option>
+              <option value="essential">Essential — hall only</option>
+              <option value="premium">Premium — hall + veg catering + basic decor</option>
+              <option value="luxury">Luxury — hall + non-veg premium catering + luxury decor</option>
+            </select>
+          </div>
+          <div class="grid-2">
+            <div class="field" style="margin-bottom:0;">
+              <label for="banquetFoodPackage">Food package</label>
+              <select id="banquetFoodPackage">
+                <option value="">No catering</option>
+                <option value="veg_standard">Veg Standard — ₹400/plate</option>
+                <option value="veg_premium">Veg Premium — ₹650/plate</option>
+                <option value="nonveg_standard">Non-Veg Standard — ₹550/plate</option>
+                <option value="nonveg_premium">Non-Veg Premium — ₹800/plate</option>
+              </select>
+            </div>
+            <div class="field" style="margin-bottom:0;">
+              <label for="banquetDecorationPackage">Decoration</label>
+              <select id="banquetDecorationPackage">
+                <option value="">No decoration</option>
+                <option value="basic">Basic — ₹8,000</option>
+                <option value="premium">Premium — ₹18,000</option>
+                <option value="luxury">Luxury — ₹35,000</option>
+              </select>
+            </div>
+          </div>
+          <p class="hint" style="margin:12px 0 0;">Select a hall below first — food and decoration are added to the invoice once a hall is chosen.</p>
+        </div>
+
         <div class="card section-block" id="banquetEligibleHallsCard" style="margin-bottom:20px;display:none;">
           <p class="section-block-label" style="margin-bottom:16px;">Halls that fit your request</p>
           <div id="banquetEligibleHallsWrap"></div>
@@ -2109,6 +2176,11 @@ tr.top-row td{background:var(--accent-tint);}
             </div>
             <div class="ticket-lines" id="banquetTicketLines"></div>
             <div class="ticket-totals" id="banquetTicketTotals"></div>
+            <div class="field" style="margin-top:16px;">
+              <label for="banquetAdvanceAmount">Advance payment received now (optional)</label>
+              <input type="number" id="banquetAdvanceAmount" min="0" step="1" placeholder="0">
+              <p class="hint" id="banquetBalanceHint" style="margin-top:6px;">Leave blank if collecting full payment now.</p>
+            </div>
             <div class="payment-method-wrap">
               <label>Payment method</label>
               <div class="payment-method-btns" id="banquetPaymentMethodBtns">
@@ -2119,6 +2191,10 @@ tr.top-row td{background:var(--accent-tint);}
             </div>
             <div class="ticket-foot">
               <p class="error-text" id="banquetBookingError">Add customer name, phone, email, ID proof and select a hall.</p>
+              <button class="btn ghost full" id="downloadBanquetQuoteBtn" type="button" style="margin-bottom:10px;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 12 15 15"/></svg>
+                Download quotation (PDF)
+              </button>
               <button class="btn accent full" id="generateBanquetInvoiceBtn" style="height:48px;font-size:14.5px;">Confirm booking &amp; generate invoice</button>
             </div>
           </div>
@@ -2957,9 +3033,12 @@ tr.top-row td{background:var(--accent-tint);}
     return {
       id: b.id, bookingCode: b.booking_code, hallId: b.hall_id,
       customerName: b.customer_name, customerPhone: b.customer_phone,
-      guestCount: b.guest_count, pricingBasis: b.pricing_basis, unitPrice: parseFloat(b.unit_price),
+      guestCount: b.guest_count, eventType: b.event_type, foodPackage: b.food_package, decorationPackage: b.decoration_package,
+      pricingBasis: b.pricing_basis, unitPrice: parseFloat(b.unit_price),
       durationCount: parseFloat(b.duration_count), startISO: b.start_at, endISO: b.end_at,
       totalAmount: parseFloat(b.total_amount), status: b.status, invoiceId: b.invoice_id,
+      advanceAmount: parseFloat(b.advance_amount) || 0, advancePaymentMethod: b.advance_payment_method,
+      balancePaid: !!b.balance_paid, balancePaidAt: b.balance_paid_at,
       createdByStaffId: b.created_by_staff_id, createdByName: b.created_by_name, createdAt: b.created_at
     };
   }
@@ -5873,25 +5952,67 @@ tr.top-row td{background:var(--accent-tint);}
       }).join('');
       listWrap.innerHTML = '<div class="table-scroll"><table class="dtable"><thead><tr><th>Hall</th><th>Capacity</th><th>Pricing</th><th>Status</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
     }
-    renderBanquetAvailabilityByDate();
+    renderBanquetCalendar();
   }
-  function renderBanquetAvailabilityByDate(){
-    var wrap = document.getElementById('banquetAvailDateWrap');
+  var banquetCalMonth = (function(){ var d = new Date(); d.setDate(1); d.setHours(0,0,0,0); return d; })();
+  var banquetCalSelectedDate = null;
+  function repeatDots(n){ var s=''; for(var i=0;i<n;i++){ s += '<span class="cal-dot"></span>'; } return s; }
+  function renderBanquetCalendar(){
+    var gridEl = document.getElementById('banquetCalGrid');
+    if(!gridEl) return;
+    document.getElementById('banquetCalMonthLabel').textContent = banquetCalMonth.toLocaleDateString('en-IN', { month:'long', year:'numeric' });
+    var year = banquetCalMonth.getFullYear(), month = banquetCalMonth.getMonth();
+    var startWeekday = new Date(year, month, 1).getDay();
+    var daysInMonth = new Date(year, month + 1, 0).getDate();
+    var todayStr = new Date().toDateString();
+    var countsByDate = {};
+    (state.banquetBookings || []).forEach(function(b){
+      if(b.status === 'cancelled') return;
+      var d = new Date(b.startISO);
+      var key = d.getFullYear() + '-' + d.getMonth() + '-' + d.getDate();
+      countsByDate[key] = (countsByDate[key] || 0) + 1;
+    });
+    var weekdayLabels = ['S','M','T','W','T','F','S'];
+    var html = '<div class="cal-grid-head">' + weekdayLabels.map(function(w){ return '<span>'+w+'</span>'; }).join('') + '</div><div class="cal-grid-body">';
+    for(var i=0;i<startWeekday;i++){ html += '<span class="cal-cell empty"></span>'; }
+    for(var day=1; day<=daysInMonth; day++){
+      var dateObj = new Date(year, month, day);
+      var key = year + '-' + month + '-' + day;
+      var count = countsByDate[key] || 0;
+      var isToday = dateObj.toDateString() === todayStr;
+      var isSelected = banquetCalSelectedDate && dateObj.toDateString() === banquetCalSelectedDate.toDateString();
+      html += '<button type="button" class="cal-cell' + (isToday?' today':'') + (isSelected?' selected':'') + '" data-cal-day="' + day + '">'
+        + '<span class="cal-day-num">' + day + '</span>'
+        + (count > 0 ? '<span class="cal-dot-wrap">' + repeatDots(Math.min(count,3)) + (count>3?'<span class="cal-more">+'+(count-3)+'</span>':'') + '</span>' : '')
+        + '</button>';
+    }
+    html += '</div>';
+    gridEl.innerHTML = html;
+    gridEl.querySelectorAll('[data-cal-day]').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        banquetCalSelectedDate = new Date(year, month, parseInt(btn.dataset.calDay, 10));
+        renderBanquetCalendar();
+        renderBanquetCalDay();
+      });
+    });
+  }
+  function renderBanquetCalDay(){
+    var wrap = document.getElementById('banquetCalDayWrap');
     if(!wrap) return;
-    var dateVal = document.getElementById('banquetAvailDate').value;
-    if(!dateVal){
-      wrap.innerHTML = '<p class="hint" style="margin:0;">Pick a date above to check which halls have a booking that day.</p>';
+    if(!banquetCalSelectedDate){
+      wrap.innerHTML = '<p class="hint" style="margin:0;">Click a date above to see which halls are booked that day.</p>';
       return;
     }
-    var dayStart = new Date(dateVal + 'T00:00:00').getTime();
-    var dayEnd = dayStart + 86400000;
     if(state.banquetHalls.length === 0){
       wrap.innerHTML = emptyState(ICONS.banquet, 'No halls configured', 'Configure banquet halls in Setup first.');
       return;
     }
+    var dayStart = new Date(banquetCalSelectedDate); dayStart.setHours(0,0,0,0);
+    var dayEnd = new Date(banquetCalSelectedDate); dayEnd.setHours(23,59,59,999);
+    var dateLabel = banquetCalSelectedDate.toLocaleDateString('en-IN', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
     var rows = state.banquetHalls.map(function(h){
       var overlapping = state.banquetBookings.filter(function(b){
-        return b.hallId === h.id && b.status === 'booked' && new Date(b.startISO).getTime() < dayEnd && new Date(b.endISO).getTime() > dayStart;
+        return b.hallId === h.id && b.status === 'booked' && new Date(b.startISO).getTime() <= dayEnd.getTime() && new Date(b.endISO).getTime() >= dayStart.getTime();
       });
       var statusKey = h.outOfOrder ? 'out_of_order' : (overlapping.length ? 'booked' : 'available');
       var detail = overlapping.map(function(b){
@@ -5903,27 +6024,39 @@ tr.top-row td{background:var(--accent-tint);}
         + '<td data-label="Bookings that day">'+detail+'</td>'
         + '</tr>';
     }).join('');
-    wrap.innerHTML = '<div class="table-scroll"><table class="dtable"><thead><tr><th>Hall</th><th>Status</th><th>Bookings that day</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+    wrap.innerHTML = '<p class="section-block-label" style="margin-bottom:10px;">'+dateLabel+'</p><div class="table-scroll"><table class="dtable"><thead><tr><th>Hall</th><th>Status</th><th>Bookings that day</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
   }
-  document.getElementById('banquetAvailDate').addEventListener('change', renderBanquetAvailabilityByDate);
-  document.getElementById('banquetAvailDateClear').addEventListener('click', function(){
-    document.getElementById('banquetAvailDate').value = '';
-    renderBanquetAvailabilityByDate();
+  document.getElementById('banquetCalPrev').addEventListener('click', function(){ banquetCalMonth.setMonth(banquetCalMonth.getMonth()-1); renderBanquetCalendar(); });
+  document.getElementById('banquetCalNext').addEventListener('click', function(){ banquetCalMonth.setMonth(banquetCalMonth.getMonth()+1); renderBanquetCalendar(); });
+  document.getElementById('banquetCalToday').addEventListener('click', function(){
+    var d = new Date(); d.setDate(1); d.setHours(0,0,0,0);
+    banquetCalMonth = d;
+    banquetCalSelectedDate = new Date();
+    renderBanquetCalendar();
+    renderBanquetCalDay();
   });
 
   // ---------- Admin: History (read-only) ----------
   function banquetBookingRow(b){
     var h = hallById(b.hallId);
     var statusMap = { booked:'info', completed:'success', cancelled:'danger' };
+    var balance = b.totalAmount - b.advanceAmount;
+    var paymentHtml = b.advanceAmount <= 0
+      ? '<span style="color:var(--text-muted);font-size:12px;">Full amount due</span>'
+      : (b.balancePaid || balance <= 0)
+        ? '<span class="badge success">Fully paid</span>'
+        : 'Advance ' + money(b.advanceAmount) + '<br><span style="color:var(--text-muted);font-size:12px;">Balance ' + money(balance) + ' due</span>';
     return '<tr>'
       + '<td data-label="Booking ID" class="code">'+escapeHtml(b.bookingCode)+'</td>'
       + '<td data-label="Hall">'+escapeHtml(h ? h.name : '—')+'</td>'
       + '<td data-label="Customer">'+escapeHtml(b.customerName)+'<br><span style="color:var(--text-muted);font-size:12px;">'+escapeHtml(b.customerPhone)+'</span></td>'
+      + '<td data-label="Event">'+escapeHtml(b.eventType || '—')+'</td>'
       + '<td data-label="Guests">'+b.guestCount+'</td>'
       + '<td data-label="Pricing">'+banquetBasisLabel(b.pricingBasis)+' × '+b.durationCount+'</td>'
       + '<td data-label="Schedule">'+new Date(b.startISO).toLocaleString('en-IN',{dateStyle:'medium',timeStyle:'short'})+' – '+new Date(b.endISO).toLocaleString('en-IN',{dateStyle:'medium',timeStyle:'short'})+'</td>'
       + '<td data-label="Staff">'+escapeHtml(b.createdByName||'—')+'</td>'
       + '<td data-label="Total" class="amt">'+money(b.totalAmount)+'</td>'
+      + '<td data-label="Payment">'+paymentHtml+'</td>'
       + '<td data-label="Status"><span class="badge '+(statusMap[b.status]||'info')+'">'+b.status.toUpperCase()+'</span></td>'
       + '<td data-label="Invoice">'+(b.invoiceId ? '<button class="btn ghost small" data-view-banquet-invoice="'+b.invoiceId+'">View</button>' : '<span style="color:var(--text-muted);font-size:12px;">Not billed yet</span>')+'</td>'
       + '</tr>';
@@ -5937,8 +6070,11 @@ tr.top-row td{background:var(--accent-tint);}
     var hall = booking ? hallById(booking.hallId) : null;
     var metaRows = [];
     if(booking){
+      metaRows.push({ label:'Event type', value: booking.eventType || '—' });
       metaRows.push({ label:'Guests', value: String(booking.guestCount) });
       metaRows.push({ label:'Schedule', value: new Date(booking.startISO).toLocaleString('en-IN',{dateStyle:'medium',timeStyle:'short'}) + ' – ' + new Date(booking.endISO).toLocaleString('en-IN',{dateStyle:'medium',timeStyle:'short'}) });
+      if(booking.foodPackage) metaRows.push({ label:'Food package', value: booking.foodPackage });
+      if(booking.decorationPackage) metaRows.push({ label:'Decoration', value: booking.decorationPackage });
     }
     return {
       id: row.id, invoiceNo: row.invoice_no, date: row.created_at,
@@ -5948,6 +6084,7 @@ tr.top-row td{background:var(--accent-tint);}
       subtotal: Number(row.subtotal), tax: tax, cgst: tax/2, sgst: tax/2,
       preDiscountTotal: Number(row.subtotal) + tax, discountAmount: Number(row.discount_amount) || 0,
       promoCode: row.promo_code, total: Number(row.total_amount), paymentMethod: row.payment_method,
+      advanceAmount: booking ? booking.advanceAmount : 0,
       items: (row.items || []).map(function(it){ return { name: it.name, price: Number(it.unit_price), qty: Number(it.quantity), amount: Number(it.line_total) }; }),
       restaurant: Object.assign({}, state.restaurant),
       createdByStaffId: row.created_by_staff_id, createdByName: staffAcct ? staffAcct.name : (row.created_by_staff_id || 'Admin')
@@ -6008,7 +6145,7 @@ tr.top-row td{background:var(--accent-tint);}
       return;
     }
     var rows = list.map(banquetBookingRow).join('');
-    wrap.innerHTML = '<div class="table-scroll"><table class="dtable"><thead><tr><th>Booking ID</th><th>Hall</th><th>Customer</th><th>Guests</th><th>Pricing</th><th>Schedule</th><th>Staff</th><th class="amt">Total</th><th>Status</th><th>Invoice</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+    wrap.innerHTML = '<div class="table-scroll"><table class="dtable"><thead><tr><th>Booking ID</th><th>Hall</th><th>Customer</th><th>Event</th><th>Guests</th><th>Pricing</th><th>Schedule</th><th>Staff</th><th class="amt">Total</th><th>Payment</th><th>Status</th><th>Invoice</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
     wrap.querySelectorAll('[data-view-banquet-invoice]').forEach(function(btn){
       btn.addEventListener('click', function(){
         var invoiceId = btn.dataset.viewBanquetInvoice;
@@ -6123,6 +6260,82 @@ tr.top-row td{background:var(--accent-tint);}
   }
   document.getElementById('findBanquetHallsBtn').addEventListener('click', renderBanquetEligibleHalls);
 
+  var FOOD_PACKAGES = [
+    { key:'veg_standard', label:'Veg Standard', pricePerPlate:400 },
+    { key:'veg_premium', label:'Veg Premium', pricePerPlate:650 },
+    { key:'nonveg_standard', label:'Non-Veg Standard', pricePerPlate:550 },
+    { key:'nonveg_premium', label:'Non-Veg Premium', pricePerPlate:800 }
+  ];
+  var DECORATION_PACKAGES = [
+    { key:'basic', label:'Basic', cost:8000 },
+    { key:'premium', label:'Premium', cost:18000 },
+    { key:'luxury', label:'Luxury', cost:35000 }
+  ];
+  var EVENT_PACKAGE_PRESETS = {
+    essential: { food:'', decoration:'' },
+    premium: { food:'veg_standard', decoration:'basic' },
+    luxury: { food:'nonveg_premium', decoration:'luxury' }
+  };
+  var banquetHallLineItem = null;
+  // Rebuilds the full ticket (hall + food + decoration) any time the hall,
+  // guest count, or either package selection changes. Food/decoration only
+  // show up once a hall has actually been picked, matching the existing
+  // "select a hall first" flow.
+  function rebuildBanquetDraftItems(){
+    var items = [];
+    if(banquetHallLineItem) items.push(banquetHallLineItem);
+    if(banquetHallLineItem){
+      var guestCount = parseInt(document.getElementById('banquetGuestCount').value, 10) || 0;
+      var foodKey = document.getElementById('banquetFoodPackage').value;
+      var food = FOOD_PACKAGES.find(function(f){ return f.key === foodKey; });
+      if(food && guestCount > 0){
+        items.push({ id: uid(), name: 'Food Package — ' + food.label + ' (' + guestCount + ' plates)', price: food.pricePerPlate, qty: guestCount, amount: food.pricePerPlate * guestCount });
+      }
+      var decoKey = document.getElementById('banquetDecorationPackage').value;
+      var deco = DECORATION_PACKAGES.find(function(d){ return d.key === decoKey; });
+      if(deco){
+        items.push({ id: uid(), name: 'Decoration — ' + deco.label, price: deco.cost, qty: 1, amount: deco.cost });
+      }
+    }
+    banquetDraft.items = items;
+    renderBanquetTicket();
+    updateBanquetAdvanceHint();
+  }
+  function updateBanquetAdvanceHint(){
+    var hintEl = document.getElementById('banquetBalanceHint');
+    if(!hintEl) return;
+    var t = computeTotals(banquetDraft.items, state.restaurant.taxRate);
+    var advance = parseFloat(document.getElementById('banquetAdvanceAmount').value) || 0;
+    if(advance > t.total && t.total > 0){
+      hintEl.textContent = 'Advance can\'t exceed the total (' + money(t.total) + ').';
+      hintEl.style.color = 'var(--danger)';
+    } else if(advance > 0){
+      hintEl.textContent = 'Balance due at the event: ' + money(t.total - advance) + '.';
+      hintEl.style.color = 'var(--text-secondary)';
+    } else {
+      hintEl.textContent = 'Leave blank if collecting full payment now.';
+      hintEl.style.color = 'var(--text-muted)';
+    }
+  }
+  document.getElementById('banquetPackagePreset').addEventListener('change', function(){
+    var preset = EVENT_PACKAGE_PRESETS[this.value];
+    if(preset){
+      document.getElementById('banquetFoodPackage').value = preset.food;
+      document.getElementById('banquetDecorationPackage').value = preset.decoration;
+      rebuildBanquetDraftItems();
+    }
+  });
+  document.getElementById('banquetFoodPackage').addEventListener('change', function(){
+    document.getElementById('banquetPackagePreset').value = 'custom';
+    rebuildBanquetDraftItems();
+  });
+  document.getElementById('banquetDecorationPackage').addEventListener('change', function(){
+    document.getElementById('banquetPackagePreset').value = 'custom';
+    rebuildBanquetDraftItems();
+  });
+  document.getElementById('banquetGuestCount').addEventListener('input', rebuildBanquetDraftItems);
+  document.getElementById('banquetAdvanceAmount').addEventListener('input', updateBanquetAdvanceHint);
+
   function selectBanquetHallForBooking(hallId){
     var h = hallById(hallId);
     var schedule = banquetSelectedSchedule;
@@ -6141,8 +6354,8 @@ tr.top-row td{background:var(--accent-tint);}
       + banquetBasisLabel(schedule.basis)+': '+money(price)+' × '+schedule.durationCount+'<br>'
       + new Date(schedule.startMs).toLocaleString('en-IN',{dateStyle:'medium',timeStyle:'short'})+' – '+new Date(schedule.endMs).toLocaleString('en-IN',{dateStyle:'medium',timeStyle:'short'})
       + (h.facilities && h.facilities.length ? '<br>Facilities: '+escapeHtml(h.facilities.join(', ')) : '');
-    banquetDraft.items = [{ id: uid(), name: h.name + ' — ' + banquetBasisLabel(schedule.basis) + ' × ' + schedule.durationCount, price: price, qty: schedule.durationCount, amount: total }];
-    renderBanquetTicket();
+    banquetHallLineItem = { id: uid(), name: h.name + ' — ' + banquetBasisLabel(schedule.basis) + ' × ' + schedule.durationCount, price: price, qty: schedule.durationCount, amount: total };
+    rebuildBanquetDraftItems();
     document.getElementById('banquetConfirmWrap').style.display = '';
   }
 
@@ -6220,20 +6433,39 @@ tr.top-row td{background:var(--accent-tint);}
       return;
     }
     err.classList.remove('show');
+    var eventType = document.getElementById('banquetEventType').value;
+    var foodKey = document.getElementById('banquetFoodPackage').value;
+    var food = FOOD_PACKAGES.find(function(f){ return f.key === foodKey; });
+    var decoKey = document.getElementById('banquetDecorationPackage').value;
+    var deco = DECORATION_PACKAGES.find(function(d){ return d.key === decoKey; });
+    var t = computeTotals(banquetDraft.items, state.restaurant.taxRate);
+    var advanceAmount = parseFloat(document.getElementById('banquetAdvanceAmount').value) || 0;
+    if(advanceAmount > t.total){
+      err.textContent = 'Advance can\'t exceed the total (' + money(t.total) + ').';
+      err.classList.add('show');
+      return;
+    }
     var metaRows = [
       { label:'Hall', value: hall.name },
+      { label:'Event type', value: eventType || '—' },
       { label:'Guests', value: String(guestCount) },
       { label:'Pricing basis', value: banquetBasisLabel(schedule.basis) },
       { label:'Duration', value: String(schedule.durationCount) },
       { label:'Start', value: new Date(schedule.startMs).toLocaleString('en-IN',{dateStyle:'medium',timeStyle:'short'}) },
       { label:'End', value: new Date(schedule.endMs).toLocaleString('en-IN',{dateStyle:'medium',timeStyle:'short'}) }
     ];
+    if(advanceAmount > 0){
+      metaRows.push({ label:'Advance paid', value: money(advanceAmount) });
+      metaRows.push({ label:'Balance due', value: money(t.total - advanceAmount) });
+    }
     var bookingCode = nextBanquetBookingCode();
     generateBanquetInvoiceViaServer({
       btn: this, hall: hall, schedule: schedule, bookingCode: bookingCode, guestCount: guestCount,
       nameVal: name, phoneVal: phone, customerEmail: email, idProofType: idType, idProofMasked: maskIdProof(idNumber),
+      eventType: eventType, foodPackageLabel: food ? food.label : null, decorationPackageLabel: deco ? deco.label : null,
+      advanceAmount: advanceAmount,
       metaRows: metaRows, errId: 'banquetBookingError',
-      resetIds: ['banquetClientName','banquetClientPhone','banquetClientEmail','banquetIdType','banquetIdNumber','banquetRoomLookup','banquetGuestCount','banquetEventDate','banquetStartTime','banquetHours','banquetDays','banquetWeeks']
+      resetIds: ['banquetClientName','banquetClientPhone','banquetClientEmail','banquetIdType','banquetIdNumber','banquetRoomLookup','banquetGuestCount','banquetEventDate','banquetStartTime','banquetHours','banquetDays','banquetWeeks','banquetEventType','banquetAdvanceAmount']
     });
   });
 
@@ -6247,10 +6479,11 @@ tr.top-row td{background:var(--accent-tint);}
     api.createBanquetBooking({
       bookingCode: opts.bookingCode, hallId: opts.hall.id,
       customerName: opts.nameVal, customerPhone: opts.phoneVal, guestCount: opts.guestCount,
+      eventType: opts.eventType || null, foodPackage: opts.foodPackageLabel || null, decorationPackage: opts.decorationPackageLabel || null,
       pricingBasis: opts.schedule.basis, unitPrice: opts.hall.pricing[opts.schedule.basis].price,
       durationCount: opts.schedule.durationCount,
       startISO: new Date(opts.schedule.startMs).toISOString(), endISO: new Date(opts.schedule.endMs).toISOString(),
-      totalAmount: t.total
+      totalAmount: t.total, advanceAmount: opts.advanceAmount || 0, advancePaymentMethod: banquetDraft.paymentMethod
     }).then(function(booking){
       return api.createInvoice({
         department: 'banquet', customerName: opts.nameVal, customerPhone: opts.phoneVal,
@@ -6268,16 +6501,20 @@ tr.top-row td{background:var(--accent-tint);}
         items: banquetDraft.items.map(function(l){ return { name:l.name, price:l.price, qty:l.qty, amount:l.amount }; }),
         subtotal: t.subtotal, cgst: t.cgst, sgst: t.sgst, tax: t.tax,
         preDiscountTotal: t.total, discountAmount: 0, promoCode: null, total: t.total,
-        paymentMethod: banquetDraft.paymentMethod,
+        paymentMethod: banquetDraft.paymentMethod, advanceAmount: opts.advanceAmount || 0,
         restaurant: Object.assign({}, state.restaurant),
         createdByStaffId: state.session.staffId || '',
         createdByName: state.session.name || state.session.staffId || 'Staff'
       };
       banquetDraft.items = [];
+      banquetHallLineItem = null;
       return fetchBanquetBookingsFromServer().then(function(){ return invoice; });
     }).then(function(invoice){
       setBtnLoading(opts.btn, false, null, 'Confirm booking & generate invoice');
       opts.resetIds.forEach(function(id){ var el = document.getElementById(id); if(el) el.value = ''; });
+      document.getElementById('banquetFoodPackage').value = '';
+      document.getElementById('banquetDecorationPackage').value = '';
+      document.getElementById('banquetPackagePreset').value = 'custom';
       document.querySelectorAll('#banquetPaymentMethodBtns .pm-btn').forEach(function(b){ b.classList.toggle('active', b.dataset.method === 'Cash'); });
       banquetDraft.paymentMethod = 'Cash';
       banquetSelectedHallId = null;
@@ -6296,6 +6533,46 @@ tr.top-row td{background:var(--accent-tint);}
       err.textContent = e.message; err.classList.add('show');
     });
   }
+
+  document.getElementById('downloadBanquetQuoteBtn').addEventListener('click', function(){
+    var hall = hallById(banquetSelectedHallId);
+    var schedule = banquetSelectedSchedule;
+    if(!hall || !schedule || banquetDraft.items.length === 0){
+      showToast('Select a hall first to generate a quotation.', 'error');
+      return;
+    }
+    if(!window.jspdf || !window.jspdf.jsPDF){
+      showToast('PDF library is still loading — try again in a moment.', 'error');
+      return;
+    }
+    var name = document.getElementById('banquetClientName').value.trim() || 'Prospective customer';
+    var phone = document.getElementById('banquetClientPhone').value.trim() || '—';
+    var eventType = document.getElementById('banquetEventType').value;
+    var t = computeTotals(banquetDraft.items, state.restaurant.taxRate);
+    var metaRows = [
+      { label:'Event type', value: eventType || '—' },
+      { label:'Guests', value: document.getElementById('banquetGuestCount').value || '—' },
+      { label:'Schedule', value: new Date(schedule.startMs).toLocaleString('en-IN',{dateStyle:'medium',timeStyle:'short'}) + ' – ' + new Date(schedule.endMs).toLocaleString('en-IN',{dateStyle:'medium',timeStyle:'short'}) }
+    ];
+    var quoteInv = {
+      invoiceNo: 'Estimate #' + Date.now().toString(36).toUpperCase(),
+      date: new Date().toISOString(),
+      customerName: name, customerPhone: phone, customerEmail: null, idProofMasked: null,
+      refLabel: 'Banquet Hall', refValue: hall.name, metaRows: metaRows,
+      department: 'banquet', items: banquetDraft.items,
+      subtotal: t.subtotal, cgst: t.cgst, sgst: t.sgst, tax: t.tax,
+      discountAmount: 0, promoCode: null, total: t.total,
+      advanceSuggested: Math.round(t.total * 0.25),
+      paymentMethod: 'To be decided', createdByName: state.session.name || (state.session.role === 'admin' ? (state.session.firstName || 'Admin') : 'Staff'),
+      restaurant: state.restaurant
+    };
+    try{
+      var doc = buildProfessionalInvoicePdf(quoteInv, { mode:'quotation' });
+      doc.save('Quotation-' + hall.name.replace(/\s+/g,'') + '-' + Date.now() + '.pdf');
+    }catch(e){
+      showToast('Could not generate the quotation PDF: ' + e.message, 'error');
+    }
+  });
 
   function renderBanquetStaffBookingsList(){
     var wrap = document.getElementById('banquetStaffBookingsWrap');
@@ -6318,17 +6595,36 @@ tr.top-row td{background:var(--accent-tint);}
       var actions = b.status === 'booked'
         ? '<button class="btn ghost small" data-complete-booking="'+b.id+'">Mark completed</button> <button class="btn danger-ghost small" data-cancel-booking="'+b.id+'">Cancel</button>'
         : '—';
+      var balance = b.totalAmount - b.advanceAmount;
+      var paymentHtml;
+      if(b.advanceAmount <= 0){
+        paymentHtml = '<span style="color:var(--text-muted);font-size:12px;">Full amount due</span>';
+      } else if(b.balancePaid || balance <= 0){
+        paymentHtml = '<span class="badge success">Fully paid</span>';
+      } else {
+        paymentHtml = 'Advance ' + money(b.advanceAmount) + '<br><span style="color:var(--text-muted);font-size:12px;">Balance ' + money(balance) + ' due</span>'
+          + (b.status !== 'cancelled' ? '<br><button class="btn ghost small" data-mark-balance="'+b.id+'" style="margin-top:4px;">Mark balance received</button>' : '');
+      }
       return '<tr>'
         + '<td data-label="Booking ID" class="code">'+escapeHtml(b.bookingCode)+'</td>'
         + '<td data-label="Hall">'+escapeHtml(h ? h.name : '—')+'</td>'
         + '<td data-label="Customer">'+escapeHtml(b.customerName)+'</td>'
+        + '<td data-label="Event">'+escapeHtml(b.eventType || '—')+'</td>'
         + '<td data-label="Schedule">'+new Date(b.startISO).toLocaleString('en-IN',{dateStyle:'short',timeStyle:'short'})+' – '+new Date(b.endISO).toLocaleString('en-IN',{dateStyle:'short',timeStyle:'short'})+'</td>'
         + '<td data-label="Total" class="amt">'+money(b.totalAmount)+'</td>'
+        + '<td data-label="Payment">'+paymentHtml+'</td>'
         + '<td data-label="Status"><span class="badge '+(statusMap[b.status]||'info')+'">'+b.status.toUpperCase()+'</span></td>'
         + '<td data-label="Actions" style="white-space:nowrap;">'+actions+'</td>'
         + '</tr>';
     }).join('');
-    wrap.innerHTML = '<div class="table-scroll"><table class="dtable"><thead><tr><th>Booking ID</th><th>Hall</th><th>Customer</th><th>Schedule</th><th class="amt">Total</th><th>Status</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+    wrap.innerHTML = '<div class="table-scroll"><table class="dtable"><thead><tr><th>Booking ID</th><th>Hall</th><th>Customer</th><th>Event</th><th>Schedule</th><th class="amt">Total</th><th>Payment</th><th>Status</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+    wrap.querySelectorAll('[data-mark-balance]').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        api.markBanquetBalancePaid(btn.dataset.markBalance).then(function(){
+          showToast('Balance marked as received'); renderBanquetStaffBookingsList();
+        }).catch(function(e){ showToast(e.message, 'error'); });
+      });
+    });
     wrap.querySelectorAll('[data-complete-booking]').forEach(function(btn){
       btn.addEventListener('click', function(){
         api.setBanquetBookingStatus(btn.dataset.completeBooking, 'completed').then(function(){
@@ -6358,6 +6654,7 @@ tr.top-row td{background:var(--accent-tint);}
     document.getElementById('banquetConfirmWrap').style.display = 'none';
     banquetSelectedHallId = null;
     banquetSelectedSchedule = null;
+    banquetHallLineItem = null;
     banquetDraft.items = [];
     document.getElementById('banquetScheduleError').classList.remove('show');
     document.getElementById('banquetBookingError').classList.remove('show');
@@ -6641,7 +6938,9 @@ tr.top-row td{background:var(--accent-tint);}
 
   // Full-page A4 professional invoice PDF — Room booking & Banquet hall
   // booking. Restaurant invoices keep the thermal-receipt PDF above.
-  function buildProfessionalInvoicePdf(inv){
+  function buildProfessionalInvoicePdf(inv, pdfOpts){
+    pdfOpts = pdfOpts || {};
+    var isQuote = pdfOpts.mode === 'quotation';
     var jsPDFCtor = (window.jspdf && window.jspdf.jsPDF) ? window.jspdf.jsPDF : null;
     if(!jsPDFCtor){ throw new Error('jsPDF not loaded'); }
     var r = inv.restaurant;
@@ -6672,7 +6971,7 @@ tr.top-row td{background:var(--accent-tint);}
     if(infoLine) doc.text(infoLine, bx, 31, { maxWidth: 105 });
 
     doc.setFont('helvetica', 'bold'); doc.setFontSize(13); doc.setTextColor(224,178,96);
-    doc.text('INVOICE', pageWidth - margin, 16, { align: 'right' });
+    doc.text(isQuote ? 'QUOTATION' : 'INVOICE', pageWidth - margin, 16, { align: 'right' });
     doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(200,196,188);
     doc.text(inv.invoiceNo, pageWidth - margin, 23, { align: 'right' });
     var dateStr = new Date(inv.date).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' });
@@ -6757,6 +7056,13 @@ tr.top-row td{background:var(--accent-tint);}
     doc.setDrawColor(ink[0],ink[1],ink[2]); doc.setLineWidth(0.5);
     doc.line(totalsX, cy - 4, pageWidth - margin, cy - 4);
     totalRow('Total', pdfMoney(inv.total), true, 13);
+    if(isQuote && inv.advanceSuggested){
+      totalRow('Suggested advance to confirm', pdfMoney(inv.advanceSuggested), false, 9.5, [224,178,96]);
+    }
+    if(!isQuote && inv.advanceAmount > 0){
+      totalRow('Advance received', pdfMoney(inv.advanceAmount), false, 9.5, [47,125,82]);
+      totalRow('Balance due', pdfMoney(inv.total - inv.advanceAmount), true, 10.5);
+    }
 
     cy += 3;
     doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(soft[0],soft[1],soft[2]);
@@ -6769,7 +7075,9 @@ tr.top-row td{background:var(--accent-tint);}
     doc.line(margin, footY, pageWidth - margin, footY);
     footY += 8;
     doc.setFont('helvetica', 'italic'); doc.setFontSize(8.5); doc.setTextColor(muted[0],muted[1],muted[2]);
-    var terms = r.footer || 'Thank you for choosing us. This is a computer-generated invoice.';
+    var terms = isQuote
+      ? 'This is an estimate only, not a tax invoice, and is valid for 7 days from the date above. Final pricing is confirmed once the booking is made.'
+      : (r.footer || 'Thank you for choosing us. This is a computer-generated invoice.');
     doc.splitTextToSize(terms, contentWidth * 0.6).forEach(function(line){ doc.text(line, margin, footY); footY += 4; });
 
     // Stamp + signature — drawn only into the downloaded PDF. The on-screen /

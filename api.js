@@ -136,6 +136,7 @@
     getBanquetBookings: () => request('GET', '/banquets/bookings'),
     createBanquetBooking: (booking) => request('POST', '/banquets/bookings', booking),
     setBanquetBookingStatus: (id, status) => request('PUT', '/banquets/bookings/' + id + '/status', { status }),
+    markBanquetBalancePaid: (id) => request('PUT', '/banquets/bookings/' + id + '/balance'),
 
     // ---------- restaurant ----------
     getMenu: () => request('GET', '/restaurant/menu'),
