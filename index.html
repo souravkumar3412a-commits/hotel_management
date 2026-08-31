@@ -2296,12 +2296,17 @@ tr.top-row td{background:var(--accent-tint);}
 <div class="modal-scrim" id="staffDetailsScrim">
   <div class="modal-box">
     <div class="modal-head">
-      <div><h3>Staff details</h3><p>Everything on file for this staff account.</p></div>
+      <div><h3 id="staffDetailsTitle">Staff details</h3><p id="staffDetailsSub">Everything on file for this staff account.</p></div>
       <button class="modal-close" id="staffDetailsClose" aria-label="Close"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
     </div>
     <div class="modal-body" id="staffDetailsBody"></div>
-    <div class="modal-foot">
+    <div class="modal-foot" id="staffDetailsFootView">
+      <button class="btn ghost" id="staffDetailsEditBtn">Edit details</button>
       <button class="btn accent" id="staffDetailsDone">Done</button>
+    </div>
+    <div class="modal-foot" id="staffDetailsFootEdit" style="display:none;">
+      <button class="btn ghost" id="staffDetailsCancelEdit">Cancel</button>
+      <button class="btn accent" id="staffDetailsSaveBtn">Save changes</button>
     </div>
   </div>
 </div>
@@ -3457,6 +3462,15 @@ tr.top-row td{background:var(--accent-tint);}
     var taken = {};
     tenantStaff.forEach(function(s){ taken[s.department] = true; });
     return DEPARTMENTS.filter(function(d){ return !taken[d.key]; });
+  }
+  // Same "already taken" filtering as openDepartments(), but keeps
+  // currentDept selectable even though it's technically taken — by the
+  // staff member being edited themselves.
+  function populateDepartmentSelect(selectEl, currentDept){
+    var taken = {};
+    currentTenantStaff().forEach(function(s){ if(s.department !== currentDept) taken[s.department] = true; });
+    var available = DEPARTMENTS.filter(function(d){ return !taken[d.key]; });
+    selectEl.innerHTML = available.map(function(d){ return '<option value="'+d.key+'"'+(d.key===currentDept?' selected':'')+'>'+d.label+'</option>'; }).join('');
   }
   document.getElementById('openStaffModalBtn').addEventListener('click', function(){
     var tenantStaff = currentTenantStaff();
@@ -7773,7 +7787,10 @@ tr.top-row td{background:var(--accent-tint);}
       });
     });
   }
-  function openStaffDetails(s){
+  var staffDetailsCurrent = null;
+  function renderStaffDetailsView(s){
+    document.getElementById('staffDetailsTitle').textContent = 'Staff details';
+    document.getElementById('staffDetailsSub').textContent = 'Everything on file for this staff account.';
     var d = new Date(s.createdAt).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' });
     document.getElementById('staffDetailsBody').innerHTML =
       '<div class="sd-row"><span class="sd-label">Name</span><span class="sd-value">'+escapeHtml(s.name || '—')+'</span></div>'
@@ -7783,6 +7800,28 @@ tr.top-row td{background:var(--accent-tint);}
       + '<div class="sd-row"><span class="sd-label">Phone</span><span class="sd-value">'+(s.phone ? escapeHtml(s.phone) : '<span style="color:var(--text-muted);">Not on file</span>')+'</span></div>'
       + '<div class="sd-row"><span class="sd-label">Status</span><span class="sd-value"><span class="badge success">'+ICONS.check+' Active</span></span></div>'
       + '<div class="sd-row"><span class="sd-label">Created</span><span class="sd-value">'+d+'</span></div>';
+    document.getElementById('staffDetailsFootView').style.display = 'flex';
+    document.getElementById('staffDetailsFootEdit').style.display = 'none';
+  }
+  function renderStaffDetailsEdit(s){
+    document.getElementById('staffDetailsTitle').textContent = 'Edit staff details';
+    document.getElementById('staffDetailsSub').textContent = 'Staff ID stays the same — that\'s what they log in with.';
+    document.getElementById('staffDetailsBody').innerHTML =
+      '<div class="field"><label for="sdEditName">Name</label><input type="text" id="sdEditName" value="'+escapeHtml(s.name||'')+'"></div>'
+      + '<div class="field"><label>Staff ID</label><input type="text" value="'+escapeHtml(s.staffId)+'" disabled style="opacity:.6;"></div>'
+      + '<div class="grid-2">'
+      + '<div class="field"><label for="sdEditEmail">Email</label><input type="email" id="sdEditEmail" value="'+escapeHtml(s.email||'')+'"></div>'
+      + '<div class="field"><label for="sdEditPhone">Phone number</label><input type="tel" id="sdEditPhone" value="'+escapeHtml(s.phone||'')+'"></div>'
+      + '</div>'
+      + '<div class="field" style="margin-bottom:0;"><label for="sdEditDept">Department</label><select id="sdEditDept"></select></div>'
+      + '<p class="error-text" id="sdEditError"></p>';
+    populateDepartmentSelect(document.getElementById('sdEditDept'), s.department);
+    document.getElementById('staffDetailsFootView').style.display = 'none';
+    document.getElementById('staffDetailsFootEdit').style.display = 'flex';
+  }
+  function openStaffDetails(s){
+    staffDetailsCurrent = s;
+    renderStaffDetailsView(s);
     document.getElementById('staffDetailsScrim').classList.add('show');
   }
   document.getElementById('staffDetailsClose').addEventListener('click', function(){
@@ -7790,6 +7829,43 @@ tr.top-row td{background:var(--accent-tint);}
   });
   document.getElementById('staffDetailsDone').addEventListener('click', function(){
     document.getElementById('staffDetailsScrim').classList.remove('show');
+  });
+  document.getElementById('staffDetailsEditBtn').addEventListener('click', function(){
+    if(staffDetailsCurrent) renderStaffDetailsEdit(staffDetailsCurrent);
+  });
+  document.getElementById('staffDetailsCancelEdit').addEventListener('click', function(){
+    if(staffDetailsCurrent) renderStaffDetailsView(staffDetailsCurrent);
+  });
+  document.getElementById('staffDetailsSaveBtn').addEventListener('click', function(){
+    if(!staffDetailsCurrent) return;
+    var btn = this;
+    var name = document.getElementById('sdEditName').value.trim();
+    var email = document.getElementById('sdEditEmail').value.trim();
+    var phone = document.getElementById('sdEditPhone').value.trim();
+    var department = document.getElementById('sdEditDept').value;
+    var err = document.getElementById('sdEditError');
+    if(!name){ err.textContent = 'Enter the staff member\'s name.'; err.classList.add('show'); return; }
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ err.textContent = 'Enter a valid email address.'; err.classList.add('show'); return; }
+    var phoneDigits = phone.replace(/\D/g, '');
+    if(phoneDigits.length < 7 || phoneDigits.length > 15){ err.textContent = 'Enter a valid phone number.'; err.classList.add('show'); return; }
+    var deptTaken = currentTenantStaff().some(function(x){ return x.department === department && x.id !== staffDetailsCurrent.id; });
+    if(deptTaken){ err.textContent = departmentLabel(department)+' already has a staff account. Remove it to move this account there.'; err.classList.add('show'); return; }
+    err.classList.remove('show');
+
+    setBtnLoading(btn, true, 'Saving…');
+    api.updateStaff(staffDetailsCurrent.id, name, email, phone, department).then(function(updated){
+      setBtnLoading(btn, false, null, 'Save changes');
+      showToast('Staff details updated');
+      var mapped = { id: updated.id, staffId: updated.staff_id, name: updated.name, email: updated.email, phone: updated.phone, department: updated.department, createdAt: updated.created_at, adminId: tenantId() };
+      var idx = state.staff.findIndex(function(x){ return x.id === mapped.id; });
+      if(idx !== -1) state.staff[idx] = mapped;
+      staffDetailsCurrent = mapped;
+      renderStaffListFromCache();
+      renderStaffDetailsView(mapped);
+    }).catch(function(e){
+      setBtnLoading(btn, false, null, 'Save changes');
+      err.textContent = e.message; err.classList.add('show');
+    });
   });
   document.getElementById('addStaffBtn').addEventListener('click', function(){
     var btn = this;

@@ -71,6 +71,50 @@ router.delete('/:id', requireAdmin, async (req, res) => {
   res.status(204).end();
 });
 
+// PUT /api/staff/:id — edit name/email/phone/department (Staff ID and
+// password are changed through their own dedicated flows, not this one).
+router.put('/:id', requireAdmin, async (req, res) => {
+  const { name, email, phone, department } = req.body;
+  if (!name || !email || !phone || !department) {
+    return res.status(400).json({ error: 'Name, email, phone and department are all required.' });
+  }
+  if (!EMAIL_RE.test(String(email).trim())) {
+    return res.status(400).json({ error: 'Enter a valid email address.' });
+  }
+  const phoneDigits = digitsOnly(phone);
+  if (phoneDigits.length < 7 || phoneDigits.length > 15) {
+    return res.status(400).json({ error: 'Enter a valid phone number.' });
+  }
+  if (!['room', 'banquet', 'restaurant'].includes(department)) {
+    return res.status(400).json({ error: 'Invalid department.' });
+  }
+  try {
+    // Same "one staff account per department" rule as creation — just
+    // excluding this staff member's own current row from the check.
+    const deptTaken = await pool.query(
+      'SELECT id FROM staff WHERE admin_id = $1 AND department = $2 AND id <> $3',
+      [req.user.adminId, department, req.params.id]
+    );
+    if (deptTaken.rows.length > 0) {
+      return res.status(409).json({ error: departmentAlreadyStaffedError(department) });
+    }
+    const r = await pool.query(
+      `UPDATE staff SET name=$1, email=$2, phone=$3, department=$4
+       WHERE id=$5 AND admin_id=$6 RETURNING id, staff_id, name, email, phone, department, created_at`,
+      [name, String(email).trim().toLowerCase(), phoneDigits, department, req.params.id, req.user.adminId]
+    );
+    if (!r.rows[0]) return res.status(404).json({ error: 'Staff account not found.' });
+    res.json(r.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Something went wrong updating the staff account.' });
+  }
+});
+function departmentAlreadyStaffedError(department) {
+  const labels = { room: 'Room Management', banquet: 'Banquet Management', restaurant: 'Restaurant Management' };
+  return `${labels[department] || department} already has a staff account. Remove it to move this account there.`;
+}
+
 // PUT /api/staff/:id/reset-password
 router.put('/:id/reset-password', requireAdmin, async (req, res) => {
   const { password } = req.body;
