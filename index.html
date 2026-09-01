@@ -2803,10 +2803,11 @@ tr.top-row td{background:var(--accent-tint);}
     { key:'banquet-history', label:'History', num:'02', icon:'history' }
   ];
   // Routes a logged-in staff member to the tabs for their assigned department.
-  // Staff with no department set (legacy accounts) fall back to the restaurant table view.
+  // Uses state.session.department — set directly from the login response
+  // (their JWT), not looked up in state.staff, since GET /api/staff is
+  // admin-only and is never populated during a staff session.
   function buildStaffTabsForSession(){
-    var acct = state.staff.find(function(s){ return s.staffId === state.session.staffId; });
-    var dept = acct ? acct.department : null;
+    var dept = state.session.department;
     if(dept === 'room') return ROOM_STAFF_TABS;
     if(dept === 'banquet') return BANQUET_STAFF_TABS;
     var tableTabs = buildStaffTableTabs();
@@ -3258,7 +3259,6 @@ tr.top-row td{background:var(--accent-tint);}
     gateRolePanels.forEach(function(p){ p.classList.toggle('active', p.dataset.rolePanel === role); });
     if(role === 'staff'){
       document.getElementById('staffLoginError').classList.remove('show');
-      document.getElementById('noStaffNotice').style.display = state.staff.length === 0 ? 'block' : 'none';
     }
   }
   document.getElementById('tabAdmin').addEventListener('click', function(){ setGateTab('admin'); });
@@ -4233,6 +4233,7 @@ tr.top-row td{background:var(--accent-tint);}
     renderPromoList();
     renderDashboard();
     initSidebarToggle();
+    initDashboardClock();
   }
 
   // ---------- sidebar collapse/expand ----------
@@ -4247,6 +4248,22 @@ tr.top-row td{background:var(--accent-tint);}
       window.localStorage.setItem(STORAGE_PREFIX + 'sidebar-collapsed', collapsed ? '1' : '0');
       apply();
     };
+  }
+
+  // ---------- dashboard clock ----------
+  // The "Tue, 01 Sept 2026 · 07:43 am" badge only ever got written once,
+  // whenever the dashboard happened to re-render — so it froze at whatever
+  // time that was and never ticked forward. This keeps it live.
+  function updateDashboardClock(){
+    var dateBadge = document.getElementById('dashDateBadge');
+    if(!dateBadge) return;
+    dateBadge.innerHTML = '<span class="db-ico">'+ICONS.history+'</span><span>'+new Date().toLocaleDateString('en-IN',{weekday:'short', day:'2-digit', month:'short', year:'numeric'})+' &nbsp;<b>'+new Date().toLocaleTimeString('en-IN',{hour:'2-digit', minute:'2-digit'})+'</b></span>';
+  }
+  var dashboardClockInterval = null;
+  function initDashboardClock(){
+    updateDashboardClock();
+    if(dashboardClockInterval) clearInterval(dashboardClockInterval);
+    dashboardClockInterval = setInterval(updateDashboardClock, 15000);
   }
 
   // ---------- brand header ----------
@@ -7716,10 +7733,7 @@ tr.top-row td{background:var(--accent-tint);}
       + kpiCard('Menu items', String(state.menu.length), 'dish')
       + kpiCard('Avg. order value', money(avgOrderValue), 'avg');
 
-    var dateBadge = document.getElementById('dashDateBadge');
-    if(dateBadge){
-      dateBadge.innerHTML = '<span class="db-ico">'+ICONS.history+'</span><span>'+new Date().toLocaleDateString('en-IN',{weekday:'short', day:'2-digit', month:'short', year:'numeric'})+' &nbsp;<b>'+new Date().toLocaleTimeString('en-IN',{hour:'2-digit', minute:'2-digit'})+'</b></span>';
-    }
+    updateDashboardClock();
 
     var deptIco = { room: ICONS.room, banquet: ICONS.banquet, restaurant: ICONS.dish };
     var deptClass = { room:'dept-card-room', banquet:'dept-card-banquet', restaurant:'dept-card-restaurant' };
