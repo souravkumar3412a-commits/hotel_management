@@ -671,10 +671,18 @@ main{flex:1;padding:30px 32px 60px;max-width:100%;width:100%;}
 .date-badge{display:flex;align-items:center;gap:9px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-md);padding:10px 16px;box-shadow:var(--shadow-sm);font-size:12.5px;color:var(--text-secondary);white-space:nowrap;}
 .date-badge .db-ico{color:var(--accent);display:flex;flex-shrink:0;}
 .date-badge b{color:var(--text-primary);font-weight:700;}
-.dash-chart-grid{display:grid;grid-template-columns:1.3fr 1fr;gap:20px;align-items:stretch;margin-bottom:20px;}
+.dash-chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:stretch;margin-bottom:20px;}
 .chart-card{display:flex;flex-direction:column;}
 .chart-wrap{position:relative;width:100%;}
 @media (max-width:1100px){.dash-chart-grid{grid-template-columns:1fr;}}
+
+.date-filter-bar{display:flex;align-items:center;flex-wrap:wrap;gap:14px;}
+.date-filter-btns{display:flex;flex-wrap:wrap;gap:6px;}
+.dfb{background:var(--bg);border:1px solid var(--border);color:var(--text-secondary);font-size:12.5px;font-weight:600;padding:7px 13px;border-radius:20px;cursor:pointer;transition:background .15s ease, border-color .15s ease, color .15s ease;}
+.dfb:hover{border-color:var(--accent);}
+.dfb.active{background:var(--accent);border-color:var(--accent);color:#1a1408;}
+.date-filter-custom{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.date-filter-custom input[type=date]{width:auto;padding:7px 10px;font-size:12.5px;}
 
 .dash-list-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 0;border-bottom:1px dashed var(--border);font-size:13px;}
 .dash-list-row:last-child{border-bottom:none;}
@@ -1369,32 +1377,84 @@ tr.top-row td{background:var(--accent-tint);}
           <div>
             <p class="eyebrow">Overview</p>
             <h2>Dashboard</h2>
-            <p>A snapshot of the whole property right now, plus how Rooms, Banquets and the Restaurant are each doing today.</p>
+            <p>How is your property performing today — occupancy, revenue, check-ins/outs, and sales across every department.</p>
           </div>
           <div class="date-badge" id="dashDateBadge"></div>
         </div>
-        <div class="kpi-grid" id="kpiGrid"></div>
-        <p class="section-block-label" style="border-bottom:none;padding-bottom:0;margin-bottom:14px;">Today, by department</p>
+
+        <p class="section-block-label" style="border-bottom:none;padding-bottom:0;margin-bottom:14px;">Today's performance</p>
+        <div class="kpi-grid" id="todayKpiGrid"></div>
+
+        <p class="section-block-label" style="border-bottom:none;padding-bottom:0;margin:26px 0 14px;">Today, by department</p>
         <div class="dept-grid" id="deptGrid"></div>
-        <div class="dash-chart-grid">
+
+        <div class="card" style="margin-top:20px;margin-bottom:0;">
+          <div class="date-filter-bar">
+            <p class="section-block-label" style="border-bottom:none;padding-bottom:0;margin:0;flex-shrink:0;">Charts</p>
+            <div class="date-filter-btns" id="dashRangeBtns">
+              <button type="button" class="dfb active" data-range="today">Today</button>
+              <button type="button" class="dfb" data-range="7d">7 Days</button>
+              <button type="button" class="dfb" data-range="30d">30 Days</button>
+              <button type="button" class="dfb" data-range="3m">3 Months</button>
+              <button type="button" class="dfb" data-range="custom">Custom</button>
+            </div>
+            <div class="date-filter-custom" id="dashCustomRangeWrap" style="display:none;">
+              <input type="date" id="dashCustomFrom">
+              <span style="color:var(--text-muted);font-size:12.5px;">to</span>
+              <input type="date" id="dashCustomTo">
+              <button type="button" class="btn accent small" id="dashCustomApply">Apply</button>
+            </div>
+          </div>
+          <p class="hint" id="dashRangeLabel" style="margin:10px 0 0;"></p>
+        </div>
+
+        <div class="dash-chart-grid" style="margin-top:16px;">
           <div class="card chart-card">
-            <div class="card-head"><div><h3>Revenue, last 7 days</h3><p class="card-sub">Combined sales across every department.</p></div></div>
+            <div class="card-head"><div><h3>Daily revenue</h3><p class="card-sub">Combined sales across every department, for the selected period.</p></div></div>
             <div class="chart-wrap" style="height:230px;"><canvas id="dashRevenueChart"></canvas></div>
           </div>
           <div class="card chart-card">
-            <div class="card-head"><div><h3>Today's split</h3><p class="card-sub">Share of today's revenue by department.</p></div></div>
-            <div class="chart-wrap" style="height:230px;"><canvas id="dashDeptSplitChart"></canvas></div>
-            <div id="dashDeptSplitEmpty" class="dept-empty" style="display:none;text-align:center;padding-top:70px;">No sales yet today.</div>
+            <div class="card-head"><div><h3>Monthly revenue</h3><p class="card-sub">Last 12 months — independent of the filter above.</p></div></div>
+            <div class="chart-wrap" style="height:230px;"><canvas id="dashMonthlyRevenueChart"></canvas></div>
+          </div>
+          <div class="card chart-card">
+            <div class="card-head"><div><h3>Room occupancy</h3><p class="card-sub">Share of rooms occupied each day, for the selected period.</p></div></div>
+            <div class="chart-wrap" style="height:230px;"><canvas id="dashOccupancyChart"></canvas></div>
+          </div>
+          <div class="card chart-card">
+            <div class="card-head"><div><h3>Payment method breakdown</h3><p class="card-sub">Share of invoices by how they were paid, for the selected period.</p></div></div>
+            <div class="chart-wrap" style="height:230px;"><canvas id="dashPaymentChart"></canvas></div>
+            <div id="dashPaymentEmpty" class="dept-empty" style="display:none;text-align:center;padding-top:70px;">No invoices in this period.</div>
+          </div>
+          <div class="card chart-card">
+            <div class="card-head"><div><h3>Restaurant revenue</h3><p class="card-sub">Restaurant-only sales, for the selected period.</p></div></div>
+            <div class="chart-wrap" style="height:230px;"><canvas id="dashRestaurantRevenueChart"></canvas></div>
+          </div>
+          <div class="card chart-card">
+            <div class="card-head"><div><h3>Banquet revenue</h3><p class="card-sub">Banquet-only sales, for the selected period.</p></div></div>
+            <div class="chart-wrap" style="height:230px;"><canvas id="dashBanquetRevenueChart"></canvas></div>
+          </div>
+          <div class="card chart-card">
+            <div class="card-head"><div><h3>Most booked rooms</h3><p class="card-sub">By number of bookings started in the selected period.</p></div></div>
+            <div class="chart-wrap" style="height:230px;"><canvas id="dashTopRoomsChart"></canvas></div>
+            <div id="dashTopRoomsEmpty" class="dept-empty" style="display:none;text-align:center;padding-top:70px;">No room bookings in this period.</div>
+          </div>
+          <div class="card chart-card">
+            <div class="card-head"><div><h3>Most popular food items</h3><p class="card-sub">By quantity sold, for the selected period.</p></div></div>
+            <div class="chart-wrap" style="height:230px;"><canvas id="dashTopFoodChart"></canvas></div>
+            <div id="dashTopFoodEmpty" class="dept-empty" style="display:none;text-align:center;padding-top:70px;">No restaurant sales in this period.</div>
           </div>
         </div>
+
+        <div class="kpi-grid" id="kpiGrid" style="margin-top:20px;"></div>
         <div class="dash-grid">
           <div class="card">
             <div class="card-head"><div><h3>Recent activity</h3><p class="card-sub">The latest bills generated by staff, across every department.</p></div></div>
             <div id="dashRecentInvoices"></div>
           </div>
           <div class="card">
-            <div class="card-head"><div><h3>Top restaurant items</h3><p class="card-sub">Best sellers across all restaurant invoices.</p></div></div>
-            <div id="dashTopDishes"></div>
+            <div class="card-head"><div><h3>Pending payments</h3><p class="card-sub">Banquet bookings with a balance still outstanding.</p></div></div>
+            <div id="dashPendingPayments"></div>
           </div>
         </div>
       </section>
@@ -2662,7 +2722,8 @@ tr.top-row td{background:var(--accent-tint);}
     restaurantInvoices: [], // server-backed restaurant invoices — see renderHistory()
     // ---- banquet management: Admin configures halls (Setup); Staff (banquet dept) books them ----
     banquetHalls: [],     // [{ id, name, capacity, facilities:[], outOfOrder, pricing:{hour:{enabled,price}, day:{enabled,price}, week:{enabled,price}} }]
-    banquetBookings: []   // [{ id, bookingCode, hallId, customerName, customerPhone, guestCount, pricingBasis, unitPrice, durationCount, startISO, endISO, totalAmount, status:'booked'|'completed'|'cancelled', invoiceId, createdByStaffId, createdByName, createdAt }]
+    banquetBookings: [],   // [{ id, bookingCode, hallId, customerName, customerPhone, guestCount, pricingBasis, unitPrice, durationCount, startISO, endISO, totalAmount, status:'booked'|'completed'|'cancelled', invoiceId, createdByStaffId, createdByName, createdAt }]
+    allRoomBookings: []    // every room booking regardless of status — see renderTodayKpis()/renderAnalyticsCharts() for occupancy + check-in/out stats
   };
 
   function newTableOrder(){
@@ -2950,6 +3011,7 @@ tr.top-row td{background:var(--accent-tint);}
     state.rooms = [];
     state.banquetHalls = [];
     state.banquetBookings = [];
+    state.allRoomBookings = [];
   }
   // Loads the restaurant data that belongs to the given admin id into state.
   // Called right after a successful login/signup (and when restoring a saved session)
@@ -7694,50 +7756,25 @@ tr.top-row td{background:var(--accent-tint);}
   }
   function renderDashboard(){
     if(state.session.role !== 'admin') return;
-    var grid = document.getElementById('kpiGrid');
+    var grid = document.getElementById('todayKpiGrid');
     if(!grid) return;
 
     // Refresh Room, Banquet, and Restaurant's server-backed data first, so the numbers below are current.
     return Promise.all([
       api.getInvoices('room').then(function(rows){ state.roomInvoices = rows.map(mapServerRoomInvoiceListRow); }).catch(function(){}),
       fetchBanquetBookingsFromServer().catch(function(){}),
-      api.getInvoices('restaurant').then(function(rows){ state.restaurantInvoices = rows.map(mapServerRestaurantInvoiceListRow); }).catch(function(){})
+      api.getInvoices('restaurant').then(function(rows){ state.restaurantInvoices = rows.map(mapServerRestaurantInvoiceListRow); }).catch(function(){}),
+      api.getRoomBookings().then(function(rows){ state.allRoomBookings = rows.map(mapServerRoomBookingRaw); }).catch(function(){ state.allRoomBookings = state.allRoomBookings || []; })
     ]).then(function(){
 
     renderDeptGrid();
-
-    var allInvoices = buildDashboardInvoices();
-    var today = localDateStr(new Date());
-    var yesterday = localDateStr(new Date(Date.now() - 86400000));
-    var todayInvoices = allInvoices.filter(function(i){ return localDateStr(new Date(i.date)) === today; });
-    var yestInvoices = allInvoices.filter(function(i){ return localDateStr(new Date(i.date)) === yesterday; });
-    var todaySales = todayInvoices.reduce(function(s,i){ return s + (Number(i.total)||0); }, 0);
-    var yestSales = yestInvoices.reduce(function(s,i){ return s + (Number(i.total)||0); }, 0);
-    var allSales = allInvoices.reduce(function(s,i){ return s + (Number(i.total)||0); }, 0);
-    var avgOrderValue = allInvoices.length ? allSales / allInvoices.length : 0;
-
-    var salesDelta = '';
-    if(yestSales > 0){
-      var pct = ((todaySales - yestSales) / yestSales) * 100;
-      var up = pct >= 0;
-      salesDelta = '<div class="kpi-delta '+(up?'up':'down')+'">'+ICONS[up?'up':'down']+' '+Math.abs(pct).toFixed(1)+'% <span class="vs">vs yesterday</span></div>';
-    } else if(allInvoices.length > 0){
-      salesDelta = '<div class="kpi-delta" style="color:var(--text-muted);">No sales yesterday to compare</div>';
-    }
-
-    grid.innerHTML =
-      kpiCard("Today's sales", money(todaySales), 'sales', salesDelta)
-      + kpiCard("Today's orders", String(todayInvoices.length), 'orders')
-      + kpiCard('Total invoices', String(allInvoices.length), 'invoices')
-      + kpiCard('Active staff', String(currentTenantStaff().length), 'users')
-      + kpiCard('Menu items', String(state.menu.length), 'dish')
-      + kpiCard('Avg. order value', money(avgOrderValue), 'avg');
-
+    renderTodayKpis();
     updateDashboardClock();
 
+    var allInvoices = buildDashboardInvoices();
+    var recentWrap = document.getElementById('dashRecentInvoices');
     var deptIco = { room: ICONS.room, banquet: ICONS.banquet, restaurant: ICONS.dish };
     var deptClass = { room:'dept-card-room', banquet:'dept-card-banquet', restaurant:'dept-card-restaurant' };
-    var recentWrap = document.getElementById('dashRecentInvoices');
     if(allInvoices.length === 0){
       recentWrap.innerHTML = emptyState(ICONS.history, 'No invoices yet', 'Generated bills will appear here.');
     } else {
@@ -7749,109 +7786,303 @@ tr.top-row td{background:var(--accent-tint);}
       }).join('');
     }
 
-    var dishMap = {};
-    allInvoices.filter(function(inv){ return inv.department === 'restaurant'; }).forEach(function(inv){
-      (inv.items||[]).forEach(function(it){
-        if(!dishMap[it.name]) dishMap[it.name] = { name: it.name, qty: 0 };
-        dishMap[it.name].qty += Number(it.qty)||0;
-      });
-    });
-    var topDishes = Object.keys(dishMap).map(function(k){ return dishMap[k]; }).sort(function(a,b){ return b.qty-a.qty; }).slice(0,6);
-    var topWrap = document.getElementById('dashTopDishes');
-    if(topDishes.length === 0){
-      topWrap.innerHTML = emptyState(ICONS.dish, 'No sales yet', 'Top items will show up once restaurant orders come in.');
-    } else {
-      var maxQty = topDishes[0].qty || 1;
-      topWrap.innerHTML = topDishes.map(function(d){
-        var pct = Math.max(8, Math.round((d.qty / maxQty) * 100));
-        return '<div class="dash-list-row" style="flex-direction:column;align-items:stretch;gap:6px;">'
-          + '<span style="display:flex;justify-content:space-between;"><span class="dlr-name">'+escapeHtml(d.name)+'</span><span class="dlr-amt">'+d.qty+' sold</span></span>'
-          + '<span style="height:6px;border-radius:3px;background:var(--primary-tint);overflow:hidden;"><span style="display:block;height:100%;width:'+pct+'%;background:var(--accent);border-radius:3px;"></span></span>'
-          + '</div>';
-      }).join('');
-    }
-
-    renderDashboardCharts(allInvoices, { today: todaySales, byDept: (function(){
-      var m = {};
-      todayInvoices.forEach(function(inv){ m[inv.department] = (m[inv.department]||0) + (Number(inv.total)||0); });
-      return m;
-    })() });
+    renderPendingPaymentsList();
+    renderAnalyticsCharts(getDashboardRange(dashboardRangeKey));
+    renderMonthlyRevenueChart();
     });
   }
 
-  // ---------- sales analysis (admin) ----------
+  // ---------- Today's performance KPIs ----------
+  function mapServerRoomBookingRaw(b){
+    return { id:b.id, roomId:b.room_id, guestName:b.guest_name, checkIn:b.check_in, checkOut:b.check_out, status:b.status, createdAt:b.created_at };
+  }
+  function renderTodayKpis(){
+    var grid = document.getElementById('todayKpiGrid');
+    if(!grid) return;
+    var allInvoices = buildDashboardInvoices();
+    var today = localDateStr(new Date());
+
+    var totalRooms = state.rooms.length;
+    var occupiedNow = state.rooms.filter(function(r){ return r.status === 'occupied'; }).length;
+    var occupancyPct = totalRooms ? Math.round((occupiedNow / totalRooms) * 100) : 0;
+
+    var todayInvoices = allInvoices.filter(function(i){ return localDateStr(new Date(i.date)) === today; });
+    var todayRevenue = todayInvoices.reduce(function(s,i){ return s + (Number(i.total)||0); }, 0);
+    var restaurantToday = todayInvoices.filter(function(i){ return i.department === 'restaurant'; }).reduce(function(s,i){ return s + (Number(i.total)||0); }, 0);
+    var banquetToday = todayInvoices.filter(function(i){ return i.department === 'banquet'; }).reduce(function(s,i){ return s + (Number(i.total)||0); }, 0);
+
+    var checkInsToday = (state.allRoomBookings||[]).filter(function(b){ return b.checkIn && localDateStr(new Date(b.checkIn)) === today; }).length;
+    var checkOutsToday = (state.allRoomBookings||[]).filter(function(b){ return b.status === 'completed' && b.checkOut && localDateStr(new Date(b.checkOut)) === today; }).length;
+
+    var pendingTotal = (state.banquetBookings||[]).filter(function(b){ return b.status !== 'cancelled' && !b.balancePaid && (b.totalAmount - b.advanceAmount) > 0; })
+      .reduce(function(s,b){ return s + (b.totalAmount - b.advanceAmount); }, 0);
+
+    grid.innerHTML =
+      kpiCard('Occupancy', occupancyPct + '%', 'room', '<div class="kpi-delta" style="color:var(--text-muted);">'+occupiedNow+' of '+totalRooms+' rooms</div>')
+      + kpiCard('Revenue', money(todayRevenue), 'sales')
+      + kpiCard('Check-ins', String(checkInsToday), 'orders')
+      + kpiCard('Check-outs', String(checkOutsToday), 'history')
+      + kpiCard('Restaurant sales', money(restaurantToday), 'dish')
+      + kpiCard('Banquet sales', money(banquetToday), 'banquet')
+      + kpiCard('Pending payments', money(pendingTotal), 'invoices');
+
+    var secondaryGrid = document.getElementById('kpiGrid');
+    if(secondaryGrid){
+      var allSales = allInvoices.reduce(function(s,i){ return s + (Number(i.total)||0); }, 0);
+      var avgOrderValue = allInvoices.length ? allSales / allInvoices.length : 0;
+      secondaryGrid.innerHTML =
+        kpiCard('Total invoices', String(allInvoices.length), 'invoices')
+        + kpiCard('Active staff', String(currentTenantStaff().length), 'users')
+        + kpiCard('Menu items', String(state.menu.length), 'dish')
+        + kpiCard('Avg. order value', money(avgOrderValue), 'avg');
+    }
+  }
+
+  function renderPendingPaymentsList(){
+    var wrap = document.getElementById('dashPendingPayments');
+    if(!wrap) return;
+    var pending = (state.banquetBookings||[]).filter(function(b){ return b.status !== 'cancelled' && !b.balancePaid && (b.totalAmount - b.advanceAmount) > 0; })
+      .sort(function(a,b){ return new Date(a.startISO) - new Date(b.startISO); });
+    if(pending.length === 0){
+      wrap.innerHTML = emptyState(ICONS.check, 'All settled up', 'No outstanding banquet balances right now.');
+      return;
+    }
+    wrap.innerHTML = pending.slice(0, 8).map(function(b){
+      var balance = b.totalAmount - b.advanceAmount;
+      var d = new Date(b.startISO).toLocaleDateString('en-IN', { day:'2-digit', month:'short' });
+      return '<div class="dash-list-row"><span class="dlr-left"><span class="dlr-ico">'+ICONS.banquet+'</span><span class="dlr-body"><span class="dlr-name">'+escapeHtml(b.customerName)+'</span> <span class="dlr-meta">'+escapeHtml(b.bookingCode)+' · Event '+d+'</span></span></span><span class="dlr-amt" style="color:var(--danger);">'+money(balance)+'</span></div>';
+    }).join('');
+  }
+
+  // ---------- date range filter ----------
+  var dashboardRangeKey = 'today';
+  function getDashboardRange(key){
+    var end = new Date(); end.setHours(23,59,59,999);
+    var start = new Date(); start.setHours(0,0,0,0);
+    if(key === '7d'){ start.setDate(start.getDate() - 6); }
+    else if(key === '30d'){ start.setDate(start.getDate() - 29); }
+    else if(key === '3m'){ start.setMonth(start.getMonth() - 3); start.setDate(start.getDate() + 1); }
+    else if(key === 'custom'){
+      var fromVal = document.getElementById('dashCustomFrom').value;
+      var toVal = document.getElementById('dashCustomTo').value;
+      if(fromVal) start = new Date(fromVal + 'T00:00:00');
+      if(toVal) end = new Date(toVal + 'T23:59:59');
+    }
+    return { start: start, end: end, key: key };
+  }
+  function dashboardRangeLabel(range){
+    var fmt = function(d){ return d.toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' }); };
+    return 'Showing ' + fmt(range.start) + ' – ' + fmt(range.end) + '.';
+  }
+  document.querySelectorAll('#dashRangeBtns .dfb').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      dashboardRangeKey = btn.dataset.range;
+      document.querySelectorAll('#dashRangeBtns .dfb').forEach(function(b){ b.classList.toggle('active', b === btn); });
+      document.getElementById('dashCustomRangeWrap').style.display = dashboardRangeKey === 'custom' ? 'flex' : 'none';
+      if(dashboardRangeKey !== 'custom'){ renderAnalyticsCharts(getDashboardRange(dashboardRangeKey)); }
+    });
+  });
+  document.getElementById('dashCustomApply').addEventListener('click', function(){
+    if(!document.getElementById('dashCustomFrom').value || !document.getElementById('dashCustomTo').value){
+      showToast('Pick both a start and end date.', 'error');
+      return;
+    }
+    renderAnalyticsCharts(getDashboardRange('custom'));
+  });
+
+  // ---------- charts ----------
   var revenueChartInst = null, paymentChartInst = null;
-  var dashRevenueChartInst = null, dashDeptSplitChartInst = null;
-  // Builds the two dashboard charts: a 7-day revenue trend (line) and today's
-  // department split (donut). Uses the same Chart.js already loaded for Sales Analysis.
-  function renderDashboardCharts(allInvoices, today){
+  var dashRevenueChartInst = null, dashMonthlyChartInst = null, dashOccupancyChartInst = null, dashPaymentChartInst = null,
+      dashRestaurantChartInst = null, dashBanquetChartInst = null, dashTopRoomsChartInst = null, dashTopFoodChartInst = null;
+
+  function eachDayKey(start, end){
+    var keys = [];
+    var d = new Date(start); d.setHours(0,0,0,0);
+    var last = new Date(end); last.setHours(0,0,0,0);
+    while(d.getTime() <= last.getTime()){
+      keys.push(localDateStr(d));
+      d.setDate(d.getDate() + 1);
+    }
+    return keys;
+  }
+  function invoicesInRange(range){
+    return buildDashboardInvoices().filter(function(inv){
+      var t = new Date(inv.date).getTime();
+      return t >= range.start.getTime() && t <= range.end.getTime();
+    });
+  }
+  function lineChart(canvasId, existingInst, labels, data, colorHex){
+    var canvas = document.getElementById(canvasId);
+    if(!canvas) return null;
+    if(existingInst) existingInst.destroy();
+    var c = chartColors();
+    return new Chart(canvas, {
+      type: 'line',
+      data: { labels: labels, datasets: [{ data: data, borderColor: colorHex, backgroundColor: colorHex + '24', fill: true, tension: .35, pointRadius: labels.length > 20 ? 0 : 3, pointBackgroundColor: colorHex, borderWidth: 2.4 }] },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins:{ legend:{ display:false }, tooltip:{ callbacks:{ label:function(ctx){ return money(ctx.parsed.y); } } } },
+        scales:{
+          x:{ grid:{ display:false }, ticks:{ color:c.muted, font:{ family:'Inter', size:10.5 }, maxRotation:0, autoSkip:true, maxTicksLimit:10 } },
+          y:{ grid:{ color:c.grid }, ticks:{ color:c.muted, font:{ family:'Inter', size:11 }, callback:function(v){ return state.restaurant.currency + v; } } }
+        }
+      }
+    });
+  }
+  function renderAnalyticsCharts(range){
     if(typeof Chart === 'undefined') return;
     var c = chartColors();
+    document.getElementById('dashRangeLabel').textContent = dashboardRangeLabel(range);
+    var list = invoicesInRange(range);
+    var dayKeys = eachDayKey(range.start, range.end);
+    var dayLabels = dayKeys.map(function(k){ return new Date(k+'T00:00:00').toLocaleDateString('en-IN', { day:'2-digit', month:'short' }); });
 
-    // 7-day trend — every day shown, even ones with zero sales, so the axis is continuous.
-    var byDay = {};
-    var dayKeys = [];
-    for(var i = 6; i >= 0; i--){
-      var d = new Date(Date.now() - i * 86400000);
-      var key = localDateStr(d);
-      dayKeys.push(key);
-      byDay[key] = 0;
-    }
-    allInvoices.forEach(function(inv){
-      var key = localDateStr(new Date(inv.date));
-      if(byDay.hasOwnProperty(key)) byDay[key] += (Number(inv.total) || 0);
+    // 1. Daily revenue (all departments)
+    var byDay = {}; dayKeys.forEach(function(k){ byDay[k] = 0; });
+    list.forEach(function(inv){ var k = localDateStr(new Date(inv.date)); if(byDay.hasOwnProperty(k)) byDay[k] += (Number(inv.total)||0); });
+    dashRevenueChartInst = lineChart('dashRevenueChart', dashRevenueChartInst, dayLabels, dayKeys.map(function(k){ return byDay[k]; }), c.accent);
+
+    // 2. Room occupancy per day
+    var totalRooms = state.rooms.length || 1;
+    var occByDay = dayKeys.map(function(k){
+      var dayDate = new Date(k + 'T12:00:00');
+      var occupied = (state.allRoomBookings||[]).filter(function(b){
+        if(b.status === 'cancelled') return false;
+        var ci = new Date(b.checkIn);
+        var co = b.checkOut ? new Date(b.checkOut) : new Date();
+        return ci.getTime() <= dayDate.getTime() && co.getTime() >= dayDate.getTime();
+      }).length;
+      return Math.round((occupied / totalRooms) * 100);
     });
-    var revCanvas = document.getElementById('dashRevenueChart');
-    if(revCanvas){
-      if(dashRevenueChartInst){ dashRevenueChartInst.destroy(); }
-      var labels = dayKeys.map(function(d){ return new Date(d+'T00:00:00').toLocaleDateString('en-IN', { day:'2-digit', month:'short' }); });
-      dashRevenueChartInst = new Chart(revCanvas, {
+    var occCanvas = document.getElementById('dashOccupancyChart');
+    if(occCanvas){
+      if(dashOccupancyChartInst) dashOccupancyChartInst.destroy();
+      dashOccupancyChartInst = new Chart(occCanvas, {
         type: 'line',
-        data: { labels: labels, datasets: [{
-          label: 'Revenue', data: dayKeys.map(function(d){ return byDay[d]; }),
-          borderColor: c.accent, backgroundColor: 'rgba(217,164,65,.14)', fill: true, tension: .35,
-          pointRadius: 3, pointBackgroundColor: c.accent, borderWidth: 2.4
-        }]},
+        data: { labels: dayLabels, datasets: [{ data: occByDay, borderColor: c.info, backgroundColor: c.info+'24', fill: true, tension:.35, pointRadius: dayLabels.length > 20 ? 0 : 3, pointBackgroundColor: c.info, borderWidth: 2.4 }] },
         options: {
-          responsive: true, maintainAspectRatio: false,
-          plugins:{ legend:{ display:false }, tooltip:{ callbacks:{ label:function(ctx){ return money(ctx.parsed.y); } } } },
-          scales:{
-            x:{ grid:{ display:false }, ticks:{ color:c.muted, font:{ family:'Inter', size:11 } } },
-            y:{ grid:{ color:c.grid }, ticks:{ color:c.muted, font:{ family:'Inter', size:11 }, callback:function(v){ return state.restaurant.currency + v; } } }
-          }
+          responsive:true, maintainAspectRatio:false,
+          plugins:{ legend:{ display:false }, tooltip:{ callbacks:{ label:function(ctx){ return ctx.parsed.y + '% occupied'; } } } },
+          scales:{ x:{ grid:{ display:false }, ticks:{ color:c.muted, font:{ family:'Inter', size:10.5 }, maxRotation:0, autoSkip:true, maxTicksLimit:10 } },
+            y:{ grid:{ color:c.grid }, min:0, max:100, ticks:{ color:c.muted, font:{ family:'Inter', size:11 }, callback:function(v){ return v+'%'; } } } }
         }
       });
     }
 
-    // today's department split
-    var deptLabels = { room:'Room', banquet:'Banquet', restaurant:'Restaurant' };
-    var deptPalette = { room: c.info, banquet: c.success, restaurant: c.accent };
-    var keys = ['room','banquet','restaurant'].filter(function(k){ return today.byDept[k] > 0; });
-    var splitCanvas = document.getElementById('dashDeptSplitChart');
-    var splitEmpty = document.getElementById('dashDeptSplitEmpty');
-    if(splitCanvas){
-      if(dashDeptSplitChartInst){ dashDeptSplitChartInst.destroy(); }
-      if(keys.length === 0){
-        splitCanvas.style.display = 'none';
-        if(splitEmpty) splitEmpty.style.display = 'block';
+    // 3. Payment method breakdown
+    var payMap = {};
+    list.forEach(function(inv){ var m = inv.paymentMethod || 'Cash'; payMap[m] = (payMap[m]||0) + (Number(inv.total)||0); });
+    var payKeys = Object.keys(payMap);
+    var payCanvas = document.getElementById('dashPaymentChart');
+    var payEmpty = document.getElementById('dashPaymentEmpty');
+    if(payCanvas){
+      if(dashPaymentChartInst) dashPaymentChartInst.destroy();
+      if(payKeys.length === 0){
+        payCanvas.style.display = 'none'; if(payEmpty) payEmpty.style.display = 'block';
       } else {
-        splitCanvas.style.display = 'block';
-        if(splitEmpty) splitEmpty.style.display = 'none';
-        dashDeptSplitChartInst = new Chart(splitCanvas, {
+        payCanvas.style.display = 'block'; if(payEmpty) payEmpty.style.display = 'none';
+        var payPalette = [c.accent, c.info, c.success, c.primary];
+        dashPaymentChartInst = new Chart(payCanvas, {
           type: 'doughnut',
-          data: {
-            labels: keys.map(function(k){ return deptLabels[k]; }),
-            datasets: [{ data: keys.map(function(k){ return today.byDept[k]; }), backgroundColor: keys.map(function(k){ return deptPalette[k]; }), borderWidth: 2, borderColor: c.surface || '#fff' }]
-          },
-          options: {
-            responsive:true, maintainAspectRatio:false, cutout:'62%',
+          data: { labels: payKeys, datasets: [{ data: payKeys.map(function(k){ return payMap[k]; }), backgroundColor: payKeys.map(function(k,i){ return payPalette[i % payPalette.length]; }), borderWidth: 2, borderColor: c.surface || '#fff' }] },
+          options: { responsive:true, maintainAspectRatio:false, cutout:'62%',
             plugins:{ legend:{ position:'bottom', labels:{ color:c.muted, font:{ family:'Inter', size:11.5 }, padding:14, usePointStyle:true } },
-              tooltip:{ callbacks:{ label:function(ctx){ return ctx.label + ': ' + money(ctx.parsed); } } } }
-          }
+              tooltip:{ callbacks:{ label:function(ctx){ return ctx.label + ': ' + money(ctx.parsed); } } } } }
+        });
+      }
+    }
+
+    // 4. Restaurant revenue
+    var restDay = {}; dayKeys.forEach(function(k){ restDay[k] = 0; });
+    list.filter(function(i){ return i.department === 'restaurant'; }).forEach(function(inv){ var k = localDateStr(new Date(inv.date)); if(restDay.hasOwnProperty(k)) restDay[k] += (Number(inv.total)||0); });
+    dashRestaurantChartInst = lineChart('dashRestaurantRevenueChart', dashRestaurantChartInst, dayLabels, dayKeys.map(function(k){ return restDay[k]; }), c.success);
+
+    // 5. Banquet revenue
+    var banqDay = {}; dayKeys.forEach(function(k){ banqDay[k] = 0; });
+    list.filter(function(i){ return i.department === 'banquet'; }).forEach(function(inv){ var k = localDateStr(new Date(inv.date)); if(banqDay.hasOwnProperty(k)) banqDay[k] += (Number(inv.total)||0); });
+    dashBanquetChartInst = lineChart('dashBanquetRevenueChart', dashBanquetChartInst, dayLabels, dayKeys.map(function(k){ return banqDay[k]; }), c.info);
+
+    // 6. Most booked rooms
+    var roomCounts = {};
+    (state.allRoomBookings||[]).filter(function(b){
+      if(b.status === 'cancelled') return false;
+      var t = new Date(b.checkIn).getTime();
+      return t >= range.start.getTime() && t <= range.end.getTime();
+    }).forEach(function(b){ roomCounts[b.roomId] = (roomCounts[b.roomId]||0) + 1; });
+    var topRoomIds = Object.keys(roomCounts).sort(function(a,b){ return roomCounts[b]-roomCounts[a]; }).slice(0,8);
+    var roomsCanvas = document.getElementById('dashTopRoomsChart');
+    var roomsEmpty = document.getElementById('dashTopRoomsEmpty');
+    if(roomsCanvas){
+      if(dashTopRoomsChartInst) dashTopRoomsChartInst.destroy();
+      if(topRoomIds.length === 0){
+        roomsCanvas.style.display = 'none'; if(roomsEmpty) roomsEmpty.style.display = 'block';
+      } else {
+        roomsCanvas.style.display = 'block'; if(roomsEmpty) roomsEmpty.style.display = 'none';
+        var roomLabels = topRoomIds.map(function(id){ var r = state.rooms.find(function(x){ return x.id === id; }); return r ? 'Room ' + r.roomNo : 'Room'; });
+        dashTopRoomsChartInst = new Chart(roomsCanvas, {
+          type: 'bar',
+          data: { labels: roomLabels, datasets: [{ data: topRoomIds.map(function(id){ return roomCounts[id]; }), backgroundColor: c.accent, borderRadius: 5, maxBarThickness: 26 }] },
+          options: { indexAxis:'y', responsive:true, maintainAspectRatio:false,
+            plugins:{ legend:{ display:false }, tooltip:{ callbacks:{ label:function(ctx){ return ctx.parsed.x + ' bookings'; } } } },
+            scales:{ x:{ grid:{ color:c.grid }, ticks:{ color:c.muted, font:{ family:'Inter', size:11 }, precision:0 } }, y:{ grid:{ display:false }, ticks:{ color:c.muted, font:{ family:'Inter', size:11.5 } } } } }
+        });
+      }
+    }
+
+    // 7. Most popular food items
+    var dishMap = {};
+    list.filter(function(inv){ return inv.department === 'restaurant'; }).forEach(function(inv){
+      (inv.items||[]).forEach(function(it){ if(!dishMap[it.name]) dishMap[it.name] = 0; dishMap[it.name] += Number(it.qty)||0; });
+    });
+    var topDishNames = Object.keys(dishMap).sort(function(a,b){ return dishMap[b]-dishMap[a]; }).slice(0,8);
+    var foodCanvas = document.getElementById('dashTopFoodChart');
+    var foodEmpty = document.getElementById('dashTopFoodEmpty');
+    if(foodCanvas){
+      if(dashTopFoodChartInst) dashTopFoodChartInst.destroy();
+      if(topDishNames.length === 0){
+        foodCanvas.style.display = 'none'; if(foodEmpty) foodEmpty.style.display = 'block';
+      } else {
+        foodCanvas.style.display = 'block'; if(foodEmpty) foodEmpty.style.display = 'none';
+        dashTopFoodChartInst = new Chart(foodCanvas, {
+          type: 'bar',
+          data: { labels: topDishNames, datasets: [{ data: topDishNames.map(function(n){ return dishMap[n]; }), backgroundColor: c.success, borderRadius: 5, maxBarThickness: 26 }] },
+          options: { indexAxis:'y', responsive:true, maintainAspectRatio:false,
+            plugins:{ legend:{ display:false }, tooltip:{ callbacks:{ label:function(ctx){ return ctx.parsed.x + ' sold'; } } } },
+            scales:{ x:{ grid:{ color:c.grid }, ticks:{ color:c.muted, font:{ family:'Inter', size:11 }, precision:0 } }, y:{ grid:{ display:false }, ticks:{ color:c.muted, font:{ family:'Inter', size:11.5 } } } } }
         });
       }
     }
   }
+  // Monthly revenue — fixed to the last 12 months, independent of the range filter above.
+  function renderMonthlyRevenueChart(){
+    if(typeof Chart === 'undefined') return;
+    var c = chartColors();
+    var months = [];
+    var d = new Date(); d.setDate(1);
+    for(var i = 11; i >= 0; i--){
+      var m = new Date(d.getFullYear(), d.getMonth() - i, 1);
+      months.push({ key: m.getFullYear()+'-'+m.getMonth(), label: m.toLocaleDateString('en-IN',{month:'short', year:'2-digit'}) });
+    }
+    var byMonth = {}; months.forEach(function(m){ byMonth[m.key] = 0; });
+    buildDashboardInvoices().forEach(function(inv){
+      var dt = new Date(inv.date);
+      var key = dt.getFullYear()+'-'+dt.getMonth();
+      if(byMonth.hasOwnProperty(key)) byMonth[key] += (Number(inv.total)||0);
+    });
+    var canvas = document.getElementById('dashMonthlyRevenueChart');
+    if(!canvas) return;
+    if(dashMonthlyChartInst) dashMonthlyChartInst.destroy();
+    dashMonthlyChartInst = new Chart(canvas, {
+      type: 'bar',
+      data: { labels: months.map(function(m){ return m.label; }), datasets: [{ data: months.map(function(m){ return byMonth[m.key]; }), backgroundColor: c.primary, borderRadius: 5, maxBarThickness: 34 }] },
+      options: { responsive:true, maintainAspectRatio:false,
+        plugins:{ legend:{ display:false }, tooltip:{ callbacks:{ label:function(ctx){ return money(ctx.parsed.y); } } } },
+        scales:{ x:{ grid:{ display:false }, ticks:{ color:c.muted, font:{ family:'Inter', size:10.5 } } },
+          y:{ grid:{ color:c.grid }, ticks:{ color:c.muted, font:{ family:'Inter', size:11 }, callback:function(v){ return state.restaurant.currency + v; } } } }
+      }
+    });
+  }
+
   function renderSalesAnalysis(){
     return api.getInvoices('restaurant').then(function(rows){
       state.restaurantInvoices = rows.map(mapServerRestaurantInvoiceListRow);
