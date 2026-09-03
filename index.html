@@ -1809,35 +1809,6 @@ tr.top-row td{background:var(--accent-tint);}
           <p class="hint" style="margin:6px 0 16px;">Set category, bed type, AC, capacity, price and amenities for each room. Configuration only — bookings happen from the Staff Room Management screen.</p>
           <div id="roomInventoryWrap"></div>
         </div>
-
-        <div class="card section-block" style="margin-top:20px;">
-          <p class="section-block-label">Check-in / check-out policy</p>
-          <p class="hint" style="margin-top:-6px;">Set your standard times and an hourly fee — an early check-in or late checkout is then automatically added as an extra charge on the guest's invoice. Leave a fee at 0 to turn that charge off entirely.</p>
-          <div class="grid-2">
-            <div class="field">
-              <label for="setStdCheckIn">Standard check-in time</label>
-              <input type="time" id="setStdCheckIn">
-            </div>
-            <div class="field">
-              <label for="setStdCheckOut">Standard check-out time</label>
-              <input type="time" id="setStdCheckOut">
-            </div>
-          </div>
-          <div class="grid-2" style="margin-bottom:0;">
-            <div class="field" style="margin-bottom:0;">
-              <label for="setEarlyCheckinFee">Early check-in fee (per hour early)</label>
-              <input type="number" id="setEarlyCheckinFee" min="0" step="1" placeholder="0">
-            </div>
-            <div class="field" style="margin-bottom:0;">
-              <label for="setLateCheckoutFee">Late checkout fee (per hour late)</label>
-              <input type="number" id="setLateCheckoutFee" min="0" step="1" placeholder="0">
-            </div>
-          </div>
-          <div style="margin-top:18px;display:flex;align-items:center;gap:14px;">
-            <button class="btn accent" id="saveRoomPolicyBtn">Save policy</button>
-            <span id="roomPolicySavedNote" style="font-size:12.5px;color:var(--success);font-weight:600;display:none;">Saved</span>
-          </div>
-        </div>
       </section>
 
       <!-- ROOM MANAGEMENT — AVAILABILITY (Admin only: read-only view, no booking actions) -->
@@ -1952,11 +1923,6 @@ tr.top-row td{background:var(--accent-tint);}
                   <input type="date" id="roomCheckOut">
                 </div>
               </div>
-              <div class="field" id="roomArrivalTimeWrap" style="margin-top:16px;display:none;">
-                <label for="roomArrivalTime">Actual arrival time</label>
-                <input type="time" id="roomArrivalTime">
-                <p class="hint" id="roomArrivalTimeHint">Only used to work out an early check-in fee, if one applies.</p>
-              </div>
               <p class="hint" id="roomSelectedInfo" style="margin:12px 0 0;"></p>
             </div>
             <div class="card">
@@ -1987,11 +1953,6 @@ tr.top-row td{background:var(--accent-tint);}
             </div>
             <div class="ticket-lines" id="roomTicketLines"></div>
             <div class="ticket-totals" id="roomTicketTotals"></div>
-            <div class="field" style="margin-top:16px;">
-              <label for="roomAdvanceAmount">Advance payment received now (optional)</label>
-              <input type="number" id="roomAdvanceAmount" min="0" step="1" placeholder="0">
-              <p class="hint" id="roomBalanceHint" style="margin-top:6px;">Leave blank if collecting full payment now.</p>
-            </div>
             <div class="payment-method-wrap">
               <label>Payment method</label>
               <div class="payment-method-btns" id="roomPaymentMethodBtns">
@@ -3110,7 +3071,7 @@ tr.top-row td{background:var(--accent-tint);}
       price: parseFloat(r.price), amenities: r.amenities || [], extraBedAllowed: r.extra_bed_allowed,
       extraBedPrice: parseFloat(r.extra_bed_price || 0), outOfOrder: r.out_of_order,
       status: r.booking_id ? 'occupied' : 'available',
-      booking: r.booking_id ? { id: r.booking_id, guestName: r.guest_name, guestPhone: r.guest_phone, checkIn: r.check_in, checkOut: r.check_out, invoiceId: r.invoice_id, advanceAmount: parseFloat(r.advance_amount)||0, balancePaid: !!r.balance_paid } : null
+      booking: r.booking_id ? { id: r.booking_id, guestName: r.guest_name, guestPhone: r.guest_phone, checkIn: r.check_in, checkOut: r.check_out, invoiceId: r.invoice_id } : null
     };
   }
   // Pulls floors/categories/rooms fresh from the cloud database. Call this after
@@ -5174,7 +5135,6 @@ tr.top-row td{background:var(--accent-tint);}
   }
   function renderRoomTicket(){
     renderDraftTicket(roomDraft, { invoiceNo:'roomTicketInvoiceNo', lines:'roomTicketLines', totals:'roomTicketTotals' });
-    updateRoomBalanceHint();
   }
   function renderBanquetTicket(){
     renderDraftTicket(banquetDraft, { invoiceNo:'banquetTicketInvoiceNo', lines:'banquetTicketLines', totals:'banquetTicketTotals' });
@@ -5405,32 +5365,7 @@ tr.top-row td{background:var(--accent-tint);}
     renderRoomFloorList();
     renderRoomCategoryList();
     renderRoomInventoryTable();
-    document.getElementById('setStdCheckIn').value = state.restaurant.standardCheckInTime || '12:00';
-    document.getElementById('setStdCheckOut').value = state.restaurant.standardCheckOutTime || '11:00';
-    document.getElementById('setEarlyCheckinFee').value = state.restaurant.earlyCheckinFeePerHour || 0;
-    document.getElementById('setLateCheckoutFee').value = state.restaurant.lateCheckoutFeePerHour || 0;
   }
-  document.getElementById('saveRoomPolicyBtn').addEventListener('click', function(){
-    var btn = this;
-    var updated = Object.assign({}, state.restaurant, {
-      standardCheckInTime: document.getElementById('setStdCheckIn').value || '12:00',
-      standardCheckOutTime: document.getElementById('setStdCheckOut').value || '11:00',
-      earlyCheckinFeePerHour: parseFloat(document.getElementById('setEarlyCheckinFee').value) || 0,
-      lateCheckoutFeePerHour: parseFloat(document.getElementById('setLateCheckoutFee').value) || 0
-    });
-    setBtnLoading(btn, true, 'Saving…');
-    api.updateRestaurantSettings({ tableCount: state.tableCount, extra: updated }).then(function(){
-      state.restaurant = updated;
-      setBtnLoading(btn, false, null, 'Save policy');
-      showToast('Check-in / check-out policy saved');
-      var note = document.getElementById('roomPolicySavedNote');
-      note.style.display = 'inline';
-      setTimeout(function(){ note.style.display = 'none'; }, 2000);
-    }).catch(function(e){
-      setBtnLoading(btn, false, null, 'Save policy');
-      showToast(e.message, 'error');
-    });
-  });
 
   // ---------- room edit modal (Admin only) ----------
   var roomModalScrim = wireModal('roomModalScrim', ['roomModalClose','roomModalCancel']);
@@ -5627,7 +5562,7 @@ tr.top-row td{background:var(--accent-tint);}
     }
     renderRoomPickerPanel(rooms, sel.value);
     updateRoomSelectedInfo();
-    api.getInvoices('room').then(function(rows){ state.roomInvoices = rows.map(mapServerRoomInvoiceListRow); }).catch(function(){}).then(renderOccupiedRoomsList);
+    renderOccupiedRoomsList();
   }
   // Builds the rich, card-based room picker (Room Booking page). Keeps the
   // underlying <select id="roomNo"> as the real source of truth — clicking a
@@ -5693,56 +5628,7 @@ tr.top-row td{background:var(--accent-tint);}
     });
   })();
   var roomNoSelectEl = document.getElementById('roomNo');
-  if(roomNoSelectEl) roomNoSelectEl.addEventListener('change', function(){ updateRoomSelectedInfo(); autofillRoomCharge(); updateEarlyCheckinFeeLineItem(); });
-
-  // ---------- early check-in fee (auto-managed line item) ----------
-  var EARLY_CHECKIN_FEE_ITEM_ID = 'auto-early-checkin-fee';
-  function timeToMinutes(t){ var parts = t.split(':'); return parseInt(parts[0],10)*60 + (parseInt(parts[1],10)||0); }
-  function updateEarlyCheckinFeeLineItem(){
-    roomDraft.items = roomDraft.items.filter(function(it){ return it.id !== EARLY_CHECKIN_FEE_ITEM_ID; });
-    var checkInVal = document.getElementById('roomCheckIn').value;
-    var wrap = document.getElementById('roomArrivalTimeWrap');
-    var isToday = checkInVal && checkInVal === localDateStr(new Date());
-    wrap.style.display = isToday ? '' : 'none';
-    if(isToday){
-      var timeInput = document.getElementById('roomArrivalTime');
-      if(!timeInput.value){
-        var now = new Date();
-        timeInput.value = String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
-      }
-      var feePerHour = state.restaurant.earlyCheckinFeePerHour || 0;
-      var stdCheckIn = state.restaurant.standardCheckInTime || '12:00';
-      if(feePerHour > 0 && timeInput.value){
-        var arrivalMins = timeToMinutes(timeInput.value);
-        var stdMins = timeToMinutes(stdCheckIn);
-        if(arrivalMins < stdMins){
-          var hoursEarly = Math.ceil((stdMins - arrivalMins) / 60);
-          var fee = hoursEarly * feePerHour;
-          roomDraft.items.push({ id: EARLY_CHECKIN_FEE_ITEM_ID, name: 'Early check-in fee (' + hoursEarly + ' hr' + (hoursEarly===1?'':'s') + ' early)', price: fee, qty: 1, amount: fee });
-        }
-      }
-    }
-    renderRoomTicket();
-  }
-  document.getElementById('roomCheckIn').addEventListener('change', updateEarlyCheckinFeeLineItem);
-  document.getElementById('roomArrivalTime').addEventListener('input', updateEarlyCheckinFeeLineItem);
-  document.getElementById('roomAdvanceAmount').addEventListener('input', updateRoomBalanceHint);
-  function updateRoomBalanceHint(){
-    var hintEl = document.getElementById('roomBalanceHint');
-    if(!hintEl) return;
-    var t = computeTotals(roomDraft.items, state.restaurant.taxRate);
-    var advance = parseFloat(document.getElementById('roomAdvanceAmount').value) || 0;
-    if(advance > t.total && t.total > 0){
-      hintEl.textContent = 'Advance can\'t exceed the total (' + money(t.total) + ').';
-      hintEl.style.color = 'var(--danger)';
-    } else if(advance > 0){
-      hintEl.textContent = 'Balance due at checkout: ' + money(t.total - advance) + '.';
-      hintEl.style.color = 'var(--text-secondary)';
-    } else {
-      hintEl.textContent = 'Leave blank if collecting full payment now.';
-      hintEl.style.color = 'var(--text-muted)';
-    }
-  }
+  if(roomNoSelectEl) roomNoSelectEl.addEventListener('change', function(){ updateRoomSelectedInfo(); autofillRoomCharge(); });
   var roomCheckInEl = document.getElementById('roomCheckIn');
   if(roomCheckInEl) roomCheckInEl.addEventListener('change', autofillRoomCharge);
   var roomCheckOutEl = document.getElementById('roomCheckOut');
@@ -5758,98 +5644,33 @@ tr.top-row td{background:var(--accent-tint);}
     }
     var rows = occupied.map(function(r){
       var b = r.booking || {};
-      var inv = (state.roomInvoices||[]).find(function(i){ return i.id === b.invoiceId; });
-      var total = inv ? inv.total : null;
-      var balance = total != null ? total - (b.advanceAmount||0) : null;
-      var paymentHtml = '<span style="color:var(--text-muted);font-size:12px;">—</span>';
-      if(total != null){
-        if(!b.advanceAmount || b.advanceAmount <= 0){
-          paymentHtml = '<span style="color:var(--text-muted);font-size:12px;">Full amount paid</span>';
-        } else if(b.balancePaid || balance <= 0){
-          paymentHtml = '<span class="badge success">Fully paid</span>';
-        } else {
-          paymentHtml = 'Advance ' + money(b.advanceAmount) + '<br><span style="color:var(--text-muted);font-size:12px;">Balance ' + money(balance) + ' due</span>'
-            + '<br><button class="btn ghost small" data-mark-room-balance="'+b.id+'" style="margin-top:4px;">Mark balance received</button>';
-        }
-      }
       return '<tr>'
         + '<td data-label="Room No." class="code">'+r.roomNo+'</td>'
         + '<td data-label="Guest">'+escapeHtml(b.guestName||'—')+'</td>'
         + '<td data-label="Phone">'+escapeHtml(b.guestPhone||'—')+'</td>'
-        + '<td data-label="Payment">'+paymentHtml+'</td>'
         + '<td data-label="Check-out">'+escapeHtml(b.checkOut||'—')+'</td>'
         + '<td data-label="Actions"><button class="btn ghost small" data-checkout-room="'+r.id+'">Check out</button></td>'
         + '</tr>';
     }).join('');
-    wrap.innerHTML = '<div class="table-scroll"><table class="dtable"><thead><tr><th>Room No.</th><th>Guest</th><th>Phone</th><th>Payment</th><th>Check-out</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div>';
-    wrap.querySelectorAll('[data-mark-room-balance]').forEach(function(btn){
-      btn.addEventListener('click', function(){
-        api.markRoomBalancePaid(btn.dataset.markRoomBalance).then(function(){
-          showToast('Balance marked as received');
-          return fetchRoomSetupFromServer();
-        }).then(renderOccupiedRoomsList).catch(function(e){ showToast(e.message, 'error'); });
-      });
-    });
+    wrap.innerHTML = '<div class="table-scroll"><table class="dtable"><thead><tr><th>Room No.</th><th>Guest</th><th>Phone</th><th>Check-out</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div>';
     wrap.querySelectorAll('[data-checkout-room]').forEach(function(btn){
       btn.addEventListener('click', function(){
         var r = state.rooms.find(function(x){ return x.id === btn.dataset.checkoutRoom; });
         if(!r || !r.booking) return;
-        var lateFee = computeLateCheckoutFee();
-        var desc = 'The room will become available for new bookings.';
-        if(lateFee.hoursLate > 0){
-          desc = 'Checking out ' + lateFee.hoursLate + ' hour' + (lateFee.hoursLate===1?'':'s') + ' past the standard checkout time — a late checkout fee of ' + money(lateFee.fee) + ' will be added as a new invoice.';
-        }
         openConfirm({
           title: 'Check out Room ' + r.roomNo + '?',
-          desc: desc,
+          desc: 'The room will become available for new bookings.',
           confirmLabel: 'Check out',
           onConfirm: function(){
-            api.checkoutRoomBooking(r.booking.id).then(function(){
-              if(lateFee.fee <= 0) return null;
-              return api.createInvoice({
-                department: 'room', customerName: r.booking.guestName, customerPhone: r.booking.guestPhone,
-                roomBookingId: r.booking.id, subtotal: lateFee.fee, discountAmount: 0, promoCode: null,
-                totalAmount: lateFee.fee, paymentMethod: 'Cash',
-                items: [{ name: 'Late checkout fee (' + lateFee.hoursLate + ' hr' + (lateFee.hoursLate===1?'':'s') + ' late)', quantity: 1, unitPrice: lateFee.fee, lineTotal: lateFee.fee }]
-              });
-            }).then(function(feeInvoice){
-              return fetchRoomSetupFromServer().then(function(){ return feeInvoice; });
-            }).then(function(feeInvoice){
+            api.checkoutRoomBooking(r.booking.id).then(function(){ return fetchRoomSetupFromServer(); }).then(function(){
               showToast('Room ' + r.roomNo + ' checked out');
               renderRoomBookingPage();
               renderRoomAvailability();
-              renderRoomHistory();
-              renderDashboard();
-              if(feeInvoice){
-                openInvoiceOverlay({
-                  id: feeInvoice.id, invoiceNo: feeInvoice.invoice_no, date: feeInvoice.created_at,
-                  customerName: r.booking.guestName, customerPhone: r.booking.guestPhone,
-                  refLabel: 'Room', refValue: String(r.roomNo), metaRows: [{ label:'Charge', value:'Late checkout fee' }],
-                  department: 'room',
-                  items: [{ name: 'Late checkout fee (' + lateFee.hoursLate + ' hr' + (lateFee.hoursLate===1?'':'s') + ' late)', price: lateFee.fee, qty: 1, amount: lateFee.fee }],
-                  subtotal: lateFee.fee, cgst: 0, sgst: 0, tax: 0, preDiscountTotal: lateFee.fee, discountAmount: 0, promoCode: null, total: lateFee.fee,
-                  paymentMethod: 'Cash', restaurant: Object.assign({}, state.restaurant),
-                  createdByStaffId: state.session.staffId || '', createdByName: state.session.name || state.session.staffId || 'Staff'
-                });
-              }
             }).catch(function(e){ showToast(e.message, 'error'); });
           }
         });
       });
     });
-  }
-  // Compares the current time against the standard checkout time from Room
-  // Setup's policy card. Returns { hoursLate, fee } — both 0 if not late,
-  // or if the fee-per-hour is 0 (feature turned off).
-  function computeLateCheckoutFee(){
-    var feePerHour = state.restaurant.lateCheckoutFeePerHour || 0;
-    if(feePerHour <= 0) return { hoursLate: 0, fee: 0 };
-    var stdMins = timeToMinutes(state.restaurant.standardCheckOutTime || '11:00');
-    var now = new Date();
-    var nowMins = now.getHours() * 60 + now.getMinutes();
-    if(nowMins <= stdMins) return { hoursLate: 0, fee: 0 };
-    var hoursLate = Math.ceil((nowMins - stdMins) / 60);
-    return { hoursLate: hoursLate, fee: hoursLate * feePerHour };
   }
 
   function generateBookingInvoice(opts){
@@ -5926,28 +5747,14 @@ tr.top-row td{background:var(--accent-tint);}
       return;
     }
     err.classList.remove('show');
-    var t = computeTotals(roomDraft.items, state.restaurant.taxRate);
-    var advanceAmount = parseFloat(document.getElementById('roomAdvanceAmount').value) || 0;
-    if(advanceAmount > t.total){
-      err.textContent = 'Advance can\'t exceed the total (' + money(t.total) + ').';
-      err.classList.add('show');
-      return;
-    }
-    var isToday = checkIn === localDateStr(new Date());
-    var arrivalTime = document.getElementById('roomArrivalTime').value;
-    var checkInISO = checkIn ? (checkIn + 'T' + (isToday && arrivalTime ? arrivalTime : (state.restaurant.standardCheckInTime || '12:00')) + ':00') : new Date().toISOString();
     var metaRows = [{ label:'Category', value: roomCategoryName(room.categoryId) }];
-    if(checkIn) metaRows.push({ label:'Check-in', value: checkIn + (isToday && arrivalTime ? ' ' + arrivalTime : '') });
+    if(checkIn) metaRows.push({ label:'Check-in', value: checkIn });
     if(checkOut) metaRows.push({ label:'Check-out', value: checkOut });
-    if(advanceAmount > 0){
-      metaRows.push({ label:'Advance paid', value: money(advanceAmount) });
-      metaRows.push({ label:'Balance due', value: money(t.total - advanceAmount) });
-    }
     generateRoomInvoiceViaServer({
       btn: this, room: room, nameVal: name, phoneVal: phone,
       customerEmail: email, idProofType: idType, idProofNumber: idNumber, idProofMasked: maskIdProof(idNumber),
-      checkIn: checkInISO, checkOut: checkOut, advanceAmount: advanceAmount, metaRows: metaRows, errId: 'roomBookingError',
-      resetIds: ['roomGuestName','roomGuestPhone','roomGuestEmail','roomIdType','roomIdNumber','roomNo','roomCheckIn','roomCheckOut','roomArrivalTime','roomAdvanceAmount']
+      checkIn: checkIn, checkOut: checkOut, metaRows: metaRows, errId: 'roomBookingError',
+      resetIds: ['roomGuestName','roomGuestPhone','roomGuestEmail','roomIdType','roomIdNumber','roomNo','roomCheckIn','roomCheckOut']
     });
   });
 
@@ -5962,8 +5769,7 @@ tr.top-row td{background:var(--accent-tint);}
     api.createRoomBooking({
       roomId: opts.room.id, guestName: opts.nameVal, guestPhone: opts.phoneVal,
       guestEmail: opts.customerEmail || null, idProofType: opts.idProofType || null, idProofNumber: opts.idProofNumber || null,
-      checkIn: opts.checkIn || new Date().toISOString(), checkOut: opts.checkOut || null,
-      advanceAmount: opts.advanceAmount || 0, advancePaymentMethod: roomDraft.paymentMethod
+      checkIn: opts.checkIn || new Date().toISOString(), checkOut: opts.checkOut || null
     }).then(function(booking){
       return api.createInvoice({
         department: 'room', customerName: opts.nameVal, customerPhone: opts.phoneVal,
@@ -5982,7 +5788,7 @@ tr.top-row td{background:var(--accent-tint);}
         items: roomDraft.items.map(function(l){ return { name:l.name, price:l.price, qty:l.qty, amount:l.amount }; }),
         subtotal: t.subtotal, cgst: t.cgst, sgst: t.sgst, tax: t.tax,
         preDiscountTotal: t.total, discountAmount: 0, promoCode: null, total: t.total,
-        paymentMethod: roomDraft.paymentMethod, advanceAmount: opts.advanceAmount || 0,
+        paymentMethod: roomDraft.paymentMethod,
         restaurant: Object.assign({}, state.restaurant),
         createdByStaffId: state.session.staffId || '',
         createdByName: state.session.name || state.session.staffId || 'Staff'
@@ -5995,7 +5801,6 @@ tr.top-row td{background:var(--accent-tint);}
       opts.resetIds.forEach(function(id){ var el = document.getElementById(id); if(el) el.value = ''; });
       document.querySelectorAll('#roomPaymentMethodBtns .pm-btn').forEach(function(b){ b.classList.toggle('active', b.dataset.method === 'Cash'); });
       roomDraft.paymentMethod = 'Cash';
-      document.getElementById('roomArrivalTimeWrap').style.display = 'none';
       renderRoomTicket();
       renderRoomBookingPage();
       renderRoomAvailability();
@@ -7710,7 +7515,6 @@ tr.top-row td{background:var(--accent-tint);}
       subtotal: Number(row.subtotal), tax: tax, cgst: tax/2, sgst: tax/2,
       preDiscountTotal: Number(row.subtotal) + tax, discountAmount: Number(row.discount_amount) || 0,
       promoCode: row.promo_code, total: Number(row.total_amount), paymentMethod: row.payment_method,
-      advanceAmount: parseFloat(row.room_advance_amount) || 0, balancePaid: !!row.room_balance_paid,
       restaurant: Object.assign({}, state.restaurant),
       createdByStaffId: row.created_by_staff_id, createdByName: staffAcct ? staffAcct.name : (row.created_by_staff_id || 'Admin')
     };
@@ -7765,13 +7569,6 @@ tr.top-row td{background:var(--accent-tint);}
       var checked = roomHistorySelected[inv.id] ? ' checked' : '';
       var checkIn = metaRowValue(inv, 'Check-in') || '—';
       var checkOut = metaRowValue(inv, 'Check-out') || '—';
-      var balance = inv.total - (inv.advanceAmount||0);
-      var paymentHtml = !inv.advanceAmount
-        ? '<span style="color:var(--text-muted);font-size:12px;">Full amount paid</span>'
-        : (inv.balancePaid || balance <= 0)
-          ? '<span class="badge success">Fully paid</span>'
-          : 'Advance ' + money(inv.advanceAmount) + '<br><span style="color:var(--text-muted);font-size:12px;">Balance ' + money(balance) + ' due</span>'
-            + (isStaff ? '' : '<br><button class="btn ghost small" data-mark-room-hist-balance="'+inv.id+'" style="margin-top:4px;">Mark received</button>');
       return '<tr class="'+(roomHistorySelected[inv.id]?'row-selected':'')+'">'
         + (isStaff ? '' : '<td data-label="" class="select-col"><input type="checkbox" class="row-check" data-select-room-invoice="'+inv.id+'"'+checked+'></td>')
         + '<td data-label="Invoice" class="code">'+escapeHtml(inv.invoiceNo)+'</td>'
@@ -7782,7 +7579,6 @@ tr.top-row td{background:var(--accent-tint);}
         + '<td data-label="Check-out">'+escapeHtml(checkOut)+'</td>'
         + '<td data-label="Staff">'+escapeHtml(inv.createdByName || '—')+'</td>'
         + '<td data-label="Total" class="amt">'+money(inv.total)+'</td>'
-        + '<td data-label="Payment">'+paymentHtml+'</td>'
         + '<td data-label="Actions" style="white-space:nowrap;">'
         + '<button class="btn ghost small" data-view-room="'+inv.id+'">View</button> '
         + (isStaff ? '' : '<button class="btn danger-ghost small" data-delete-room-invoice="'+inv.id+'">Delete</button>')
@@ -7791,20 +7587,8 @@ tr.top-row td{background:var(--accent-tint);}
     wrap.innerHTML = bulkBarHtml
       + '<div class="table-scroll"><table class="dtable"><thead><tr>'
       + (isStaff ? '' : '<th class="select-col"><input type="checkbox" id="roomHistorySelectAll"'+(allSelected?' checked':'')+'></th>')
-      + '<th>Invoice</th><th>Date</th><th>Room</th><th>Guest</th><th>Check-in</th><th>Check-out</th><th>Staff</th><th class="amt">Total</th><th>Payment</th><th></th>'
+      + '<th>Invoice</th><th>Date</th><th>Room</th><th>Guest</th><th>Check-in</th><th>Check-out</th><th>Staff</th><th class="amt">Total</th><th></th>'
       + '</tr></thead><tbody>'+rows+'</tbody></table></div>';
-    wrap.querySelectorAll('[data-mark-room-hist-balance]').forEach(function(btn){
-      btn.addEventListener('click', function(e){
-        e.stopPropagation();
-        api.markRoomBalancePaid(btn.dataset.markRoomHistBalance).then(function(){
-          showToast('Balance marked as received');
-          return api.getInvoices('room');
-        }).then(function(rows){
-          state.roomInvoices = rows.map(mapServerRoomInvoiceListRow);
-          renderRoomHistoryFromCache();
-        }).catch(function(e){ showToast(e.message, 'error'); });
-      });
-    });
 
     if(isStaff){
       wrap.querySelectorAll('[data-view-room]').forEach(function(b){

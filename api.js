@@ -125,7 +125,6 @@
     getRoomBookings: (status) => request('GET', '/rooms/bookings' + (status ? '?status=' + status : '')),
     createRoomBooking: (booking) => request('POST', '/rooms/bookings', booking),
     checkoutRoomBooking: (id) => request('PUT', '/rooms/bookings/' + id + '/checkout'),
-    markRoomBalancePaid: (id) => request('PUT', '/rooms/bookings/' + id + '/balance'),
     lookupRoomGuest: (roomNo) => request('GET', '/rooms/lookup/' + encodeURIComponent(roomNo)),
 
     // ---------- banquets ----------
