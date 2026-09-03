@@ -118,17 +118,24 @@ CREATE TABLE rooms (
 -- A room's "current status" (available/occupied) is DERIVED from whether it
 -- has a row here with status='active' — not stored redundantly on rooms.
 CREATE TABLE room_bookings (
-  id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  admin_id            UUID NOT NULL REFERENCES admins(id) ON DELETE CASCADE,
-  room_id             UUID NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
-  guest_name          TEXT NOT NULL,
-  guest_phone         TEXT,
-  check_in            TIMESTAMPTZ NOT NULL,
-  check_out           TIMESTAMPTZ,
-  status              TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','completed','cancelled')),
-  invoice_id          UUID,               -- FK added after invoices table exists
-  created_by_staff_id TEXT,
-  created_at          TIMESTAMPTZ NOT NULL DEFAULT now()
+  id                     UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  admin_id               UUID NOT NULL REFERENCES admins(id) ON DELETE CASCADE,
+  room_id                UUID NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+  guest_name             TEXT NOT NULL,
+  guest_phone            TEXT,
+  guest_email            TEXT,
+  id_proof_type          TEXT,
+  id_proof_number        TEXT,
+  check_in               TIMESTAMPTZ NOT NULL,
+  check_out              TIMESTAMPTZ,
+  status                 TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','completed','cancelled')),
+  invoice_id             UUID,               -- FK added after invoices table exists
+  advance_amount         NUMERIC(10,2) NOT NULL DEFAULT 0,
+  advance_payment_method TEXT,
+  balance_paid           BOOLEAN NOT NULL DEFAULT false,
+  balance_paid_at        TIMESTAMPTZ,
+  created_by_staff_id    TEXT,
+  created_at             TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX idx_room_bookings_room ON room_bookings(room_id);
 CREATE INDEX idx_room_bookings_admin ON room_bookings(admin_id);

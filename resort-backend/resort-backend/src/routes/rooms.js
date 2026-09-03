@@ -53,7 +53,8 @@ router.delete('/categories/:id', requireAdmin, async (req, res) => {
 router.get('/', requireDepartment('room'), async (req, res) => {
   const r = await pool.query(
     `SELECT rm.*,
-            b.id AS booking_id, b.guest_name, b.guest_phone, b.check_in, b.check_out, b.invoice_id
+            b.id AS booking_id, b.guest_name, b.guest_phone, b.check_in, b.check_out, b.invoice_id,
+            b.advance_amount, b.balance_paid
      FROM rooms rm
      LEFT JOIN room_bookings b ON b.room_id = rm.id AND b.status = 'active'
      WHERE rm.admin_id = $1
@@ -124,15 +125,19 @@ router.get('/lookup/:roomNo', async (req, res) => {
 router.post('/bookings', requireDepartment('room'), async (req, res) => {
   const b = req.body;
   const staffId = req.user.role === 'staff' ? req.user.staffId : null;
+  const advanceAmount = Number(b.advanceAmount) || 0;
+  if (advanceAmount < 0) return res.status(400).json({ error: 'Advance payment can\'t be negative.' });
   try {
     // Guard: room must not already have an active booking.
     const active = await pool.query("SELECT id FROM room_bookings WHERE room_id=$1 AND status='active'", [b.roomId]);
     if (active.rows.length > 0) return res.status(409).json({ error: 'That room is already occupied.' });
 
     const r = await pool.query(
-      `INSERT INTO room_bookings (admin_id, room_id, guest_name, guest_phone, guest_email, id_proof_type, id_proof_number, check_in, check_out, created_by_staff_id)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
-      [req.user.adminId, b.roomId, b.guestName, b.guestPhone, b.guestEmail || null, b.idProofType || null, b.idProofNumber || null, b.checkIn, b.checkOut || null, staffId]
+      `INSERT INTO room_bookings (admin_id, room_id, guest_name, guest_phone, guest_email, id_proof_type, id_proof_number, check_in, check_out,
+                                   advance_amount, advance_payment_method, created_by_staff_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`,
+      [req.user.adminId, b.roomId, b.guestName, b.guestPhone, b.guestEmail || null, b.idProofType || null, b.idProofNumber || null, b.checkIn, b.checkOut || null,
+       advanceAmount, advanceAmount > 0 ? (b.advancePaymentMethod || 'Cash') : null, staffId]
     );
     res.status(201).json(r.rows[0]);
   } catch (err) {
@@ -143,6 +148,16 @@ router.post('/bookings', requireDepartment('room'), async (req, res) => {
 router.put('/bookings/:id/checkout', requireDepartment('room'), async (req, res) => {
   const r = await pool.query(
     "UPDATE room_bookings SET status='completed', check_out=now() WHERE id=$1 AND admin_id=$2 RETURNING *",
+    [req.params.id, req.user.adminId]
+  );
+  if (!r.rows[0]) return res.status(404).json({ error: 'Booking not found.' });
+  res.json(r.rows[0]);
+});
+// PUT /api/rooms/bookings/:id/balance — mark the remaining balance as
+// collected (mirrors the same idea on the banquet side).
+router.put('/bookings/:id/balance', requireDepartment('room'), async (req, res) => {
+  const r = await pool.query(
+    "UPDATE room_bookings SET balance_paid = true, balance_paid_at = now() WHERE id=$1 AND admin_id=$2 RETURNING *",
     [req.params.id, req.user.adminId]
   );
   if (!r.rows[0]) return res.status(404).json({ error: 'Booking not found.' });
