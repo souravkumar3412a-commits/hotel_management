@@ -16,11 +16,14 @@ router.get('/', async (req, res) => {
   if (department) { params.push(department); where += ` AND i.department = $${params.length}`; }
   const r = await pool.query(
     `SELECT i.*, rm.room_no AS room_no, rb.check_in AS room_check_in, rb.check_out AS room_check_out,
+            rb.advance_amount AS room_advance_amount, rb.balance_paid AS room_balance_paid,
+            bb.advance_amount AS banquet_advance_amount, bb.balance_paid AS banquet_balance_paid,
             COALESCE((SELECT jsonb_agg(jsonb_build_object('name', li.name, 'quantity', li.quantity, 'unit_price', li.unit_price, 'line_total', li.line_total))
                       FROM invoice_line_items li WHERE li.invoice_id = i.id), '[]'::jsonb) AS items
      FROM invoices i
      LEFT JOIN room_bookings rb ON rb.id = i.room_booking_id
      LEFT JOIN rooms rm ON rm.id = rb.room_id
+     LEFT JOIN banquet_bookings bb ON bb.id = i.banquet_booking_id
      WHERE ${where} ORDER BY i.created_at DESC`,
     params
   );
