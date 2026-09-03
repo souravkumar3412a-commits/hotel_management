@@ -146,6 +146,8 @@ button{font-family:'Inter',sans-serif;cursor:pointer;}
 .gtn-links-end{flex:1;justify-content:flex-end;margin-left:16px;}
 .gtn-link{background:none;border:none;font-family:'Inter',sans-serif;font-size:13px;font-weight:600;color:#4b5768;cursor:pointer;padding:0;}
 .gtn-link:hover{color:#b98a2f;}
+.gtn-link-demo{display:flex;align-items:center;background:rgba(217,164,65,.12);border:1px solid rgba(217,164,65,.35);border-radius:20px;padding:6px 14px;color:#8a5c00;}
+.gtn-link-demo:hover{background:rgba(217,164,65,.22);color:#7a5000;}
 
 .gate-info-scrim{position:fixed;inset:0;background:rgba(3,8,16,.65);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;z-index:300;padding:20px;}
 .gate-info-scrim.show{display:flex;animation:fadeInUp .15s ease;}
@@ -410,6 +412,12 @@ textarea{resize:vertical;min-height:70px;font-family:'Inter',sans-serif;}
    APP SHELL
    ============================================================ */
 #appLayout{display:none;width:100%;}
+.demo-banner{display:flex;align-items:center;gap:10px;background:#1a2e13;color:#f3efe6;padding:9px 20px;font-size:12.5px;font-weight:600;flex-wrap:wrap;}
+.demo-banner svg{color:#d9a441;flex-shrink:0;}
+.demo-banner-timer{font-family:'IBM Plex Mono',monospace;background:rgba(217,164,65,.18);border:1px solid rgba(217,164,65,.4);border-radius:6px;padding:2px 9px;color:#e8c374;flex-shrink:0;}
+.demo-banner-exit{margin-left:auto;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.22);color:#f3efe6;border-radius:6px;padding:5px 12px;font-size:12px;font-weight:600;flex-shrink:0;}
+.demo-banner-exit:hover{background:rgba(255,255,255,.16);}
+@media (max-width:700px){.demo-banner span:not(.demo-banner-timer){display:none;} .demo-banner{justify-content:space-between;}}
 #appLayout.show{display:flex;}
 .layout{min-height:100vh;width:100%;display:flex;position:relative;}
 
@@ -1064,6 +1072,10 @@ tr.top-row td{background:var(--accent-tint);}
     </div>
     <div class="gtn-links gtn-links-end">
       <button type="button" class="gtn-link" id="gtnModulesBtn">Key Modules</button>
+      <button type="button" class="gtn-link gtn-link-demo" id="gtnDemoBtn">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:5px;vertical-align:-2px;"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        Dashboard Demo
+      </button>
     </div>
   </nav>
 
@@ -1276,6 +1288,12 @@ tr.top-row td{background:var(--accent-tint);}
 
 <!-- ============== APP ============== -->
 <div id="appLayout">
+  <div class="demo-banner" id="demoBanner" style="display:none;">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+    <span>You're viewing a live demo with sample data — nothing you do here is saved.</span>
+    <span class="demo-banner-timer" id="demoBannerTimer">1:40</span>
+    <button type="button" class="demo-banner-exit" id="demoBannerExit">Exit demo</button>
+  </div>
   <div class="layout">
     <div class="sidebar-scrim" id="sidebarScrim"></div>
     <aside class="sidebar" id="sidebarEl">
@@ -3582,7 +3600,7 @@ tr.top-row td{background:var(--accent-tint);}
   bindEnterToSubmit(['loginEmail','loginPassword'], 'loginBtn');
   bindEnterToSubmit(['staffLoginId','staffLoginPassword'], 'staffLoginBtn');
 
-  document.getElementById('logoutBtn').addEventListener('click', function(){
+  function exitApp(){
     state.session = null;
     api.logout();
     document.getElementById('appLayout').classList.remove('show');
@@ -3592,7 +3610,54 @@ tr.top-row td{background:var(--accent-tint);}
     document.getElementById('loginPassword').value = '';
     document.getElementById('staffLoginId').value = '';
     document.getElementById('staffLoginPassword').value = '';
+  }
+  document.getElementById('logoutBtn').addEventListener('click', function(){
+    if(api.isDemoMode()) endDashboardDemo(); else exitApp();
   });
+
+  // ================= DASHBOARD DEMO =================
+  // A fully sandboxed walkthrough — signs the visitor straight into a fake
+  // admin account with sample data (see api.js's DEMO_* constants), no real
+  // account or subscription involved. api.js intercepts every network call
+  // while this is active: reads return the sample data, writes are rejected
+  // with a friendly message — so nothing here can ever touch real data.
+  var DEMO_DURATION_SECONDS = 100;
+  var demoCountdownInterval = null;
+  function startDashboardDemo(){
+    api.enterDemoMode();
+    resetTenantState();
+    state.session = { role:'admin', demo:true, adminId:'demo', email:'demo@eazzio.app', firstName:'Demo', lastName:'Admin', photo:null };
+    loadTenantData('demo').then(function(){
+      proceedAfterLogin();
+      var banner = document.getElementById('demoBanner');
+      var timerEl = document.getElementById('demoBannerTimer');
+      banner.style.display = 'flex';
+      var remaining = DEMO_DURATION_SECONDS;
+      function tick(){
+        var m = Math.floor(remaining / 60), s = remaining % 60;
+        timerEl.textContent = m + ':' + String(s).padStart(2, '0');
+        if(remaining <= 0){
+          endDashboardDemo();
+          return;
+        }
+        remaining--;
+      }
+      tick();
+      demoCountdownInterval = setInterval(tick, 1000);
+    }).catch(function(e){
+      api.exitDemoMode();
+      showToast('Could not start the demo: ' + e.message, 'error');
+    });
+  }
+  function endDashboardDemo(){
+    if(demoCountdownInterval){ clearInterval(demoCountdownInterval); demoCountdownInterval = null; }
+    api.exitDemoMode();
+    document.getElementById('demoBanner').style.display = 'none';
+    exitApp();
+    showToast('Demo ended — create your own free account to keep going.', 'info');
+  }
+  document.getElementById('gtnDemoBtn').addEventListener('click', startDashboardDemo);
+  document.getElementById('demoBannerExit').addEventListener('click', endDashboardDemo);
 
   // ================= CONFIRM MODAL (replaces window.confirm) =================
   var confirmScrim = document.getElementById('confirmModalScrim');
