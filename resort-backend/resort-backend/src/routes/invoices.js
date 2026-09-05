@@ -57,6 +57,15 @@ router.delete('/:id', requireAdmin, async (req, res) => {
 // POST /api/invoices — creates an invoice; server assigns the sequential invoice number
 router.post('/', async (req, res) => {
   const b = req.body;
+  if (!['room', 'banquet', 'restaurant'].includes(b.department)) {
+    return res.status(400).json({ error: 'Invalid department.' });
+  }
+  // A staff member can only ever bill for their own department — without
+  // this, any valid staff login could create invoices (and consume the
+  // invoice number sequence) for a department they don't belong to.
+  if (req.user.role === 'staff' && req.user.department !== b.department) {
+    return res.status(403).json({ error: 'Your department does not have access to this.' });
+  }
   const staffId = req.user.role === 'staff' ? req.user.staffId : null;
   const client = await pool.connect();
   try {
@@ -125,8 +134,11 @@ router.post('/:id/pdf', async (req, res) => {
     return res.status(500).json({ error: 'PDF sharing isn\'t configured on the server yet.' });
   }
   try {
-    const inv = await pool.query('SELECT id FROM invoices WHERE id = $1 AND admin_id = $2', [req.params.id, req.user.adminId]);
+    const inv = await pool.query('SELECT id, department FROM invoices WHERE id = $1 AND admin_id = $2', [req.params.id, req.user.adminId]);
     if (!inv.rows[0]) return res.status(404).json({ error: 'Invoice not found.' });
+    if (req.user.role === 'staff' && req.user.department !== inv.rows[0].department) {
+      return res.status(403).json({ error: 'Your department does not have access to this.' });
+    }
 
     const buffer = Buffer.from(pdfBase64, 'base64');
     const bucket = 'invoices';

@@ -69,11 +69,7 @@ router.post('/admin/login', async (req, res) => {
   }
 });
 
-// POST /api/auth/admin/google — "Continue with Google" for the Admin role only.
-// The frontend gets a Google access token via Google Identity Services and sends
-// it here; we ask Google whose token it is, then either log that person in (if an
-// admin with that email already exists) or create a brand-new admin account for
-// them — this is standard "sign up or log in with Google" behavior in one step.
+// POST /api/auth/admin/google
 router.post('/admin/google', async (req, res) => {
   const { accessToken } = req.body;
   if (!accessToken) return res.status(400).json({ error: 'Missing Google access token.' });
@@ -94,7 +90,6 @@ router.post('/admin/google', async (req, res) => {
     let admin;
     if (existing.rows[0]) {
       admin = existing.rows[0];
-      // Link this Google account to an existing (e.g. password-based) admin with the same email.
       if (!admin.google_sub) {
         await pool.query('UPDATE admins SET google_sub = $1 WHERE id = $2', [profile.sub, admin.id]);
       }
@@ -119,8 +114,6 @@ router.post('/admin/google', async (req, res) => {
 });
 
 // POST /api/auth/staff/login
-// Staff log in with (staffId, password) only — no email, no admin selection —
-// exactly like the original UI. We look the staffId up across all tenants.
 router.post('/staff/login', async (req, res) => {
   const { staffId, password } = req.body;
   if (!staffId || !password) return res.status(400).json({ error: 'Staff ID and password are required.' });
@@ -138,9 +131,7 @@ router.post('/staff/login', async (req, res) => {
   }
 });
 
-// GET /api/auth/me — used on app load to check if the stored token is still
-// valid, and to get current profile info (name/photo may have changed since
-// the token was issued, so this always reads fresh from the database).
+// GET /api/auth/me
 router.get('/me', requireAuth, async (req, res) => {
   try {
     if (req.user.role === 'admin') {
@@ -159,7 +150,7 @@ router.get('/me', requireAuth, async (req, res) => {
   }
 });
 
-// PUT /api/auth/admin/profile — Admin editing their own name/photo.
+// PUT /api/auth/admin/profile
 router.put('/admin/profile', requireAuth, async (req, res) => {
   if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin access required.' });
   const { firstName, lastName, photo } = req.body;
@@ -177,8 +168,7 @@ router.put('/admin/profile', requireAuth, async (req, res) => {
   }
 });
 
-// PUT /api/auth/staff/profile — Staff editing their own name/photo (self-service;
-// staffId/department/password stay admin-controlled, matching existing rules).
+// PUT /api/auth/staff/profile
 router.put('/staff/profile', requireAuth, async (req, res) => {
   if (req.user.role !== 'staff') return res.status(403).json({ error: 'Staff access required.' });
   const { name, photo } = req.body;

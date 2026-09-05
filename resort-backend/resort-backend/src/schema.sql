@@ -9,7 +9,10 @@ CREATE TABLE admins (
   first_name    TEXT NOT NULL,
   last_name     TEXT NOT NULL,
   email         TEXT NOT NULL UNIQUE,
-  password_hash TEXT NOT NULL,          -- bcrypt hash, server-generated
+  password_hash TEXT,                    -- bcrypt hash, server-generated; NULL for Google-only accounts
+  photo_url     TEXT,
+  auth_provider TEXT NOT NULL DEFAULT 'password',   -- 'password' or 'google'
+  google_sub    TEXT UNIQUE,             -- Google's stable account id, once linked
   created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -20,6 +23,7 @@ CREATE TABLE staff (
   name          TEXT NOT NULL,
   email         TEXT,
   phone         TEXT,
+  photo_url     TEXT,
   department    TEXT NOT NULL CHECK (department IN ('room','banquet','restaurant')),
   password_hash TEXT NOT NULL,
   created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -197,6 +201,7 @@ CREATE TABLE invoices (
   promo_code          TEXT,
   total_amount        NUMERIC(10,2) NOT NULL DEFAULT 0,
   payment_method      TEXT,
+  pdf_url             TEXT,              -- set once a PDF copy is shared (see POST /invoices/:id/pdf)
   created_by_staff_id TEXT,
   created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE (admin_id, invoice_no)
