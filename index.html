@@ -6,8 +6,8 @@
 <title>Hotel Management System — Rooms, Banquets &amp; Restaurant</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<script src="assets/jspdf.umd.min.js"></script>
+<script src="assets/chart.umd.min.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 <script src="api.js"></script>
@@ -8295,8 +8295,17 @@ tr.top-row td{background:var(--accent-tint);}
       }
     });
   }
+  function chartLibMissingHtml(){
+    return '<p style="text-align:center;color:var(--text-muted);font-size:12.5px;padding-top:90px;margin:0;">Charts library failed to load.<br>Check your internet connection, then reload the page.</p>';
+  }
   function renderAnalyticsCharts(range){
-    if(typeof Chart === 'undefined') return;
+    if(typeof Chart === 'undefined'){
+      ['dashRevenueChart','dashOccupancyChart','dashPaymentChart','dashRestaurantRevenueChart','dashBanquetRevenueChart','dashTopRoomsChart','dashTopFoodChart'].forEach(function(id){
+        var canvas = document.getElementById(id);
+        if(canvas && canvas.parentElement) canvas.parentElement.innerHTML = chartLibMissingHtml();
+      });
+      return;
+    }
     var c = chartColors();
     document.getElementById('dashRangeLabel').textContent = dashboardRangeLabel(range);
     var list = invoicesInRange(range);
@@ -8421,7 +8430,11 @@ tr.top-row td{background:var(--accent-tint);}
   }
   // Monthly revenue — fixed to the last 12 months, independent of the range filter above.
   function renderMonthlyRevenueChart(){
-    if(typeof Chart === 'undefined') return;
+    if(typeof Chart === 'undefined'){
+      var mc = document.getElementById('dashMonthlyRevenueChart');
+      if(mc && mc.parentElement) mc.parentElement.innerHTML = chartLibMissingHtml();
+      return;
+    }
     var c = chartColors();
     var months = [];
     var d = new Date(); d.setDate(1);
