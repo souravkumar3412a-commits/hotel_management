@@ -2055,6 +2055,51 @@ tr.top-row td{background:var(--accent-tint);}
           <p class="hint" style="margin:6px 0 16px;">Set capacity, pricing basis, price and facilities for each hall. Configuration only — bookings happen from the Staff Banquet Management screen.</p>
           <div id="banquetHallWrap"></div>
         </div>
+
+        <div class="card section-block" style="margin-top:20px;">
+          <p class="section-block-label">Food &amp; decoration pricing</p>
+          <p class="hint" style="margin-top:-6px;">Set what each catering and decoration tier costs. Staff pick from these on the booking screen — change a price here and it applies to every new booking from then on.</p>
+          <p class="hint" style="margin:14px 0 8px;font-weight:700;color:var(--text-secondary);">Food packages (per plate)</p>
+          <div class="grid-2">
+            <div class="field" style="margin-bottom:0;">
+              <label for="setFoodVegStandard">Veg Standard</label>
+              <input type="number" id="setFoodVegStandard" min="0" step="1">
+            </div>
+            <div class="field" style="margin-bottom:0;">
+              <label for="setFoodVegPremium">Veg Premium</label>
+              <input type="number" id="setFoodVegPremium" min="0" step="1">
+            </div>
+          </div>
+          <div class="grid-2">
+            <div class="field" style="margin-bottom:0;">
+              <label for="setFoodNonvegStandard">Non-Veg Standard</label>
+              <input type="number" id="setFoodNonvegStandard" min="0" step="1">
+            </div>
+            <div class="field" style="margin-bottom:0;">
+              <label for="setFoodNonvegPremium">Non-Veg Premium</label>
+              <input type="number" id="setFoodNonvegPremium" min="0" step="1">
+            </div>
+          </div>
+          <p class="hint" style="margin:20px 0 8px;font-weight:700;color:var(--text-secondary);">Decoration (flat price)</p>
+          <div class="grid-3" style="margin-bottom:0;">
+            <div class="field" style="margin-bottom:0;">
+              <label for="setDecoBasic">Basic</label>
+              <input type="number" id="setDecoBasic" min="0" step="1">
+            </div>
+            <div class="field" style="margin-bottom:0;">
+              <label for="setDecoPremium">Premium</label>
+              <input type="number" id="setDecoPremium" min="0" step="1">
+            </div>
+            <div class="field" style="margin-bottom:0;">
+              <label for="setDecoLuxury">Luxury</label>
+              <input type="number" id="setDecoLuxury" min="0" step="1">
+            </div>
+          </div>
+          <div style="margin-top:18px;display:flex;align-items:center;gap:14px;">
+            <button class="btn accent" id="saveBanquetPricingBtn">Save pricing</button>
+            <span id="banquetPricingSavedNote" style="font-size:12.5px;color:var(--success);font-weight:600;display:none;">Saved</span>
+          </div>
+        </div>
       </section>
 
       <!-- BANQUET MANAGEMENT — AVAILABILITY (Admin only: read-only view, no booking actions) -->
@@ -2256,19 +2301,12 @@ tr.top-row td{background:var(--accent-tint);}
               <label for="banquetFoodPackage">Food package</label>
               <select id="banquetFoodPackage">
                 <option value="">No catering</option>
-                <option value="veg_standard">Veg Standard — ₹400/plate</option>
-                <option value="veg_premium">Veg Premium — ₹650/plate</option>
-                <option value="nonveg_standard">Non-Veg Standard — ₹550/plate</option>
-                <option value="nonveg_premium">Non-Veg Premium — ₹800/plate</option>
               </select>
             </div>
             <div class="field" style="margin-bottom:0;">
               <label for="banquetDecorationPackage">Decoration</label>
               <select id="banquetDecorationPackage">
                 <option value="">No decoration</option>
-                <option value="basic">Basic — ₹8,000</option>
-                <option value="premium">Premium — ₹18,000</option>
-                <option value="luxury">Luxury — ₹35,000</option>
               </select>
             </div>
           </div>
@@ -6239,11 +6277,50 @@ tr.top-row td{background:var(--accent-tint);}
     });
   }
   function renderBanquetSetup(){
+    fillBanquetPricingForm();
     return fetchBanquetHallsFromServer().then(function(){ renderBanquetHallTable(); }).catch(function(e){
       var wrap = document.getElementById('banquetHallWrap');
       if(wrap) wrap.innerHTML = '<p class="error-text show">'+escapeHtml(e.message)+'</p>';
     });
   }
+  function fillBanquetPricingForm(){
+    var food = getFoodPackages(), deco = getDecorationPackages();
+    document.getElementById('setFoodVegStandard').value = food.find(function(f){ return f.key==='veg_standard'; }).pricePerPlate;
+    document.getElementById('setFoodVegPremium').value = food.find(function(f){ return f.key==='veg_premium'; }).pricePerPlate;
+    document.getElementById('setFoodNonvegStandard').value = food.find(function(f){ return f.key==='nonveg_standard'; }).pricePerPlate;
+    document.getElementById('setFoodNonvegPremium').value = food.find(function(f){ return f.key==='nonveg_premium'; }).pricePerPlate;
+    document.getElementById('setDecoBasic').value = deco.find(function(d){ return d.key==='basic'; }).cost;
+    document.getElementById('setDecoPremium').value = deco.find(function(d){ return d.key==='premium'; }).cost;
+    document.getElementById('setDecoLuxury').value = deco.find(function(d){ return d.key==='luxury'; }).cost;
+  }
+  document.getElementById('saveBanquetPricingBtn').addEventListener('click', function(){
+    var btn = this;
+    var updated = Object.assign({}, state.restaurant, {
+      foodPackagePrices: {
+        veg_standard: parseFloat(document.getElementById('setFoodVegStandard').value) || 0,
+        veg_premium: parseFloat(document.getElementById('setFoodVegPremium').value) || 0,
+        nonveg_standard: parseFloat(document.getElementById('setFoodNonvegStandard').value) || 0,
+        nonveg_premium: parseFloat(document.getElementById('setFoodNonvegPremium').value) || 0
+      },
+      decorationPackagePrices: {
+        basic: parseFloat(document.getElementById('setDecoBasic').value) || 0,
+        premium: parseFloat(document.getElementById('setDecoPremium').value) || 0,
+        luxury: parseFloat(document.getElementById('setDecoLuxury').value) || 0
+      }
+    });
+    setBtnLoading(btn, true, 'Saving…');
+    api.updateRestaurantSettings({ tableCount: state.tableCount, extra: updated }).then(function(){
+      state.restaurant = updated;
+      setBtnLoading(btn, false, null, 'Save pricing');
+      showToast('Food & decoration pricing saved');
+      var note = document.getElementById('banquetPricingSavedNote');
+      note.style.display = 'inline';
+      setTimeout(function(){ note.style.display = 'none'; }, 2000);
+    }).catch(function(e){
+      setBtnLoading(btn, false, null, 'Save pricing');
+      showToast(e.message, 'error');
+    });
+  });
 
   // ---------- Admin: hall Add/Edit modal ----------
   var banquetHallModalScrim = wireModal('banquetHallModalScrim', ['banquetHallModalClose','banquetHallModalCancel']);
@@ -6684,17 +6761,39 @@ tr.top-row td{background:var(--accent-tint);}
   }
   document.getElementById('findBanquetHallsBtn').addEventListener('click', renderBanquetEligibleHalls);
 
-  var FOOD_PACKAGES = [
-    { key:'veg_standard', label:'Veg Standard', pricePerPlate:400 },
-    { key:'veg_premium', label:'Veg Premium', pricePerPlate:650 },
-    { key:'nonveg_standard', label:'Non-Veg Standard', pricePerPlate:550 },
-    { key:'nonveg_premium', label:'Non-Veg Premium', pricePerPlate:800 }
-  ];
-  var DECORATION_PACKAGES = [
-    { key:'basic', label:'Basic', cost:8000 },
-    { key:'premium', label:'Premium', cost:18000 },
-    { key:'luxury', label:'Luxury', cost:35000 }
-  ];
+  // Prices are admin-configurable (Banquet Management → Setup → "Food &
+  // decoration pricing"). These functions read the live values every time,
+  // falling back to sensible defaults for a tenant that hasn't set them yet.
+  function getFoodPackages(){
+    var p = state.restaurant.foodPackagePrices || {};
+    return [
+      { key:'veg_standard', label:'Veg Standard', pricePerPlate: p.veg_standard != null ? p.veg_standard : 400 },
+      { key:'veg_premium', label:'Veg Premium', pricePerPlate: p.veg_premium != null ? p.veg_premium : 650 },
+      { key:'nonveg_standard', label:'Non-Veg Standard', pricePerPlate: p.nonveg_standard != null ? p.nonveg_standard : 550 },
+      { key:'nonveg_premium', label:'Non-Veg Premium', pricePerPlate: p.nonveg_premium != null ? p.nonveg_premium : 800 }
+    ];
+  }
+  function getDecorationPackages(){
+    var p = state.restaurant.decorationPackagePrices || {};
+    return [
+      { key:'basic', label:'Basic', cost: p.basic != null ? p.basic : 8000 },
+      { key:'premium', label:'Premium', cost: p.premium != null ? p.premium : 18000 },
+      { key:'luxury', label:'Luxury', cost: p.luxury != null ? p.luxury : 35000 }
+    ];
+  }
+  function renderBanquetPackageSelects(){
+    var foodSel = document.getElementById('banquetFoodPackage');
+    var decoSel = document.getElementById('banquetDecorationPackage');
+    if(!foodSel || !decoSel) return;
+    var foodVal = foodSel.value, decoVal = decoSel.value;
+    foodSel.innerHTML = '<option value="">No catering</option>' + getFoodPackages().map(function(f){
+      return '<option value="'+f.key+'">'+f.label+' — '+money(f.pricePerPlate)+'/plate</option>';
+    }).join('');
+    decoSel.innerHTML = '<option value="">No decoration</option>' + getDecorationPackages().map(function(d){
+      return '<option value="'+d.key+'">'+d.label+' — '+money(d.cost)+'</option>';
+    }).join('');
+    foodSel.value = foodVal; decoSel.value = decoVal;
+  }
   var EVENT_PACKAGE_PRESETS = {
     essential: { food:'', decoration:'' },
     premium: { food:'veg_standard', decoration:'basic' },
@@ -6711,12 +6810,12 @@ tr.top-row td{background:var(--accent-tint);}
     if(banquetHallLineItem){
       var guestCount = parseInt(document.getElementById('banquetGuestCount').value, 10) || 0;
       var foodKey = document.getElementById('banquetFoodPackage').value;
-      var food = FOOD_PACKAGES.find(function(f){ return f.key === foodKey; });
+      var food = getFoodPackages().find(function(f){ return f.key === foodKey; });
       if(food && guestCount > 0){
         items.push({ id: uid(), name: 'Food Package — ' + food.label + ' (' + guestCount + ' plates)', price: food.pricePerPlate, qty: guestCount, amount: food.pricePerPlate * guestCount });
       }
       var decoKey = document.getElementById('banquetDecorationPackage').value;
-      var deco = DECORATION_PACKAGES.find(function(d){ return d.key === decoKey; });
+      var deco = getDecorationPackages().find(function(d){ return d.key === decoKey; });
       if(deco){
         items.push({ id: uid(), name: 'Decoration — ' + deco.label, price: deco.cost, qty: 1, amount: deco.cost });
       }
@@ -6859,9 +6958,9 @@ tr.top-row td{background:var(--accent-tint);}
     err.classList.remove('show');
     var eventType = document.getElementById('banquetEventType').value;
     var foodKey = document.getElementById('banquetFoodPackage').value;
-    var food = FOOD_PACKAGES.find(function(f){ return f.key === foodKey; });
+    var food = getFoodPackages().find(function(f){ return f.key === foodKey; });
     var decoKey = document.getElementById('banquetDecorationPackage').value;
-    var deco = DECORATION_PACKAGES.find(function(d){ return d.key === decoKey; });
+    var deco = getDecorationPackages().find(function(d){ return d.key === decoKey; });
     var t = computeTotals(banquetDraft.items, state.restaurant.taxRate);
     var advanceAmount = parseFloat(document.getElementById('banquetAdvanceAmount').value) || 0;
     if(advanceAmount > t.total){
@@ -7083,6 +7182,7 @@ tr.top-row td{background:var(--accent-tint);}
     document.getElementById('banquetScheduleError').classList.remove('show');
     document.getElementById('banquetBookingError').classList.remove('show');
     updateBanquetBasisFieldsVisibility();
+    renderBanquetPackageSelects();
     fetchBanquetHallsFromServer();
     renderBanquetStaffBookingsList();
   }
