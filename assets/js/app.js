@@ -2770,7 +2770,7 @@
       var cap = r.maxAdults + '+' + r.maxChildren;
       var statusBadge = '<span class="badge '+computeRoomStatusBadgeClass(r)+'">'+computeRoomStatusLabel(r).toUpperCase()+'</span>';
       return '<tr>'
-        + '<td data-label="Room No." class="code">'+r.roomNo+'</td>'
+        + '<td data-label="Room No." class="code">'+escapeHtml(String(r.roomNo))+'</td>'
         + '<td data-label="Floor">'+r.floor+'</td>'
         + '<td data-label="Category">'+escapeHtml(roomCategoryName(r.categoryId))+'</td>'
         + '<td data-label="Bed">'+escapeHtml(r.bedType)+'</td>'
@@ -2950,7 +2950,7 @@
     }
     var rows = rooms.map(function(r){
       return '<tr>'
-        + '<td data-label="Room No." class="code">'+r.roomNo+'</td>'
+        + '<td data-label="Room No." class="code">'+escapeHtml(String(r.roomNo))+'</td>'
         + '<td data-label="Category">'+escapeHtml(roomCategoryName(r.categoryId))+'</td>'
         + '<td data-label="AC">'+(r.ac?'AC':'Non-AC')+'</td>'
         + '<td data-label="Price">'+money(r.price)+'</td>'
@@ -3158,7 +3158,7 @@
         }
       }
       return '<tr>'
-        + '<td data-label="Room No." class="code">'+r.roomNo+'</td>'
+        + '<td data-label="Room No." class="code">'+escapeHtml(String(r.roomNo))+'</td>'
         + '<td data-label="Guest">'+escapeHtml(b.guestName||'—')+'</td>'
         + '<td data-label="Phone">'+escapeHtml(b.guestPhone||'—')+'</td>'
         + '<td data-label="Payment">'+paymentHtml+'</td>'

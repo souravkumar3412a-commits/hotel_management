@@ -30,6 +30,9 @@ router.post('/', requireAdmin, async (req, res) => {
   if (!staffId || !name || !email || !phone || !department || !password) {
     return res.status(400).json({ error: 'Staff ID, name, email, phone, department and password are all required.' });
   }
+  if (password.length < 6) {
+    return res.status(400).json({ error: 'Password must be at least 6 characters.' });
+  }
   if (!EMAIL_RE.test(String(email).trim())) {
     return res.status(400).json({ error: 'Enter a valid email address.' });
   }
