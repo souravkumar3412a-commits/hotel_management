@@ -1,7 +1,7 @@
 const express = require('express');
 const { pool } = require('../db');
 const { requireAuth } = require('../middleware/auth');
-const { requireAdmin, requireDepartment } = require('../middleware/rbac');
+const { requireAdminDepartment, requireDepartment } = require('../middleware/rbac');
 
 const router = express.Router();
 router.use(requireAuth);
@@ -11,7 +11,7 @@ router.get('/floors', requireDepartment('room'), async (req, res) => {
   const r = await pool.query('SELECT * FROM room_floors WHERE admin_id = $1 ORDER BY floor', [req.user.adminId]);
   res.json(r.rows);
 });
-router.post('/floors', requireAdmin, async (req, res) => {
+router.post('/floors', requireAdminDepartment('room'), async (req, res) => {
   const { floor, roomCount } = req.body;
   const r = await pool.query(
     'INSERT INTO room_floors (admin_id, floor, room_count) VALUES ($1,$2,$3) RETURNING *',
@@ -19,7 +19,7 @@ router.post('/floors', requireAdmin, async (req, res) => {
   );
   res.status(201).json(r.rows[0]);
 });
-router.put('/floors/:id', requireAdmin, async (req, res) => {
+router.put('/floors/:id', requireAdminDepartment('room'), async (req, res) => {
   const { roomCount } = req.body;
   const r = await pool.query(
     'UPDATE room_floors SET room_count=$1 WHERE id=$2 AND admin_id=$3 RETURNING *',
@@ -28,7 +28,7 @@ router.put('/floors/:id', requireAdmin, async (req, res) => {
   if (!r.rows[0]) return res.status(404).json({ error: 'Floor not found.' });
   res.json(r.rows[0]);
 });
-router.delete('/floors/:id', requireAdmin, async (req, res) => {
+router.delete('/floors/:id', requireAdminDepartment('room'), async (req, res) => {
   await pool.query('DELETE FROM room_floors WHERE id = $1 AND admin_id = $2', [req.params.id, req.user.adminId]);
   res.status(204).end();
 });
@@ -37,12 +37,12 @@ router.get('/categories', requireDepartment('room'), async (req, res) => {
   const r = await pool.query('SELECT * FROM room_categories WHERE admin_id = $1 ORDER BY name', [req.user.adminId]);
   res.json(r.rows);
 });
-router.post('/categories', requireAdmin, async (req, res) => {
+router.post('/categories', requireAdminDepartment('room'), async (req, res) => {
   const { name } = req.body;
   const r = await pool.query('INSERT INTO room_categories (admin_id, name) VALUES ($1,$2) RETURNING *', [req.user.adminId, name]);
   res.status(201).json(r.rows[0]);
 });
-router.delete('/categories/:id', requireAdmin, async (req, res) => {
+router.delete('/categories/:id', requireAdminDepartment('room'), async (req, res) => {
   await pool.query('DELETE FROM room_categories WHERE id = $1 AND admin_id = $2', [req.params.id, req.user.adminId]);
   res.status(204).end();
 });
@@ -63,7 +63,7 @@ router.get('/', requireDepartment('room'), async (req, res) => {
   );
   res.json(r.rows);
 });
-router.post('/', requireAdmin, async (req, res) => {
+router.post('/', requireAdminDepartment('room'), async (req, res) => {
   const b = req.body;
   const r = await pool.query(
     `INSERT INTO rooms (admin_id, room_no, floor, category_id, bed_type, ac, max_adults, max_children,
@@ -74,7 +74,7 @@ router.post('/', requireAdmin, async (req, res) => {
   );
   res.status(201).json(r.rows[0]);
 });
-router.put('/:id', requireAdmin, async (req, res) => {
+router.put('/:id', requireAdminDepartment('room'), async (req, res) => {
   const b = req.body;
   const r = await pool.query(
     `UPDATE rooms SET room_no=$1, floor=$2, category_id=$3, bed_type=$4, ac=$5, max_adults=$6, max_children=$7,
@@ -86,7 +86,7 @@ router.put('/:id', requireAdmin, async (req, res) => {
   if (!r.rows[0]) return res.status(404).json({ error: 'Room not found.' });
   res.json(r.rows[0]);
 });
-router.delete('/:id', requireAdmin, async (req, res) => {
+router.delete('/:id', requireAdminDepartment('room'), async (req, res) => {
   const active = await pool.query("SELECT id FROM room_bookings WHERE room_id=$1 AND status='active'", [req.params.id]);
   if (active.rows.length > 0) {
     return res.status(409).json({ error: 'This room currently has a guest — check it out before removing it.' });

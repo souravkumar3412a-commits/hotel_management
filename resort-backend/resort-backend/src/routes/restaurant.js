@@ -1,7 +1,7 @@
 const express = require('express');
 const { pool } = require('../db');
 const { requireAuth } = require('../middleware/auth');
-const { requireAdmin, requireDepartment } = require('../middleware/rbac');
+const { requireAdminDepartment, requireDepartment } = require('../middleware/rbac');
 
 const router = express.Router();
 router.use(requireAuth);
@@ -11,11 +11,11 @@ router.get('/menu', requireDepartment('restaurant'), async (req, res) => {
   const r = await pool.query('SELECT * FROM menu_items WHERE admin_id = $1 AND deleted_at IS NULL ORDER BY name', [req.user.adminId]);
   res.json(r.rows);
 });
-router.get('/menu/deleted', requireAdmin, async (req, res) => {
+router.get('/menu/deleted', requireAdminDepartment('restaurant'), async (req, res) => {
   const r = await pool.query('SELECT * FROM menu_items WHERE admin_id = $1 AND deleted_at IS NOT NULL ORDER BY deleted_at DESC', [req.user.adminId]);
   res.json(r.rows);
 });
-router.post('/menu', requireAdmin, async (req, res) => {
+router.post('/menu', requireAdminDepartment('restaurant'), async (req, res) => {
   const { name, category, price, isVeg } = req.body;
   const r = await pool.query(
     'INSERT INTO menu_items (admin_id, name, category, price, is_veg) VALUES ($1,$2,$3,$4,$5) RETURNING *',
@@ -23,7 +23,7 @@ router.post('/menu', requireAdmin, async (req, res) => {
   );
   res.status(201).json(r.rows[0]);
 });
-router.put('/menu/:id', requireAdmin, async (req, res) => {
+router.put('/menu/:id', requireAdminDepartment('restaurant'), async (req, res) => {
   const { name, category, price, isVeg } = req.body;
   const r = await pool.query(
     'UPDATE menu_items SET name=$1, category=$2, price=$3, is_veg=$4 WHERE id=$5 AND admin_id=$6 RETURNING *',
@@ -32,12 +32,12 @@ router.put('/menu/:id', requireAdmin, async (req, res) => {
   if (!r.rows[0]) return res.status(404).json({ error: 'Menu item not found.' });
   res.json(r.rows[0]);
 });
-router.delete('/menu/:id', requireAdmin, async (req, res) => {
+router.delete('/menu/:id', requireAdminDepartment('restaurant'), async (req, res) => {
   // soft delete, so it can be restored later, matching the original deleted-menu-items list
   await pool.query('UPDATE menu_items SET deleted_at = now() WHERE id = $1 AND admin_id = $2', [req.params.id, req.user.adminId]);
   res.status(204).end();
 });
-router.post('/menu/:id/restore', requireAdmin, async (req, res) => {
+router.post('/menu/:id/restore', requireAdminDepartment('restaurant'), async (req, res) => {
   const r = await pool.query('UPDATE menu_items SET deleted_at = NULL WHERE id = $1 AND admin_id = $2 RETURNING *', [req.params.id, req.user.adminId]);
   if (!r.rows[0]) return res.status(404).json({ error: 'Menu item not found.' });
   res.json(r.rows[0]);
@@ -68,7 +68,7 @@ router.get('/promo-codes', requireDepartment('restaurant'), async (req, res) => 
   const r = await pool.query('SELECT * FROM promo_codes WHERE admin_id = $1 ORDER BY created_at DESC', [req.user.adminId]);
   res.json(r.rows);
 });
-router.post('/promo-codes', requireAdmin, async (req, res) => {
+router.post('/promo-codes', requireAdminDepartment('restaurant'), async (req, res) => {
   const { code, discountType, discountValue, expiryDate, maxUses } = req.body;
   try {
     const r = await pool.query(
@@ -83,7 +83,7 @@ router.post('/promo-codes', requireAdmin, async (req, res) => {
     res.status(500).json({ error: 'Something went wrong adding the promo code.' });
   }
 });
-router.delete('/promo-codes/:id', requireAdmin, async (req, res) => {
+router.delete('/promo-codes/:id', requireAdminDepartment('restaurant'), async (req, res) => {
   await pool.query('DELETE FROM promo_codes WHERE id = $1 AND admin_id = $2', [req.params.id, req.user.adminId]);
   res.status(204).end();
 });

@@ -1,7 +1,7 @@
 const express = require('express');
 const { pool } = require('../db');
 const { requireAuth } = require('../middleware/auth');
-const { requireAdmin } = require('../middleware/rbac');
+const { requireAdmin, getPlanAccess } = require('../middleware/rbac');
 
 const router = express.Router();
 router.use(requireAuth);
@@ -65,6 +65,16 @@ router.post('/', async (req, res) => {
   // invoice number sequence) for a department they don't belong to.
   if (req.user.role === 'staff' && req.user.department !== b.department) {
     return res.status(403).json({ error: 'Your department does not have access to this.' });
+  }
+  // Also block billing for a department the admin's PLAN doesn't cover —
+  // closes the gap where a staff token from before a downgrade, or a
+  // direct API call, could still generate invoices for it.
+  const { departments: planDepartments, active } = await getPlanAccess(req.user.adminId);
+  if (!active) {
+    return res.status(402).json({ error: 'Your subscription is not active. Please subscribe to continue.' });
+  }
+  if (!planDepartments.includes(b.department)) {
+    return res.status(403).json({ error: `Your current plan doesn't include ${b.department}.` });
   }
   const staffId = req.user.role === 'staff' ? req.user.staffId : null;
   const client = await pool.connect();

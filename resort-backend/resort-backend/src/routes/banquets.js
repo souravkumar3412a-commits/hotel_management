@@ -1,7 +1,7 @@
 const express = require('express');
 const { pool } = require('../db');
 const { requireAuth } = require('../middleware/auth');
-const { requireAdmin, requireDepartment } = require('../middleware/rbac');
+const { requireAdminDepartment, requireDepartment } = require('../middleware/rbac');
 
 const router = express.Router();
 router.use(requireAuth);
@@ -11,7 +11,7 @@ router.get('/halls', requireDepartment('banquet'), async (req, res) => {
   const r = await pool.query('SELECT * FROM banquet_halls WHERE admin_id = $1 ORDER BY name', [req.user.adminId]);
   res.json(r.rows);
 });
-router.post('/halls', requireAdmin, async (req, res) => {
+router.post('/halls', requireAdminDepartment('banquet'), async (req, res) => {
   const b = req.body;
   const r = await pool.query(
     `INSERT INTO banquet_halls (admin_id, name, capacity, facilities, out_of_order, pricing)
@@ -20,7 +20,7 @@ router.post('/halls', requireAdmin, async (req, res) => {
   );
   res.status(201).json(r.rows[0]);
 });
-router.put('/halls/:id', requireAdmin, async (req, res) => {
+router.put('/halls/:id', requireAdminDepartment('banquet'), async (req, res) => {
   const b = req.body;
   const r = await pool.query(
     `UPDATE banquet_halls SET name=$1, capacity=$2, facilities=$3, out_of_order=$4, pricing=$5
@@ -30,7 +30,7 @@ router.put('/halls/:id', requireAdmin, async (req, res) => {
   if (!r.rows[0]) return res.status(404).json({ error: 'Hall not found.' });
   res.json(r.rows[0]);
 });
-router.delete('/halls/:id', requireAdmin, async (req, res) => {
+router.delete('/halls/:id', requireAdminDepartment('banquet'), async (req, res) => {
   await pool.query('DELETE FROM banquet_halls WHERE id = $1 AND admin_id = $2', [req.params.id, req.user.adminId]);
   res.status(204).end();
 });

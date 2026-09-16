@@ -1,7 +1,7 @@
 const express = require('express');
 const { pool } = require('../db');
 const { requireAuth } = require('../middleware/auth');
-const { requireAdmin } = require('../middleware/rbac');
+const { requireAdmin, requireAdminDepartment } = require('../middleware/rbac');
 
 const router = express.Router();
 router.use(requireAuth);
@@ -24,7 +24,7 @@ router.get('/restaurant', async (req, res) => {
   const r = await pool.query('SELECT * FROM restaurant_settings WHERE admin_id = $1', [req.user.adminId]);
   res.json(r.rows[0] || null);
 });
-router.put('/restaurant', requireAdmin, async (req, res) => {
+router.put('/restaurant', requireAdminDepartment('restaurant'), async (req, res) => {
   const { tableCount, extra } = req.body;
   const r = await pool.query(
     `UPDATE restaurant_settings SET table_count=$1, extra=$2, updated_at=now() WHERE admin_id=$3 RETURNING *`,

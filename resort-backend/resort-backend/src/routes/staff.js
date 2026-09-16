@@ -2,11 +2,10 @@ const express = require('express');
 const bcrypt = require('bcrypt');
 const { pool } = require('../db');
 const { requireAuth } = require('../middleware/auth');
-const { requireAdmin } = require('../middleware/rbac');
+const { requireAdmin, getPlanAccess } = require('../middleware/rbac');
 
 const router = express.Router();
 const SALT_ROUNDS = 12;
-const MAX_STAFF_ACCOUNTS = 3; // one per department, matches original app
 
 router.use(requireAuth);
 
@@ -24,7 +23,10 @@ router.get('/', requireAdmin, async (req, res) => {
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 function digitsOnly(s) { return String(s || '').replace(/\D/g, ''); }
 
-// POST /api/staff — create a staff account
+// POST /api/staff — create a staff account. Which departments are even
+// allowed depends on the admin's current plan (see rbac.js PLAN_DEPARTMENTS)
+// — a Restaurant-only admin can only ever create a Restaurant staff account,
+// a Room+Banquet admin can create Room and Banquet staff, and so on.
 router.post('/', requireAdmin, async (req, res) => {
   const { staffId, name, email, phone, department, password } = req.body;
   if (!staffId || !name || !email || !phone || !department || !password) {
@@ -44,9 +46,18 @@ router.post('/', requireAdmin, async (req, res) => {
     return res.status(400).json({ error: 'Invalid department.' });
   }
   try {
+    const { departments: planDepartments, active } = await getPlanAccess(req.user.adminId);
+    if (!active) {
+      return res.status(402).json({ error: 'Your subscription is not active. Please subscribe to continue.' });
+    }
+    if (!planDepartments.includes(department)) {
+      return res.status(403).json({ error: `Your current plan doesn't include ${department} — upgrade your plan to add staff there.` });
+    }
+    // One staff account per department, and the number of departments you
+    // can ever have staff in is capped by your plan (not a flat 3 anymore).
     const countRes = await pool.query('SELECT count(*) FROM staff WHERE admin_id = $1', [req.user.adminId]);
-    if (parseInt(countRes.rows[0].count, 10) >= MAX_STAFF_ACCOUNTS) {
-      return res.status(409).json({ error: 'All departments are staffed. Remove one to add another.' });
+    if (parseInt(countRes.rows[0].count, 10) >= planDepartments.length) {
+      return res.status(409).json({ error: 'All departments included in your plan are already staffed.' });
     }
     const deptTaken = await pool.query('SELECT id FROM staff WHERE admin_id = $1 AND department = $2', [req.user.adminId, department]);
     if (deptTaken.rows.length > 0) {
@@ -92,6 +103,13 @@ router.put('/:id', requireAdmin, async (req, res) => {
     return res.status(400).json({ error: 'Invalid department.' });
   }
   try {
+    const { departments: planDepartments, active } = await getPlanAccess(req.user.adminId);
+    if (!active) {
+      return res.status(402).json({ error: 'Your subscription is not active. Please subscribe to continue.' });
+    }
+    if (!planDepartments.includes(department)) {
+      return res.status(403).json({ error: `Your current plan doesn't include ${department} — upgrade your plan to move staff there.` });
+    }
     // Same "one staff account per department" rule as creation — just
     // excluding this staff member's own current row from the check.
     const deptTaken = await pool.query(

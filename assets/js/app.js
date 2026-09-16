@@ -152,6 +152,21 @@
   var STAFF_TABS_FALLBACK = [
     { key:'billing', label:'Billing', num:'01', icon:'billing' }
   ];
+  // Maps a top-level ADMIN_TABS group key to the department it belongs to.
+  // Groups not listed here (dashboard, staff, setup) are always visible —
+  // they aren't tied to any one paid department.
+  var TAB_GROUP_DEPARTMENT = { 'room-group':'room', 'banquet-group':'banquet', 'restaurant-group':'restaurant' };
+  // Admin's sidebar only shows the department groups their PLAN covers.
+  // Falls back to showing everything if state.subscription hasn't loaded
+  // yet, so the nav never renders empty during the brief window right
+  // after login before GET /subscription resolves.
+  function visibleAdminTabs(){
+    var allowed = (state.subscription && state.subscription.departments) || ['room','banquet','restaurant'];
+    return ADMIN_TABS.filter(function(t){
+      var dept = TAB_GROUP_DEPARTMENT[t.key];
+      return !dept || allowed.indexOf(dept) !== -1;
+    });
+  }
   // Staff's sidebar is built from the tables Admin configured (see Setup > Restaurant tables).
   // Falls back to a single generic "Billing" tab if Admin hasn't set any tables yet.
   function buildStaffTableTabs(){
@@ -967,7 +982,15 @@
     { key:'restaurant', label:'Restaurant Management' }
   ];
   var DEFAULT_AMENITIES = ['Wi-Fi','TV','Attached Bathroom','Hot Water','Refrigerator','Wardrobe','Balcony','Room Service','Geyser','Telephone','Desk'];
-  var MAX_STAFF_ACCOUNTS = DEPARTMENTS.length;
+  // How many staff accounts (and which departments) this tenant is allowed
+  // depends on their subscription plan now, not a flat 3. Falls back to all
+  // 3 if state.subscription hasn't loaded yet (shouldn't normally happen,
+  // since the paywall gates entry until it has).
+  function planDepartments(){
+    return (state.subscription && state.subscription.departments) || DEPARTMENTS.map(function(d){ return d.key; });
+  }
+  function MAX_STAFF_ACCOUNTS_NOW(){ return planDepartments().length; }
+  var MAX_STAFF_ACCOUNTS = DEPARTMENTS.length; // kept for any stray reference; prefer MAX_STAFF_ACCOUNTS_NOW()
   function departmentLabel(key){
     var d = DEPARTMENTS.find(function(x){ return x.key === key; });
     return d ? d.label : (key || '—');
@@ -975,7 +998,8 @@
   function openDepartments(tenantStaff){
     var taken = {};
     tenantStaff.forEach(function(s){ taken[s.department] = true; });
-    return DEPARTMENTS.filter(function(d){ return !taken[d.key]; });
+    var allowed = planDepartments();
+    return DEPARTMENTS.filter(function(d){ return !taken[d.key] && allowed.indexOf(d.key) !== -1; });
   }
   // Same "already taken" filtering as openDepartments(), but keeps
   // currentDept selectable even though it's technically taken — by the
@@ -983,7 +1007,8 @@
   function populateDepartmentSelect(selectEl, currentDept){
     var taken = {};
     currentTenantStaff().forEach(function(s){ if(s.department !== currentDept) taken[s.department] = true; });
-    var available = DEPARTMENTS.filter(function(d){ return !taken[d.key]; });
+    var allowed = planDepartments();
+    var available = DEPARTMENTS.filter(function(d){ return (!taken[d.key] && allowed.indexOf(d.key) !== -1) || d.key === currentDept; });
     selectEl.innerHTML = available.map(function(d){ return '<option value="'+d.key+'"'+(d.key===currentDept?' selected':'')+'>'+d.label+'</option>'; }).join('');
   }
   document.getElementById('openStaffModalBtn').addEventListener('click', function(){
@@ -1129,7 +1154,7 @@
     return html;
   }
   function renderNav(){
-    var tabs = state.session.role === 'admin' ? ADMIN_TABS : buildStaffTabsForSession();
+    var tabs = state.session.role === 'admin' ? visibleAdminTabs() : buildStaffTabsForSession();
     var wrap = document.getElementById('navTabs');
     var html = '';
     tabs.forEach(function(t, i){
@@ -1218,7 +1243,7 @@
     if(!q) return [];
     var groups = [];
     var isAdmin = state.session && state.session.role === 'admin';
-    var tabs = isAdmin ? ADMIN_TABS : (state.session ? buildStaffTabsForSession() : []);
+    var tabs = isAdmin ? visibleAdminTabs() : (state.session ? buildStaffTabsForSession() : []);
     var pageHits = flattenTabsForSearch(tabs).filter(function(t){
       return t.label.toLowerCase().indexOf(q) !== -1;
     }).slice(0, 6).map(function(t){
@@ -1491,8 +1516,9 @@
 
     var rows = [];
     rows.push(['Status', '<span class="badge ' + statusClass + '">' + statusLabel + '</span>']);
-    rows.push(['Plan', escapeHtml(sub.plan_name || 'Standard Plan')]);
-    rows.push(['Amount', money(Number(sub.amount)) + ' + ' + Math.round((sub.gstRate||0)*100) + '% GST (' + money(sub.gstAmount||0) + ') = <b>' + money(sub.totalAmount||sub.amount) + '</b>']);
+    rows.push(['Plan', escapeHtml(sub.planLabel || sub.plan_name || 'Standard Plan')]);
+    rows.push(['Departments', escapeHtml((sub.departments || []).map(departmentLabel).join(', ') || '—')]);
+    rows.push(['Amount', money(Number(sub.baseAmount != null ? sub.baseAmount : sub.amount)) + ' + ' + Math.round((sub.gstRate||0)*100) + '% GST (' + money(sub.gstAmount||0) + ') = <b>' + money(sub.totalAmount||sub.amount) + '</b>']);
     if(start) rows.push(['Subscribed since', fmt(start)]);
     if(isActive && expiry) rows.push([isExpired ? 'Expired on' : 'Renews on', fmt(expiry) + (daysLeft !== null ? ' <span style="color:var(--text-muted);font-size:12px;">(' + daysLeft + ' day' + (daysLeft===1?'':'s') + ' left)</span>' : '')]);
     rows.push(['Payment method', escapeHtml(payMethod)]);
@@ -1506,7 +1532,9 @@
         ? '<p class="hint" style="margin:16px 0 0;">This is your only active subscription record — a fresh history of past renewals will start building here from your next renewal onward.</p>'
         : '');
 
-    renewBtn.style.display = (!isActive || isExpired) ? 'inline-flex' : 'none';
+    var canUpgrade = isActive && !isExpired && (sub.departments || []).length < 3;
+    renewBtn.textContent = (!isActive || isExpired) ? 'Renew Now' : 'Upgrade Plan';
+    renewBtn.style.display = (!isActive || isExpired || canUpgrade) ? 'inline-flex' : 'none';
     document.getElementById('subDetailsScrim').classList.add('show');
   }
   document.getElementById('subDetailsClose').addEventListener('click', function(){
@@ -1531,6 +1559,76 @@
     document.getElementById('staffLoginId').value = '';
     document.getElementById('staffLoginPassword').value = '';
   }
+  // ---------- plan picker state (paywall) ----------
+  var subGatePlans = [];        // [{planType,name,departments,baseAmount,gstAmount,totalAmount}, ...] from GET /subscription/plans
+  var selectedPlanType = null;  // which card is currently selected
+  var subGateIsUpgrade = false; // true when the admin already has an active plan and this is an upgrade, not a fresh subscribe
+
+  function planIsUpgradeOver(currentDepartments, candidateDepartments){
+    var coversEverything = currentDepartments.every(function(d){ return candidateDepartments.indexOf(d) !== -1; });
+    var addsSomething = candidateDepartments.some(function(d){ return currentDepartments.indexOf(d) === -1; });
+    return coversEverything && addsSomething;
+  }
+  function renderSubGatePlanCards(sub){
+    var list = document.getElementById('subGatePlanList');
+    var isActive = sub && sub.status === 'active';
+    subGateIsUpgrade = !!isActive;
+    var selectable = subGatePlans.filter(function(p){
+      if(!isActive) return true; // fresh subscribe — all 3 tiers available
+      return planIsUpgradeOver(sub.departments || [], p.departments); // upgrade — only genuine upgrades
+    });
+    if(isActive && selectable.length === 0){
+      list.innerHTML = '<p class="hint" style="margin:0 0 16px;">You already have full access to every department — there\'s nothing left to upgrade.</p>';
+      document.getElementById('subGateSubscribeBtn').style.display = 'none';
+      document.getElementById('subGatePromoToggleBtn').style.display = 'none';
+      selectedPlanType = null;
+      return;
+    }
+    document.getElementById('subGateSubscribeBtn').style.display = '';
+    document.getElementById('subGatePromoToggleBtn').style.display = '';
+    if(!selectedPlanType || !selectable.some(function(p){ return p.planType === selectedPlanType; })){
+      selectedPlanType = selectable[0] ? selectable[0].planType : null;
+    }
+    list.innerHTML = selectable.map(function(p){
+      var deptLabels = p.departments.map(departmentLabel).join(' + ');
+      var isSel = p.planType === selectedPlanType;
+      return '<div class="sub-gate-plan-card'+(isSel?' selected':'')+'" data-plan-type="'+p.planType+'">'
+        + '<div class="sub-gate-plan-card-top"><span class="sub-gate-plan-card-name">'+escapeHtml(p.name)+'</span>'
+        + '<span class="sub-gate-plan-card-price">'+money(p.totalAmount)+'/yr</span></div>'
+        + '<div class="sub-gate-plan-card-depts">'+escapeHtml(deptLabels)+'</div>'
+        + '</div>';
+    }).join('');
+    list.querySelectorAll('.sub-gate-plan-card').forEach(function(card){
+      card.addEventListener('click', function(){
+        selectedPlanType = card.getAttribute('data-plan-type');
+        renderSubGatePlanCards(sub); // re-render to move the "selected" highlight
+        updateSubGatePriceDisplay(sub);
+      });
+    });
+    updateSubGatePriceDisplay(sub);
+  }
+  // Updates the price/GST line and the Subscribe/Upgrade button text for
+  // whichever plan card is currently selected. On an upgrade, shows the
+  // DIFFERENCE owed (target plan total minus what they already paid for
+  // their current plan), matching exactly what the server will charge.
+  function updateSubGatePriceDisplay(sub){
+    var plan = subGatePlans.find(function(p){ return p.planType === selectedPlanType; });
+    var btn = document.getElementById('subGateSubscribeBtn');
+    if(!plan){ btn.textContent = 'Select a plan'; return; }
+    var payable = plan.totalAmount;
+    var label = 'Subscribe for ' + money(payable) + ' / Year';
+    if(subGateIsUpgrade){
+      payable = Math.max(0, plan.totalAmount - (sub.totalAmount || 0));
+      label = 'Upgrade for ' + money(payable);
+    }
+    document.getElementById('subGateBaseAmount').textContent = plan.baseAmount.toLocaleString('en-IN');
+    document.getElementById('subGateGstLine').innerHTML = subGateIsUpgrade
+      ? 'Full plan is ' + money(plan.totalAmount) + '/yr (incl. GST) &nbsp;=&nbsp; <b>' + money(payable) + ' due now</b>'
+      : '+ 18% GST (' + money(plan.gstAmount) + ') &nbsp;=&nbsp; <b>' + money(plan.totalAmount) + ' total</b>';
+    document.getElementById('subGateIncludes').textContent = 'Includes ' + plan.departments.map(departmentLabel).join(', ') + '.';
+    btn.textContent = label;
+    btn.setAttribute('data-payable', String(payable));
+  }
   function showSubscriptionGate(sub){
     document.getElementById('gateScreen').style.display = 'none';
     document.getElementById('appLayout').classList.remove('show');
@@ -1540,7 +1638,6 @@
     var promoMsg = document.getElementById('subGatePromoMsg');
     promoMsg.className = 'sub-gate-promo-msg';
     promoMsg.textContent = '';
-    document.getElementById('subGateSubscribeBtn').textContent = 'Subscribe for ₹12,000 / Year';
     var status = sub ? sub.status : 'inactive';
     var eyebrow = document.getElementById('subGateEyebrow');
     var title = document.getElementById('subGateTitle');
@@ -1548,13 +1645,7 @@
     var note = document.getElementById('subGateNote');
     note.textContent = '';
     document.getElementById('subGateError').classList.remove('show');
-    if(sub){
-      var base = Number(sub.amount) || 12000;
-      var gst = sub.gstAmount != null ? Number(sub.gstAmount) : Math.round(base * 0.18 * 100) / 100;
-      var total = sub.totalAmount != null ? Number(sub.totalAmount) : Math.round((base + gst) * 100) / 100;
-      document.getElementById('subGateBaseAmount').textContent = base.toLocaleString('en-IN');
-      document.getElementById('subGateGstLine').innerHTML = '+ 18% GST (' + money(gst) + ') &nbsp;=&nbsp; <b>' + money(total) + ' total</b>';
-    }
+    document.getElementById('subGatePlanList').innerHTML = '<p class="hint" style="margin:0 0 16px;">Loading plans…</p>';
     if(status === 'expired'){
       eyebrow.textContent = 'Subscription expired';
       title.textContent = 'Your subscription has expired';
@@ -1567,12 +1658,22 @@
       eyebrow.textContent = 'Subscription cancelled';
       title.textContent = 'Reactivate your subscription';
       sub_.textContent = 'Your subscription was cancelled. Subscribe again any time to regain access.';
+    } else if(status === 'active'){
+      eyebrow.textContent = 'Upgrade your plan';
+      title.textContent = 'Add more departments';
+      sub_.textContent = 'You\'re only charged the difference — your current expiry date stays the same.';
     } else {
       eyebrow.textContent = 'Subscription required';
-      title.textContent = 'Activate your subscription';
-      sub_.textContent = 'Your dashboard, Room/Banquet/Restaurant management, staff accounts, and invoicing are all included in one simple annual plan.';
+      title.textContent = 'Choose your plan';
+      sub_.textContent = 'Pick the departments you need — Room + Banquet, Restaurant only, or everything. You can upgrade to Full access any time later.';
     }
     document.getElementById('subscriptionGate').classList.add('show');
+    api.getSubscriptionPlans().then(function(plans){
+      subGatePlans = plans;
+      renderSubGatePlanCards(sub);
+    }).catch(function(){
+      document.getElementById('subGatePlanList').innerHTML = '<p class="hint" style="margin:0 0 16px;color:var(--danger);">Could not load plans — check your connection and reopen this screen.</p>';
+    });
   }
   // Set this to your Razorpay Key ID (the public one — safe in frontend code).
   // Find it in Razorpay Dashboard -> Settings -> API Keys. The Key SECRET goes
@@ -1593,24 +1694,26 @@
     var subscribeBtn = document.getElementById('subGateSubscribeBtn');
     var code = input.value.trim();
     if(!code){ return; }
+    if(!selectedPlanType){ msg.className = 'sub-gate-promo-msg bad'; msg.textContent = 'Select a plan first.'; return; }
     msg.className = 'sub-gate-promo-msg';
     msg.textContent = '';
     setBtnLoading(btn, true, '…');
-    api.validateSubscriptionPromo(code).then(function(res){
+    api.validateSubscriptionPromo(code, selectedPlanType).then(function(res){
       setBtnLoading(btn, false, null, 'Apply');
       appliedPromoCode = res.code;
       msg.className = 'sub-gate-promo-msg ok';
+      var verb = subGateIsUpgrade ? 'Upgrade' : 'Subscribe';
       if(res.free){
-        msg.textContent = '✓ Code applied — ' + res.discountPercent + '% off. This subscription will be FREE.';
-        subscribeBtn.textContent = 'Subscribe for Free';
+        msg.textContent = '✓ Code applied — ' + res.discountPercent + '% off. This will be FREE.';
+        subscribeBtn.textContent = verb + ' for Free';
       } else {
         msg.textContent = '✓ Code applied — ' + res.discountPercent + '% off. New total: ' + money(res.payableAmount);
-        subscribeBtn.textContent = 'Subscribe for ' + money(res.payableAmount) + ' / Year';
+        subscribeBtn.textContent = verb + ' for ' + money(res.payableAmount);
       }
     }).catch(function(e){
       setBtnLoading(btn, false, null, 'Apply');
       appliedPromoCode = null;
-      subscribeBtn.textContent = 'Subscribe for ₹12,000 / Year';
+      updateSubGatePriceDisplay(state.subscription);
       msg.className = 'sub-gate-promo-msg bad';
       msg.textContent = e.message;
     });
@@ -1623,7 +1726,7 @@
     var expiry = sub && sub.expiry_date ? new Date(sub.expiry_date) : null;
     var dateStr = expiry ? expiry.toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' }) : null;
     document.getElementById('subSuccessMsg').textContent = dateStr
-      ? 'Welcome aboard — your ' + (sub.plan_name || 'subscription') + ' is now active until ' + dateStr + '.'
+      ? 'Welcome aboard — your ' + (sub.planLabel || sub.plan_name || 'subscription') + ' is now active until ' + dateStr + '.'
       : 'Welcome aboard — your subscription is now active.';
     document.getElementById('subSuccessGate').classList.add('show');
   }
@@ -1638,28 +1741,30 @@
     var note = document.getElementById('subGateNote');
     err.classList.remove('show');
     note.textContent = '';
+    if(!selectedPlanType){ err.textContent = 'Select a plan first.'; err.classList.add('show'); return; }
+    var originalLabel = btn.textContent;
     setBtnLoading(btn, true, 'Please wait…');
-    api.subscribeToPlan(appliedPromoCode).then(function(order){
+    api.subscribeToPlan(selectedPlanType, appliedPromoCode).then(function(order){
       // A 100%-off promo code activates instantly — no payment to actually make.
       if(order.free){
-        setBtnLoading(btn, false, null, 'Subscribe for ₹12,000 / Year');
+        setBtnLoading(btn, false, null, originalLabel);
         state.subscription = order;
         showSubscriptionSuccess(order);
         return;
       }
       if(typeof Razorpay === 'undefined'){
-        setBtnLoading(btn, false, null, 'Subscribe for ₹12,000 / Year');
+        setBtnLoading(btn, false, null, originalLabel);
         err.textContent = 'Payment library failed to load — check your internet connection and try again.';
         err.classList.add('show');
         return;
       }
-      setBtnLoading(btn, false, null, 'Subscribe for ₹12,000 / Year');
+      setBtnLoading(btn, false, null, originalLabel);
       var rzp = new Razorpay({
         key: order.keyId || RAZORPAY_KEY_ID,
         amount: order.amountPaise,
         currency: order.currency,
         name: 'Hotel Management System',
-        description: order.planName + ' — annual subscription',
+        description: order.planLabel + (order.isUpgrade ? ' — plan upgrade' : ' — annual subscription'),
         order_id: order.orderId,
         theme: { color: '#d9a441' },
         handler: function(response){
@@ -1694,7 +1799,7 @@
       });
       rzp.open();
     }).catch(function(e){
-      setBtnLoading(btn, false, null, 'Subscribe for ₹12,000 / Year');
+      setBtnLoading(btn, false, null, originalLabel);
       err.textContent = e.message; err.classList.add('show');
     });
   });
@@ -5907,8 +6012,8 @@
     var openBtn = document.getElementById('openStaffModalBtn');
     if(!note || !openBtn) return;
     var count = tenantStaff.length;
-    var atLimit = count >= MAX_STAFF_ACCOUNTS;
-    note.textContent = count + ' / ' + MAX_STAFF_ACCOUNTS + ' departments staffed';
+    var atLimit = count >= MAX_STAFF_ACCOUNTS_NOW();
+    note.textContent = count + ' / ' + MAX_STAFF_ACCOUNTS_NOW() + ' departments staffed';
     openBtn.disabled = atLimit;
     openBtn.title = atLimit ? 'All departments are staffed — remove one to add another' : '';
   }
@@ -6108,7 +6213,7 @@
     var err = document.getElementById('staffError');
 
     var tenantStaff = currentTenantStaff();
-    if(tenantStaff.length >= MAX_STAFF_ACCOUNTS){ err.textContent = 'All departments are staffed. Remove one to add another.'; err.classList.add('show'); return; }
+    if(tenantStaff.length >= MAX_STAFF_ACCOUNTS_NOW()){ err.textContent = 'All departments included in your plan are staffed. Remove one, or upgrade your plan to add more.'; err.classList.add('show'); return; }
     if(!name){ err.textContent = 'Enter the staff member\'s name.'; err.classList.add('show'); return; }
     if(!department){ err.textContent = 'Select a department.'; err.classList.add('show'); return; }
     var deptTaken = tenantStaff.some(function(s){ return s.department === department; });

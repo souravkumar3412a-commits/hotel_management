@@ -478,8 +478,9 @@
 
     // ---------- subscription ----------
     getSubscription: () => request('GET', '/subscription'),
-    validateSubscriptionPromo: (code) => request('POST', '/subscription/validate-promo', { code }),
-    subscribeToPlan: (promoCode) => request('POST', '/subscription/subscribe', { promoCode: promoCode || null }),
+    getSubscriptionPlans: () => request('GET', '/subscription/plans'),
+    validateSubscriptionPromo: (code, planType) => request('POST', '/subscription/validate-promo', { code, planType }),
+    subscribeToPlan: (planType, promoCode) => request('POST', '/subscription/subscribe', { planType, promoCode: promoCode || null }),
     verifySubscriptionPayment: (payload) => request('POST', '/subscription/verify', payload)
   };
 
