@@ -222,20 +222,17 @@
     <p class="sub-gate-sub" id="subGateSub">Your dashboard, Room/Banquet/Restaurant management, staff accounts, and invoicing are all included in one simple annual plan.</p>
 
     <div class="sub-gate-plan-list" id="subGatePlanList">
-      <!-- Populated by renderSubGatePlans() in app.js — one card per tier
-           (Room+Banquet / Restaurant / All Departments). Clicking a card
-           selects it; the price/GST line and Subscribe button below update
-           to match. If the admin is already active on a partial plan, only
-           the plan(s) that are a genuine upgrade are shown as selectable. -->
+      <!-- Populated by renderSubGatePlanCards() in app.js — one card per
+           tier (Room+Banquet / Restaurant / All Departments), each showing
+           its own price and included departments. Clicking a card selects
+           it; the GST line and Subscribe button below update to match. If
+           the admin is already active on a partial plan, only the plan(s)
+           that are a genuine upgrade are shown as selectable. -->
     </div>
-    <div class="sub-gate-plan">
-      <div class="sub-gate-price"><span class="sub-gate-currency">₹</span><span id="subGateBaseAmount">12,000</span><span class="sub-gate-per">/ year</span></div>
-      <div class="sub-gate-gst-line" id="subGateGstLine">+ 18% GST (₹2,160) &nbsp;=&nbsp; <b>₹14,160 total</b></div>
-      <p class="sub-gate-includes" id="subGateIncludes">Includes full access to the Hotel Management System — Rooms, Banquets, Restaurant, Staff, Invoicing, and Reports.</p>
-    </div>
+    <p class="sub-gate-gst-line" id="subGateGstLine">+ 18% GST &nbsp;=&nbsp; <b>total</b></p>
 
     <p class="error-text" id="subGateError"></p>
-    <button type="button" class="btn accent full" id="subGateSubscribeBtn" style="height:50px;font-size:15px;">Subscribe for ₹12,000 / Year</button>
+    <button type="button" class="btn accent full" id="subGateSubscribeBtn" style="height:50px;font-size:15px;">Subscribe</button>
     <p class="sub-gate-note" id="subGateNote"></p>
 
     <button type="button" class="sub-gate-cancel-link" id="subGatePromoToggleBtn">Have a promo code?</button>

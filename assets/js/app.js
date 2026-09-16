@@ -544,6 +544,13 @@
     n = Math.round((n + Number.EPSILON) * 100) / 100;
     return state.restaurant.currency + n.toFixed(2);
   }
+  // Comma-grouped rupee display for the subscription paywall specifically
+  // (₹9,440 instead of money()'s ₹9440.00) — invoices/receipts elsewhere
+  // keep using money() unchanged so nothing there is affected.
+  function moneyINR(n){
+    n = Math.round(n + Number.EPSILON);
+    return '₹' + n.toLocaleString('en-IN');
+  }
   function escapeHtml(s){
     return String(s).replace(/[&<>"']/g, function(c){
       return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];
@@ -711,22 +718,28 @@
     },
     pricing: {
       title: 'Pricing',
-      sub: 'One simple annual plan — everything included, no separate per-department fees.',
+      sub: 'Pick only the departments you need — upgrade to full access any time later.',
       body:
-        '<div class="gi-demo-cards">'
-        + '<div class="gi-demo-card"><b>₹12,000</b><span>Per year, base price</span></div>'
-        + '<div class="gi-demo-card"><b>₹14,160</b><span>Total with 18% GST</span></div>'
+        '<div class="gi-plan-list">'
+        + giPlanCard('Room + Banquet', '₹9,440', '₹8,000 + 18% GST', ['Room management', 'Banquet management'])
+        + giPlanCard('Restaurant Only', '₹7,080', '₹6,000 + 18% GST', ['Restaurant management'])
+        + giPlanCard('All Departments', '₹14,160', '₹12,000 + 18% GST', ['Room management', 'Banquet management', 'Restaurant management'], true)
         + '</div>'
         + '<div class="gi-module-list" style="margin-top:20px;">'
-        + moduleRow('M3 21V8l9-5 9 5v13,M9 21v-7h6v7', 'Room management', 'Included')
-        + moduleRow('M3 21h18,M5 21V7l7-4 7 4v14,M9 21v-9,M15 21v-9', 'Banquet management', 'Included')
-        + moduleRow('M3 2v7c0 1.1.9 2 2 2h2a2 2 0 0 0 2-2V2,M7 2v20,M17 2v9c-2 0-3 1-3 3v8', 'Restaurant management', 'Included')
-        + moduleRow('M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2,M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z', 'Staff accounts (up to 3)', 'Included')
-        + moduleRow('M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z,M14 2v6h6', 'Invoicing, PDFs & reports', 'Included')
+        + moduleRow('M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2,M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z', 'Staff accounts', 'One per department included in your plan')
+        + moduleRow('M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z,M14 2v6h6', 'Invoicing, PDFs & reports', 'Included on every plan')
         + '</div>'
-        + '<p class="gi-cta">Free to create — <a id="giCreateAccount">create an admin account</a>, then subscribe from your dashboard.</p>'
+        + '<p class="gi-cta">Free to create — <a id="giCreateAccount">create an admin account</a>, then choose a plan from your dashboard.</p>'
     }
   };
+  function giPlanCard(name, total, breakdown, departments, featured){
+    return '<div class="gi-plan-card' + (featured ? ' featured' : '') + '">'
+      + (featured ? '<span class="gi-plan-badge">Full access</span>' : '')
+      + '<div class="gi-plan-card-top"><b>' + name + '</b><span class="gi-plan-card-price">' + total + '<small>/yr</small></span></div>'
+      + '<div class="gi-plan-card-breakdown">' + breakdown + '</div>'
+      + '<div class="gi-plan-card-depts">' + departments.join(' + ') + '</div>'
+      + '</div>';
+  }
   function moduleRow(iconPaths, title, desc){
     var paths = iconPaths.split(',').map(function(d){ return '<path d="' + d + '"/>'; }).join('');
     return '<div class="gi-module"><span class="gf-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + paths + '</svg></span><span><b>' + title + '</b><span>' + desc + '</span></span></div>';
@@ -1596,11 +1609,13 @@
       list.innerHTML = '<p class="hint" style="margin:0 0 16px;">You already have full access to every department — there\'s nothing left to upgrade.</p>';
       document.getElementById('subGateSubscribeBtn').style.display = 'none';
       document.getElementById('subGatePromoToggleBtn').style.display = 'none';
+      document.getElementById('subGateGstLine').style.display = 'none';
       selectedPlanType = null;
       return;
     }
     document.getElementById('subGateSubscribeBtn').style.display = '';
     document.getElementById('subGatePromoToggleBtn').style.display = '';
+    document.getElementById('subGateGstLine').style.display = '';
     if(!selectedPlanType || !selectable.some(function(p){ return p.planType === selectedPlanType; })){
       selectedPlanType = selectable[0] ? selectable[0].planType : null;
     }
@@ -1609,7 +1624,7 @@
       var isSel = p.planType === selectedPlanType;
       return '<div class="sub-gate-plan-card'+(isSel?' selected':'')+'" data-plan-type="'+p.planType+'">'
         + '<div class="sub-gate-plan-card-top"><span class="sub-gate-plan-card-name">'+escapeHtml(p.name)+'</span>'
-        + '<span class="sub-gate-plan-card-price">'+money(p.totalAmount)+'/yr</span></div>'
+        + '<span class="sub-gate-plan-card-price">'+moneyINR(p.totalAmount)+'/yr</span></div>'
         + '<div class="sub-gate-plan-card-depts">'+escapeHtml(deptLabels)+'</div>'
         + '</div>';
     }).join('');
@@ -1631,16 +1646,14 @@
     var btn = document.getElementById('subGateSubscribeBtn');
     if(!plan){ btn.textContent = 'Select a plan'; return; }
     var payable = plan.totalAmount;
-    var label = 'Subscribe for ' + money(payable) + ' / Year';
+    var label = 'Subscribe for ' + moneyINR(payable) + ' / Year';
     if(subGateIsUpgrade){
       payable = Math.max(0, plan.totalAmount - (sub.totalAmount || 0));
-      label = 'Upgrade for ' + money(payable);
+      label = 'Upgrade for ' + moneyINR(payable);
     }
-    document.getElementById('subGateBaseAmount').textContent = plan.baseAmount.toLocaleString('en-IN');
     document.getElementById('subGateGstLine').innerHTML = subGateIsUpgrade
-      ? 'Full plan is ' + money(plan.totalAmount) + '/yr (incl. GST) &nbsp;=&nbsp; <b>' + money(payable) + ' due now</b>'
-      : '+ 18% GST (' + money(plan.gstAmount) + ') &nbsp;=&nbsp; <b>' + money(plan.totalAmount) + ' total</b>';
-    document.getElementById('subGateIncludes').textContent = 'Includes ' + plan.departments.map(departmentLabel).join(', ') + '.';
+      ? 'Full plan is ' + moneyINR(plan.totalAmount) + '/yr (incl. GST) &nbsp;=&nbsp; <b>' + moneyINR(payable) + ' due now</b>'
+      : moneyINR(plan.baseAmount) + ' + 18% GST (' + moneyINR(plan.gstAmount) + ') &nbsp;=&nbsp; <b>' + moneyINR(plan.totalAmount) + ' total</b>';
     btn.textContent = label;
     btn.setAttribute('data-payable', String(payable));
   }
