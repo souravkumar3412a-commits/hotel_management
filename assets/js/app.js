@@ -377,8 +377,23 @@
         state.invoiceSeq = state.invoices.length;
         seqTask = persistInvoiceSeq();
       }
-      return Promise.resolve(seqTask).then(repairBanquetBookingTotalsIfNeeded).then(fetchRoomSetupFromServer).then(fetchRestaurantSettingsFromServer).then(fetchMenuFromServer);
+      return Promise.resolve(seqTask).then(repairBanquetBookingTotalsIfNeeded)
+        .then(function(){ return fetchRoomSetupFromServer().catch(ignorePlanAccessError); })
+        .then(fetchRestaurantSettingsFromServer)
+        .then(function(){ return fetchMenuFromServer().catch(ignorePlanAccessError); });
     });
+  }
+  // Room/Restaurant setup are gated by the admin's subscription plan (see
+  // backend rbac.js). A brand-new signup (subscription inactive) or an admin
+  // whose plan doesn't include that department will get a 402/403 here —
+  // that's expected, not a real failure, and must NOT stop login itself.
+  // The paywall (shown right after loadTenantData resolves) is what actually
+  // blocks access; this just leaves state.rooms/state.menu empty instead of
+  // rejecting the whole login promise chain. Anything else (network/500)
+  // still surfaces as a real error.
+  function ignorePlanAccessError(e){
+    if(e && (e.status === 402 || e.status === 403)) return;
+    throw e;
   }
   // Only admins (who see everything) and Room-department staff are allowed to
   // call the room-setup endpoints — matches the backend's requireDepartment('room').
