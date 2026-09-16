@@ -436,6 +436,7 @@
     checkoutRoomBooking: (id) => request('PUT', '/rooms/bookings/' + id + '/checkout'),
     markRoomBalancePaid: (id) => request('PUT', '/rooms/bookings/' + id + '/balance'),
     lookupRoomGuest: (roomNo) => request('GET', '/rooms/lookup/' + encodeURIComponent(roomNo)),
+    getGuestHistory: (phone) => request('GET', '/rooms/guest-history?phone=' + encodeURIComponent(phone)),
 
     // ---------- banquets ----------
     getBanquetHalls: () => request('GET', '/banquets/halls'),
@@ -453,6 +454,7 @@
     getDeletedMenu: () => request('GET', '/restaurant/menu/deleted'),
     createMenuItem: (item) => request('POST', '/restaurant/menu', item),
     updateMenuItem: (id, item) => request('PUT', '/restaurant/menu/' + id, item),
+    setMenuItemAvailability: (id, available) => request('PUT', '/restaurant/menu/' + id + '/availability', { available }),
     deleteMenuItem: (id) => request('DELETE', '/restaurant/menu/' + id),
     restoreMenuItem: (id) => request('POST', '/restaurant/menu/' + id + '/restore'),
 

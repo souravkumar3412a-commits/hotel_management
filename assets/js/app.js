@@ -556,6 +556,31 @@
       return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];
     });
   }
+  // Exports an array of plain objects to a downloadable .xlsx file, using
+  // the column order/labels given in `columns` (falls back to the object's
+  // own keys if omitted). Used by every "Export to Excel" button across
+  // Staff, Room History, Banquet History, and Restaurant History.
+  function exportRowsToExcel(filenameBase, rows, columns){
+    if(typeof XLSX === 'undefined'){
+      showToast('Export library failed to load — check your internet connection and try again.', 'error');
+      return;
+    }
+    if(!rows || rows.length === 0){
+      showToast('Nothing to export yet.', 'info');
+      return;
+    }
+    var data = rows.map(function(row){
+      if(!columns) return row;
+      var out = {};
+      columns.forEach(function(col){ out[col.label] = row[col.key]; });
+      return out;
+    });
+    var sheet = XLSX.utils.json_to_sheet(data);
+    var book = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(book, sheet, 'Sheet1');
+    var stamp = localDateStr(new Date());
+    XLSX.writeFile(book, filenameBase + '_' + stamp + '.xlsx');
+  }
   // Masks an ID proof number for display on invoices — only the last 4 characters
   // stay visible, everything else (except existing spaces) becomes X. The full
   // number is still kept in the booking record for staff/admin reference.
@@ -1243,6 +1268,11 @@
     document.getElementById('profileDropdown').classList.toggle('show');
   });
   document.addEventListener('click', function(){ document.getElementById('profileDropdown').classList.remove('show'); });
+  document.getElementById('notifBtn').addEventListener('click', function(e){
+    e.stopPropagation();
+    document.getElementById('notifDropdown').classList.toggle('show');
+  });
+  document.addEventListener('click', function(){ document.getElementById('notifDropdown').classList.remove('show'); });
   document.getElementById('themeToggleRow').addEventListener('click', function(e){
     e.stopPropagation();
     toggleTheme();
@@ -1519,6 +1549,77 @@
     if(!state.subscription) return;
     openSubscriptionDetails();
   });
+  // ---------- admin notifications (computed live, nothing stored server-side) ----------
+  // Recomputed from scratch every refresh — today's check-ins/check-outs,
+  // today's banquet events, bookings with an outstanding balance, and a
+  // subscription renewal warning. Admin-only; staff never see this bell.
+  var notifIntervalStarted = false;
+  function refreshNotifications(){
+    if(!state.session || state.session.role !== 'admin') return;
+    var planDepts = (state.subscription && state.subscription.departments) || ['room','banquet','restaurant'];
+    var fetchRoom = planDepts.indexOf('room') !== -1 ? api.getRoomBookings().catch(function(){ return []; }) : Promise.resolve([]);
+    var fetchBanquet = planDepts.indexOf('banquet') !== -1 ? api.getBanquetBookings().catch(function(){ return []; }) : Promise.resolve([]);
+    Promise.all([fetchRoom, fetchBanquet]).then(function(results){
+      var roomBookings = results[0] || [], banquetBookings = results[1] || [];
+      var today = localDateStr(new Date());
+      var items = [];
+
+      var checkInsToday = roomBookings.filter(function(b){ return b.check_in && localDateStr(new Date(b.check_in)) === today; });
+      if(checkInsToday.length) items.push({ icon:'room', text: checkInsToday.length + ' room check-in' + (checkInsToday.length===1?'':'s') + ' today', tab:'room-availability' });
+
+      var checkOutsDue = roomBookings.filter(function(b){ return b.status === 'active' && b.check_out && localDateStr(new Date(b.check_out)) === today; });
+      if(checkOutsDue.length) items.push({ icon:'room', text: checkOutsDue.length + ' room check-out' + (checkOutsDue.length===1?'':'s') + ' due today', tab:'room-availability' });
+
+      var pendingRoomBalance = roomBookings.filter(function(b){ return b.status === 'active' && !b.balance_paid && Number(b.advance_amount) > 0; });
+      if(pendingRoomBalance.length) items.push({ icon:'billing', text: pendingRoomBalance.length + ' room guest' + (pendingRoomBalance.length===1?'':'s') + ' with a balance due', tab:'room-availability', warn:true });
+
+      var banquetToday = banquetBookings.filter(function(b){ return b.status !== 'cancelled' && b.start_at && localDateStr(new Date(b.start_at)) === today; });
+      if(banquetToday.length) items.push({ icon:'banquet', text: banquetToday.length + ' banquet event' + (banquetToday.length===1?'':'s') + ' today', tab:'banquet-availability' });
+
+      var pendingBanquetBalance = banquetBookings.filter(function(b){ return b.status !== 'cancelled' && !b.balance_paid && Number(b.advance_amount) > 0; });
+      if(pendingBanquetBalance.length) items.push({ icon:'billing', text: pendingBanquetBalance.length + ' banquet booking' + (pendingBanquetBalance.length===1?'':'s') + ' with a balance due', tab:'banquet-availability', warn:true });
+
+      var sub = state.subscription;
+      if(sub && sub.status === 'active' && sub.expiry_date){
+        var daysLeft = Math.ceil((new Date(sub.expiry_date) - new Date()) / 86400000);
+        if(daysLeft <= 14) items.push({ icon:'warn', text: 'Subscription renews in ' + daysLeft + ' day' + (daysLeft===1?'':'s'), action:'subscription', warn:true });
+      }
+
+      renderNotificationList(items);
+    });
+  }
+  function renderNotificationList(items){
+    var dot = document.getElementById('notifDot');
+    var list = document.getElementById('notifList');
+    if(items.length === 0){
+      dot.style.display = 'none';
+      list.innerHTML = '<div class="notif-empty">You\'re all caught up.</div>';
+      return;
+    }
+    dot.style.display = 'flex';
+    dot.textContent = String(items.length);
+    var warnSvg = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>';
+    list.innerHTML = items.map(function(item, idx){
+      var iconSvg = item.icon === 'warn' ? warnSvg : (ICONS[item.icon] || warnSvg);
+      return '<button type="button" class="notif-row" data-notif-idx="' + idx + '">'
+        + '<span class="notif-row-icon' + (item.warn ? ' warn' : '') + '">' + iconSvg + '</span>'
+        + '<span class="notif-row-text">' + escapeHtml(item.text) + '</span>'
+        + '</button>';
+    }).join('');
+    list.querySelectorAll('[data-notif-idx]').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var item = items[parseInt(btn.dataset.notifIdx, 10)];
+        document.getElementById('notifDropdown').classList.remove('show');
+        if(item.action === 'subscription'){ openSubscriptionDetails(); }
+        else if(item.tab){ switchTab(item.tab); }
+      });
+    });
+  }
+  function startNotificationPolling(){
+    if(notifIntervalStarted) return;
+    notifIntervalStarted = true;
+    setInterval(refreshNotifications, 60000); // every minute — this is a convenience bell, not a live feed
+  }
   function openSubscriptionDetails(){
     var sub = state.subscription;
     var body = document.getElementById('subDetailsBody');
@@ -1853,6 +1954,14 @@
     renderDashboard();
     initSidebarToggle();
     initDashboardClock();
+    var notifMenu = document.getElementById('notifMenu');
+    if(state.session && state.session.role === 'admin'){
+      notifMenu.style.display = '';
+      refreshNotifications();
+      startNotificationPolling();
+    } else {
+      notifMenu.style.display = 'none';
+    }
   }
 
   // ---------- sidebar collapse/expand ----------
@@ -2205,7 +2314,7 @@
   function canAccessRestaurantModule(){
     return !!state.session && (state.session.role === 'admin' || state.session.department === 'restaurant');
   }
-  function mapServerMenuItem(m){ return { id: m.id, name: m.name, category: m.category, price: parseFloat(m.price), isVeg: m.is_veg, deletedAt: m.deleted_at }; }
+  function mapServerMenuItem(m){ return { id: m.id, name: m.name, category: m.category, price: parseFloat(m.price), isVeg: m.is_veg, deletedAt: m.deleted_at, available: m.available !== false }; }
   function fetchMenuFromServer(){
     if(!canAccessRestaurantModule()) return Promise.resolve();
     return api.getMenu().then(function(rows){ state.menu = rows.map(mapServerMenuItem); });
@@ -2254,9 +2363,14 @@
               + '<button class="icon-btn" data-cancel-edit="'+item.id+'" title="Cancel">'+ICONS.xcirc+'</button>'
               + '</span></div>';
           } else {
-            html += '<div class="menu-item-row">'
+            html += '<div class="menu-item-row'+(item.available === false ? ' unavailable' : '')+'">'
               + '<span class="name">'+escapeHtml(item.name)+'</span>'
               + '<span class="price">'+money(item.price)+'</span>'
+              + '<label class="avail-toggle" title="'+(item.available === false ? 'Mark available' : 'Mark unavailable today')+'">'
+              + '<input type="checkbox" data-avail-toggle="'+item.id+'"'+(item.available !== false ? ' checked' : '')+'>'
+              + '<span class="avail-toggle-track"></span>'
+              + '<span class="avail-toggle-label">'+(item.available === false ? 'Unavailable' : 'Available')+'</span>'
+              + '</label>'
               + '<span class="row-actions">'
               + '<button class="icon-btn" data-edit="'+item.id+'" title="Edit price / details"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg></button>'
               + '<button class="icon-btn danger" data-del="'+item.id+'" title="Delete"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>'
@@ -2306,6 +2420,23 @@
               renderMenu(); renderMenuTrash(); renderItemPicker(); renderDashboard();
             }).catch(function(e){ showToast(e.message, 'error'); });
           }
+        });
+      });
+    });
+    wrap.querySelectorAll('[data-avail-toggle]').forEach(function(cb){
+      cb.addEventListener('change', function(){
+        var id = cb.dataset.availToggle;
+        var item = state.menu.find(function(i){ return i.id === id; });
+        if(!item) return;
+        var makeAvailable = cb.checked;
+        api.setMenuItemAvailability(id, makeAvailable).then(function(){
+          item.available = makeAvailable;
+          showToast(makeAvailable ? (item.name + ' marked available') : (item.name + ' marked unavailable'));
+          renderMenuFromCache();
+          renderItemPicker();
+        }).catch(function(e){
+          cb.checked = !makeAvailable; // revert the switch on failure
+          showToast(e.message, 'error');
         });
       });
     });
@@ -2385,14 +2516,15 @@
     Object.keys(groups).sort().forEach(function(cat){
       html += '<div><h3 style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin:0 0 12px;">'+escapeHtml(cat)+'</h3><div class="item-picker-grid">';
       groups[cat].forEach(function(item){
-        html += '<button class="item-card" data-add="'+item.id+'">'
+        var isUnavailable = item.available === false;
+        html += '<button class="item-card'+(isUnavailable ? ' unavailable' : '')+'" data-add="'+item.id+'"'+(isUnavailable ? ' disabled' : '')+'>'
           + '<span class="name">'+escapeHtml(item.name)+'</span>'
-          + '<span class="price">'+money(item.price)+'</span></button>';
+          + '<span class="price">'+(isUnavailable ? 'Unavailable' : money(item.price))+'</span></button>';
       });
       html += '</div></div>';
     });
     wrap.innerHTML = html;
-    wrap.querySelectorAll('[data-add]').forEach(function(btn){
+    wrap.querySelectorAll('[data-add]:not([disabled])').forEach(function(btn){
       btn.addEventListener('click', function(){ addToOrder(btn.dataset.add); });
     });
   }
@@ -2400,7 +2532,7 @@
     var t = currentTable();
     if(!t) return;
     var menuItem = state.menu.find(function(i){ return i.id === itemId; });
-    if(!menuItem) return;
+    if(!menuItem || menuItem.available === false) return;
     var line = t.items.find(function(l){ return l.itemId === itemId; });
     if(line){ line.qty += 1; } else { t.items.push({ itemId: itemId, name: menuItem.name, price: menuItem.price, qty: 1 }); }
     syncCurrentTable();
@@ -3511,6 +3643,7 @@
       setBtnLoading(opts.btn, false, null, 'Generate invoice');
       openInvoiceOverlay(invoice);
       opts.resetIds.forEach(function(id){ var el = document.getElementById(id); if(el) el.value = ''; });
+      document.getElementById('roomGuestHistoryCard').style.display = 'none';
       document.querySelectorAll('#roomPaymentMethodBtns .pm-btn').forEach(function(b){ b.classList.toggle('active', b.dataset.method === 'Cash'); });
       roomDraft.paymentMethod = 'Cash';
       document.getElementById('roomArrivalTimeWrap').style.display = 'none';
@@ -3921,6 +4054,23 @@
       createdByStaffId: row.created_by_staff_id, createdByName: staffAcct ? staffAcct.name : (row.created_by_staff_id || 'Admin')
     };
   }
+  document.getElementById('exportBanquetHistoryBtn').addEventListener('click', function(){
+    exportRowsToExcel('banquet_bookings', (state.banquetBookings || []).map(function(b){
+      var hall = hallById(b.hallId);
+      return {
+        bookingCode: b.bookingCode, customerName: b.customerName, customerPhone: b.customerPhone,
+        hall: hall ? hall.name : '—', eventType: b.eventType || '', startDate: localDateStr(new Date(b.startISO)),
+        endDate: localDateStr(new Date(b.endISO)), totalAmount: b.totalAmount, status: b.status,
+        advanceAmount: b.advanceAmount, balancePaid: b.balancePaid ? 'Yes' : 'No', createdBy: b.createdByName || b.createdByStaffId || 'Admin'
+      };
+    }), [
+      { key:'bookingCode', label:'Booking Code' }, { key:'customerName', label:'Customer Name' },
+      { key:'customerPhone', label:'Phone' }, { key:'hall', label:'Hall' }, { key:'eventType', label:'Event Type' },
+      { key:'startDate', label:'Start Date' }, { key:'endDate', label:'End Date' },
+      { key:'totalAmount', label:'Total (₹)' }, { key:'status', label:'Status' },
+      { key:'advanceAmount', label:'Advance (₹)' }, { key:'balancePaid', label:'Balance Paid' }, { key:'createdBy', label:'Staff' }
+    ]);
+  });
   function renderBanquetHistory(){
     var wrap = document.getElementById('banquetHistoryWrap');
     var summaryWrap = document.getElementById('banquetHistorySummary');
@@ -4245,6 +4395,43 @@
   document.getElementById('banquetRoomLookupBtn').addEventListener('click', banquetAutofillFromRoom);
   bindEnterToSubmit(['banquetRoomLookup'], 'banquetRoomLookupBtn');
 
+  // ---------- returning-guest lookup (Room + Banquet booking forms) ----------
+  // Fires when the phone field loses focus. Purely informational — never
+  // blocks submission, never shows an error toast on "not found" (that's
+  // the normal case for a first-time guest, not a failure).
+  function checkGuestHistory(phoneInputId, cardId, nameInputId, emailInputId){
+    var phoneEl = document.getElementById(phoneInputId);
+    var card = document.getElementById(cardId);
+    var digits = phoneEl.value.replace(/\D/g, '');
+    if(digits.length < 7){ card.style.display = 'none'; return; }
+    api.getGuestHistory(digits).then(function(res){
+      if(!res || !res.found){ card.style.display = 'none'; return; }
+      var lastDate = res.lastStay ? localDateStr(new Date(res.lastStay.date)) : '';
+      var lastLabel = res.lastStay ? res.lastStay.label : '';
+      card.innerHTML = '<span class="guest-history-card-text">'
+        + '<b>Returning guest</b> — ' + res.totalStays + ' previous stay' + (res.totalStays === 1 ? '' : 's')
+        + (lastLabel ? ('. Last stayed: ' + escapeHtml(lastLabel) + ' on ' + lastDate) : '')
+        + '. Total spent: ' + money(res.totalSpent) + '.</span>'
+        + '<button type="button" class="btn ghost small" id="' + cardId + 'UseBtn">Use these details</button>';
+      card.style.display = 'flex';
+      document.getElementById(cardId + 'UseBtn').addEventListener('click', function(){
+        var nameEl = document.getElementById(nameInputId);
+        if(nameEl && !nameEl.value.trim()) nameEl.value = res.suggestedName || '';
+        if(emailInputId){
+          var emailEl = document.getElementById(emailInputId);
+          if(emailEl && !emailEl.value.trim() && res.suggestedEmail) emailEl.value = res.suggestedEmail;
+        }
+        showToast('Guest details filled in from their last visit.');
+      });
+    }).catch(function(){ card.style.display = 'none'; }); // silent — this is a convenience lookup, not a required step
+  }
+  document.getElementById('roomGuestPhone').addEventListener('blur', function(){
+    checkGuestHistory('roomGuestPhone', 'roomGuestHistoryCard', 'roomGuestName', 'roomGuestEmail');
+  });
+  document.getElementById('banquetClientPhone').addEventListener('blur', function(){
+    checkGuestHistory('banquetClientPhone', 'banquetGuestHistoryCard', 'banquetClientName', 'banquetClientEmail');
+  });
+
   document.getElementById('generateBanquetInvoiceBtn').addEventListener('click', function(){
     var name = document.getElementById('banquetClientName').value.trim();
     var phone = document.getElementById('banquetClientPhone').value.trim();
@@ -4365,6 +4552,7 @@
     }).then(function(invoice){
       setBtnLoading(opts.btn, false, null, 'Confirm booking & generate invoice');
       opts.resetIds.forEach(function(id){ var el = document.getElementById(id); if(el) el.value = ''; });
+      document.getElementById('banquetGuestHistoryCard').style.display = 'none';
       document.getElementById('banquetFoodPackage').value = '';
       document.getElementById('banquetDecorationPackage').value = '';
       document.getElementById('banquetPackagePreset').value = 'custom';
@@ -5092,6 +5280,22 @@
       createdByStaffId: row.created_by_staff_id, createdByName: staffAcct ? staffAcct.name : (row.created_by_staff_id || 'Admin')
     };
   }
+  document.getElementById('exportRestaurantHistoryBtn').addEventListener('click', function(){
+    exportRowsToExcel('restaurant_invoices', (state.restaurantInvoices || []).map(function(inv){
+      return {
+        invoiceNo: inv.invoiceNo, date: localDateStr(new Date(inv.date)), customerName: inv.customerName || '',
+        customerPhone: inv.customerPhone || '', tableNo: inv.tableNo != null ? inv.tableNo : '',
+        subtotal: inv.subtotal, discount: inv.discountAmount, total: inv.total,
+        paymentMethod: inv.paymentMethod, createdBy: inv.createdByName
+      };
+    }), [
+      { key:'invoiceNo', label:'Invoice No' }, { key:'date', label:'Date' },
+      { key:'customerName', label:'Customer Name' }, { key:'customerPhone', label:'Phone' },
+      { key:'tableNo', label:'Table No' }, { key:'subtotal', label:'Subtotal (₹)' },
+      { key:'discount', label:'Discount (₹)' }, { key:'total', label:'Total (₹)' },
+      { key:'paymentMethod', label:'Payment Method' }, { key:'createdBy', label:'Staff' }
+    ]);
+  });
   function renderHistory(){
     var wrap = document.getElementById('historyWrap');
     var summaryWrap = document.getElementById('historySummary');
@@ -5295,6 +5499,22 @@
       createdByStaffId: row.created_by_staff_id, createdByName: staffAcct ? staffAcct.name : (row.created_by_staff_id || 'Admin')
     };
   }
+  document.getElementById('exportRoomHistoryBtn').addEventListener('click', function(){
+    exportRowsToExcel('room_bookings', (state.roomInvoices || []).map(function(inv){
+      var checkIn = (inv.metaRows.find(function(m){ return m.label==='Check-in'; }) || {}).value || '';
+      var checkOut = (inv.metaRows.find(function(m){ return m.label==='Check-out'; }) || {}).value || '';
+      return {
+        invoiceNo: inv.invoiceNo, date: localDateStr(new Date(inv.date)), guestName: inv.customerName,
+        guestPhone: inv.customerPhone, room: inv.refValue, checkIn: checkIn, checkOut: checkOut,
+        total: inv.total, paymentMethod: inv.paymentMethod, createdBy: inv.createdByName
+      };
+    }), [
+      { key:'invoiceNo', label:'Invoice No' }, { key:'date', label:'Date' },
+      { key:'guestName', label:'Guest Name' }, { key:'guestPhone', label:'Phone' },
+      { key:'room', label:'Room No' }, { key:'checkIn', label:'Check-in' }, { key:'checkOut', label:'Check-out' },
+      { key:'total', label:'Total (₹)' }, { key:'paymentMethod', label:'Payment Method' }, { key:'createdBy', label:'Staff' }
+    ]);
+  });
   function renderRoomHistoryFromCache(){
     var wrap = document.getElementById('roomHistoryWrap');
     var summaryWrap = document.getElementById('roomHistorySummary');
@@ -6035,6 +6255,15 @@
 
   // ---------- staff management (admin) ----------
   var staffResetOpenId = null;
+  document.getElementById('exportStaffBtn').addEventListener('click', function(){
+    exportRowsToExcel('staff', currentTenantStaff(), [
+      { key:'staffId', label:'Staff ID' },
+      { key:'name', label:'Name' },
+      { key:'department', label:'Department' },
+      { key:'email', label:'Email' },
+      { key:'phone', label:'Phone' }
+    ]);
+  });
   function updateStaffLimitUi(tenantStaff){
     var note = document.getElementById('staffLimitNote');
     var openBtn = document.getElementById('openStaffModalBtn');

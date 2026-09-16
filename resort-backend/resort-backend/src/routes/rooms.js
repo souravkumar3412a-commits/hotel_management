@@ -122,6 +122,66 @@ router.get('/lookup/:roomNo', async (req, res) => {
   res.json(r.rows[0]);
 });
 
+// GET /api/rooms/guest-history?phone=98765XXXXX — "has this person stayed
+// with us before?" lookup, used when a new booking is being created so
+// staff can spot a returning guest instead of typing everything fresh.
+// Deliberately open to any authenticated tenant user (not room-only) since
+// Banquet staff booking a repeat customer benefits from this just as much —
+// it only ever reads THIS tenant's own past bookings, scoped by admin_id,
+// same as every other route here.
+router.get('/guest-history', async (req, res) => {
+  const digits = String(req.query.phone || '').replace(/\D/g, '');
+  if (digits.length < 7) return res.status(400).json({ error: 'Enter a valid phone number to search.' });
+  try {
+    const roomStays = await pool.query(
+      `SELECT rb.id, rb.guest_name, rb.guest_email, rb.check_in, rb.check_out, rb.status,
+              rm.room_no, i.total_amount
+       FROM room_bookings rb
+       JOIN rooms rm ON rm.id = rb.room_id
+       LEFT JOIN invoices i ON i.room_booking_id = rb.id
+       WHERE rb.admin_id = $1 AND regexp_replace(rb.guest_phone, '\\D', '', 'g') = $2
+       ORDER BY rb.check_in DESC LIMIT 10`,
+      [req.user.adminId, digits]
+    );
+    const banquetStays = await pool.query(
+      `SELECT bb.id, bb.customer_name, bb.start_at, bb.end_at, bb.status,
+              bh.name AS hall_name, i.total_amount
+       FROM banquet_bookings bb
+       JOIN banquet_halls bh ON bh.id = bb.hall_id
+       LEFT JOIN invoices i ON i.banquet_booking_id = bb.id
+       WHERE bb.admin_id = $1 AND regexp_replace(bb.customer_phone, '\\D', '', 'g') = $2
+       ORDER BY bb.start_at DESC LIMIT 10`,
+      [req.user.adminId, digits]
+    );
+    const totalStays = roomStays.rows.length + banquetStays.rows.length;
+    if (totalStays === 0) return res.json({ found: false });
+    const totalSpent = roomStays.rows.reduce((sum, r) => sum + (Number(r.total_amount) || 0), 0)
+      + banquetStays.rows.reduce((sum, r) => sum + (Number(r.total_amount) || 0), 0);
+    // Whichever record (room or banquet) is most recent gives us the best
+    // name/email to suggest autofilling with.
+    const mostRecentRoom = roomStays.rows[0];
+    const mostRecentBanquet = banquetStays.rows[0];
+    const mostRecent = !mostRecentBanquet ? mostRecentRoom
+      : !mostRecentRoom ? mostRecentBanquet
+      : (new Date(mostRecentRoom.check_in) > new Date(mostRecentBanquet.start_at) ? mostRecentRoom : mostRecentBanquet);
+    res.json({
+      found: true,
+      totalStays,
+      totalSpent,
+      suggestedName: mostRecentRoom ? mostRecentRoom.guest_name : mostRecentBanquet.customer_name,
+      suggestedEmail: mostRecentRoom ? mostRecentRoom.guest_email : null,
+      lastStay: mostRecentRoom
+        ? { type: 'room', label: 'Room ' + mostRecentRoom.room_no, date: mostRecentRoom.check_in }
+        : { type: 'banquet', label: mostRecentBanquet.hall_name, date: mostRecentBanquet.start_at },
+      roomStays: roomStays.rows,
+      banquetStays: banquetStays.rows
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Something went wrong looking up guest history.' });
+  }
+});
+
 router.post('/bookings', requireDepartment('room'), async (req, res) => {
   const b = req.body;
   const staffId = req.user.role === 'staff' ? req.user.staffId : null;

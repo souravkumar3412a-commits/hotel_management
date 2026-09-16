@@ -42,6 +42,19 @@ router.post('/menu/:id/restore', requireAdminDepartment('restaurant'), async (re
   if (!r.rows[0]) return res.status(404).json({ error: 'Menu item not found.' });
   res.json(r.rows[0]);
 });
+// PUT /api/restaurant/menu/:id/availability — a lighter-weight toggle than
+// the full edit route above, deliberately open to restaurant STAFF too (not
+// admin-only): "we ran out of paneer tikka" is a routine operational thing
+// that shouldn't need an admin to log in and edit the menu item.
+router.put('/menu/:id/availability', requireDepartment('restaurant'), async (req, res) => {
+  const { available } = req.body;
+  const r = await pool.query(
+    'UPDATE menu_items SET available=$1 WHERE id=$2 AND admin_id=$3 AND deleted_at IS NULL RETURNING *',
+    [available !== false, req.params.id, req.user.adminId]
+  );
+  if (!r.rows[0]) return res.status(404).json({ error: 'Menu item not found.' });
+  res.json(r.rows[0]);
+});
 
 // ---------- tables (live order state) ----------
 router.get('/tables', requireDepartment('restaurant'), async (req, res) => {
