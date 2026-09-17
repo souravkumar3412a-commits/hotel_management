@@ -582,7 +582,16 @@ nav.tabs{display:flex;flex-direction:column;gap:2px;padding:0 12px;}
 .notif-dot{position:absolute;top:2px;right:2px;min-width:15px;height:15px;padding:0 3px;border-radius:99px;background:var(--danger);color:#fff;font-size:9.5px;font-weight:700;display:flex;align-items:center;justify-content:center;line-height:1;}
 .notif-dropdown{position:absolute;right:0;top:calc(100% + 8px);width:320px;max-height:380px;overflow-y:auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-md);box-shadow:var(--shadow-lg);padding:0;display:none;z-index:50;}
 .notif-dropdown.show{display:block;animation:fadeInUp .15s ease;}
-.notif-dropdown-head{font-size:12.5px;font-weight:700;padding:12px 14px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--surface);}
+.notif-dropdown-head{font-size:12.5px;font-weight:700;padding:12px 14px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--surface);display:flex;align-items:center;justify-content:space-between;}
+.notif-head-right{display:flex;align-items:center;gap:8px;font-weight:500;}
+.notif-updated{font-size:10.5px;color:var(--text-muted);}
+.notif-refresh-btn{display:flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;border:none;background:transparent;color:var(--text-muted);cursor:pointer;transition:background .12s,color .12s;}
+.notif-refresh-btn:hover{background:var(--primary-tint);color:var(--accent);}
+.notif-refresh-btn.spinning svg{animation:notifSpin .7s linear infinite;}
+@keyframes notifSpin{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}
+.notif-footer{padding:9px 14px;border-top:1px solid var(--border);font-size:11px;}
+.notif-footer button{background:none;border:none;padding:0;color:var(--accent);font-weight:600;cursor:pointer;font-family:inherit;font-size:11px;}
+.notif-footer .muted{color:var(--text-muted);}
 .notif-row{display:flex;align-items:flex-start;gap:10px;padding:11px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .12s;text-align:left;width:100%;background:none;border-left:none;border-right:none;border-top:none;font-family:inherit;}
 .notif-row:last-child{border-bottom:none;}
 .notif-row:hover{background:var(--primary-tint);}

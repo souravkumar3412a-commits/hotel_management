@@ -1270,7 +1270,12 @@
   document.addEventListener('click', function(){ document.getElementById('profileDropdown').classList.remove('show'); });
   document.getElementById('notifBtn').addEventListener('click', function(e){
     e.stopPropagation();
-    document.getElementById('notifDropdown').classList.toggle('show');
+    var dropdown = document.getElementById('notifDropdown');
+    dropdown.classList.toggle('show');
+    if(dropdown.classList.contains('show')){
+      var updatedEl = document.getElementById('notifUpdatedAt');
+      if(updatedEl && typeof relativeTimeLabel === 'function') updatedEl.textContent = relativeTimeLabel(notifLastUpdated);
+    }
   });
   document.addEventListener('click', function(){ document.getElementById('notifDropdown').classList.remove('show'); });
   document.getElementById('themeToggleRow').addEventListener('click', function(e){
@@ -1554,12 +1559,24 @@
   // today's banquet events, bookings with an outstanding balance, and a
   // subscription renewal warning. Admin-only; staff never see this bell.
   var notifIntervalStarted = false;
-  function refreshNotifications(){
-    if(!state.session || state.session.role !== 'admin') return;
+  var notifLastUpdated = null;
+  var notifPreviousTexts = null; // null = no baseline yet, so we never desktop-alert on the very first load
+  function relativeTimeLabel(date){
+    if(!date) return '';
+    var mins = Math.round((Date.now() - date.getTime()) / 60000);
+    if(mins < 1) return 'Updated just now';
+    if(mins === 1) return 'Updated 1 min ago';
+    if(mins < 60) return 'Updated ' + mins + ' mins ago';
+    return 'Updated at ' + date.getHours() + ':' + String(date.getMinutes()).padStart(2,'0');
+  }
+  function refreshNotifications(manual){
+    if(!state.session || state.session.role !== 'admin') return Promise.resolve();
+    var refreshBtn = document.getElementById('notifRefreshBtn');
+    if(manual && refreshBtn) refreshBtn.classList.add('spinning');
     var planDepts = (state.subscription && state.subscription.departments) || ['room','banquet','restaurant'];
     var fetchRoom = planDepts.indexOf('room') !== -1 ? api.getRoomBookings().catch(function(){ return []; }) : Promise.resolve([]);
     var fetchBanquet = planDepts.indexOf('banquet') !== -1 ? api.getBanquetBookings().catch(function(){ return []; }) : Promise.resolve([]);
-    Promise.all([fetchRoom, fetchBanquet]).then(function(results){
+    return Promise.all([fetchRoom, fetchBanquet]).then(function(results){
       var roomBookings = results[0] || [], banquetBookings = results[1] || [];
       var today = localDateStr(new Date());
       var items = [];
@@ -1585,12 +1602,44 @@
         if(daysLeft <= 14) items.push({ icon:'warn', text: 'Subscription renews in ' + daysLeft + ' day' + (daysLeft===1?'':'s'), action:'subscription', warn:true });
       }
 
+      // Desktop alert only for items that are genuinely NEW since the last
+      // poll — never on the very first load (that would dump every existing
+      // alert on someone the moment they enable it), and never re-alert for
+      // something that was already showing last time.
+      if(window.Notification && Notification.permission === 'granted' && notifPreviousTexts !== null){
+        var newTexts = items.map(function(i){ return i.text; }).filter(function(t){ return notifPreviousTexts.indexOf(t) === -1; });
+        newTexts.forEach(function(t){
+          try { new Notification('Eazzio — Hotel Management', { body: t, tag: t }); } catch(e){}
+        });
+      }
+      notifPreviousTexts = items.map(function(i){ return i.text; });
+      notifLastUpdated = new Date();
       renderNotificationList(items);
+      if(manual && refreshBtn) refreshBtn.classList.remove('spinning');
     });
+  }
+  function renderNotifFooter(){
+    var footer = document.getElementById('notifFooter');
+    if(!window.Notification){ footer.innerHTML = ''; return; }
+    if(Notification.permission === 'granted'){
+      footer.innerHTML = '<span class="muted">🔔 Desktop alerts are on</span>';
+    } else if(Notification.permission === 'denied'){
+      footer.innerHTML = '<span class="muted">Desktop alerts are blocked in your browser settings.</span>';
+    } else {
+      footer.innerHTML = '<button type="button" id="notifEnableDesktopBtn">Enable desktop alerts</button>';
+      var btn = document.getElementById('notifEnableDesktopBtn');
+      if(btn) btn.addEventListener('click', function(e){
+        e.stopPropagation();
+        Notification.requestPermission().then(function(){ renderNotifFooter(); });
+      });
+    }
   }
   function renderNotificationList(items){
     var dot = document.getElementById('notifDot');
     var list = document.getElementById('notifList');
+    var updatedEl = document.getElementById('notifUpdatedAt');
+    if(updatedEl) updatedEl.textContent = relativeTimeLabel(notifLastUpdated);
+    renderNotifFooter();
     if(items.length === 0){
       dot.style.display = 'none';
       list.innerHTML = '<div class="notif-empty">You\'re all caught up.</div>';
@@ -1615,6 +1664,10 @@
       });
     });
   }
+  document.getElementById('notifRefreshBtn').addEventListener('click', function(e){
+    e.stopPropagation();
+    refreshNotifications(true);
+  });
   function startNotificationPolling(){
     if(notifIntervalStarted) return;
     notifIntervalStarted = true;
