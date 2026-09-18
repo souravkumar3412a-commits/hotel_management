@@ -120,7 +120,8 @@
     down:'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>',
     check:'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
     xcirc:'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>',
-    info:'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>'
+    info:'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>',
+    ai:'<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v3M12 18v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M3 12h3M18 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/><circle cx="12" cy="12" r="3.2"/></svg>'
   };
 
   var ADMIN_TABS = [
@@ -147,7 +148,8 @@
         { key:'restaurant-setup', label:'Setup' }
       ] },
     { key:'staff', label:'Staff Mgmt', num:'05', icon:'staff' },
-    { key:'setup', label:'Setup', num:'06', icon:'setup' }
+    { key:'ai-assistant', label:'AI Assistant', num:'06', icon:'ai' },
+    { key:'setup', label:'Setup', num:'07', icon:'setup' }
   ];
   var STAFF_TABS_FALLBACK = [
     { key:'billing', label:'Billing', num:'01', icon:'billing' }
@@ -156,15 +158,22 @@
   // Groups not listed here (dashboard, staff, setup) are always visible —
   // they aren't tied to any one paid department.
   var TAB_GROUP_DEPARTMENT = { 'room-group':'room', 'banquet-group':'banquet', 'restaurant-group':'restaurant' };
-  // Admin's sidebar only shows the department groups their PLAN covers.
-  // Falls back to showing everything if state.subscription hasn't loaded
-  // yet, so the nav never renders empty during the brief window right
-  // after login before GET /subscription resolves.
+  // Same idea, but for plan FEATURES (Voice, AI) rather than departments —
+  // only the Premium plan carries either right now.
+  var TAB_GROUP_FEATURE = { 'ai-assistant':'ai' };
+  // Admin's sidebar only shows the department groups AND feature-gated tabs
+  // their PLAN covers. Falls back to showing everything if state.subscription
+  // hasn't loaded yet, so the nav never renders empty during the brief
+  // window right after login before GET /subscription resolves.
   function visibleAdminTabs(){
-    var allowed = (state.subscription && state.subscription.departments) || ['room','banquet','restaurant'];
+    var allowedDepts = (state.subscription && state.subscription.departments) || ['room','banquet','restaurant'];
+    var allowedFeats = (state.subscription && state.subscription.features) || [];
     return ADMIN_TABS.filter(function(t){
       var dept = TAB_GROUP_DEPARTMENT[t.key];
-      return !dept || allowed.indexOf(dept) !== -1;
+      if(dept) return allowedDepts.indexOf(dept) !== -1;
+      var feat = TAB_GROUP_FEATURE[t.key];
+      if(feat) return allowedFeats.indexOf(feat) !== -1;
+      return true;
     });
   }
   // Staff's sidebar is built from the tables Admin configured (see Setup > Restaurant tables).
@@ -199,6 +208,7 @@
   }
   var SECTION_META = {
     dashboard:{crumb:'Overview', title:'Dashboard'},
+    'ai-assistant':{crumb:'Admin', title:'AI Assistant'},
     setup:{crumb:'Admin', title:'Hotel details'},
     menu:{crumb:'Admin / Restaurant', title:'Add new item'},
     'menu-trash':{crumb:'Admin / Restaurant', title:'Deleted items'},
@@ -1181,6 +1191,7 @@
     if(tableMatch) selectTable(tableMatch[1]);
     closeMobileSidebar();
     if(name === 'dashboard') renderDashboard();
+    if(name === 'ai-assistant') scrollAiChatToBottom();
     if(name === 'analysis') renderSalesAnalysis();
     if(name === 'room-booking'){ renderRoomTicket(); renderRoomBookingPage(); }
     if(name === 'room-setup') renderRoomSetup();
@@ -1673,6 +1684,81 @@
     notifIntervalStarted = true;
     setInterval(refreshNotifications, 60000); // every minute — this is a convenience bell, not a live feed
   }
+
+  // ---------- AI Hotel Assistant (Premium) ----------
+  // Conversation lives only in this array for the current browser session —
+  // never persisted, matches the spec ("session-level memory, no permanent
+  // storage of conversations"). Cleared on logout via resetTenantState-style
+  // reset isn't needed since a full page reload already clears it.
+  var aiChatHistory = [];
+  var aiChatPending = false;
+  function scrollAiChatToBottom(){
+    var wrap = document.getElementById('aiChatMessages');
+    if(wrap) wrap.scrollTop = wrap.scrollHeight;
+  }
+  function appendAiMessage(role, text, metrics){
+    var wrap = document.getElementById('aiChatMessages');
+    var empty = document.getElementById('aiChatEmpty');
+    if(empty) empty.style.display = 'none';
+    var el = document.createElement('div');
+    el.className = 'ai-msg ' + role;
+    el.textContent = text;
+    if(metrics && metrics.length){
+      var metricsWrap = document.createElement('div');
+      metricsWrap.className = 'ai-msg-metrics';
+      metrics.forEach(function(m){
+        var chip = document.createElement('div');
+        chip.className = 'ai-msg-metric';
+        chip.innerHTML = '<b>' + escapeHtml(String(m.value)) + '</b>' + escapeHtml(m.label);
+        metricsWrap.appendChild(chip);
+      });
+      el.appendChild(metricsWrap);
+    }
+    wrap.appendChild(el);
+    scrollAiChatToBottom();
+    return el;
+  }
+  function sendAiMessage(text){
+    text = (text || '').trim();
+    if(!text || aiChatPending) return;
+    var input = document.getElementById('aiChatInput');
+    var sendBtn = document.getElementById('aiChatSendBtn');
+    var errEl = document.getElementById('aiChatError');
+    errEl.classList.remove('show');
+    appendAiMessage('user', text);
+    input.value = '';
+    aiChatPending = true;
+    sendBtn.disabled = true;
+    var pendingEl = appendAiMessage('assistant pending', 'Thinking…');
+    api.askAiAssistant(text, aiChatHistory).then(function(res){
+      pendingEl.remove();
+      if(!res || !res.success){
+        errEl.textContent = (res && res.error) || 'Something went wrong. Please try again.';
+        errEl.classList.add('show');
+        return;
+      }
+      appendAiMessage('assistant', res.answer, res.metrics);
+      aiChatHistory.push({ role:'user', text: text });
+      aiChatHistory.push({ role:'assistant', text: res.answer });
+    }).catch(function(e){
+      pendingEl.remove();
+      errEl.textContent = e.message || 'Something went wrong. Please try again.';
+      errEl.classList.add('show');
+    }).finally(function(){
+      aiChatPending = false;
+      sendBtn.disabled = false;
+    });
+  }
+  document.getElementById('aiChatSendBtn').addEventListener('click', function(){
+    sendAiMessage(document.getElementById('aiChatInput').value);
+  });
+  document.getElementById('aiChatInput').addEventListener('keydown', function(e){
+    if(e.key === 'Enter'){ e.preventDefault(); sendAiMessage(this.value); }
+  });
+  document.querySelectorAll('[data-ai-q]').forEach(function(chip){
+    chip.addEventListener('click', function(){ sendAiMessage(chip.getAttribute('data-ai-q')); });
+  });
+
   function openSubscriptionDetails(){
     var sub = state.subscription;
     var body = document.getElementById('subDetailsBody');
@@ -1746,21 +1832,24 @@
   var selectedPlanType = null;  // which card is currently selected
   var subGateIsUpgrade = false; // true when the admin already has an active plan and this is an upgrade, not a fresh subscribe
 
-  function planIsUpgradeOver(currentDepartments, candidateDepartments){
-    var coversEverything = currentDepartments.every(function(d){ return candidateDepartments.indexOf(d) !== -1; });
-    var addsSomething = candidateDepartments.some(function(d){ return currentDepartments.indexOf(d) === -1; });
-    return coversEverything && addsSomething;
+  function planIsUpgradeOver(currentDepartments, candidateDepartments, currentFeatures, candidateFeatures){
+    currentFeatures = currentFeatures || []; candidateFeatures = candidateFeatures || [];
+    var deptsCovered = currentDepartments.every(function(d){ return candidateDepartments.indexOf(d) !== -1; });
+    var featsCovered = currentFeatures.every(function(f){ return candidateFeatures.indexOf(f) !== -1; });
+    var addsDept = candidateDepartments.some(function(d){ return currentDepartments.indexOf(d) === -1; });
+    var addsFeat = candidateFeatures.some(function(f){ return currentFeatures.indexOf(f) === -1; });
+    return deptsCovered && featsCovered && (addsDept || addsFeat);
   }
   function renderSubGatePlanCards(sub){
     var list = document.getElementById('subGatePlanList');
     var isActive = sub && sub.status === 'active';
     subGateIsUpgrade = !!isActive;
     var selectable = subGatePlans.filter(function(p){
-      if(!isActive) return true; // fresh subscribe — all 3 tiers available
-      return planIsUpgradeOver(sub.departments || [], p.departments); // upgrade — only genuine upgrades
+      if(!isActive) return true; // fresh subscribe — all 4 tiers available
+      return planIsUpgradeOver(sub.departments || [], p.departments, sub.features || [], p.features); // upgrade — only genuine upgrades
     });
     if(isActive && selectable.length === 0){
-      list.innerHTML = '<p class="hint" style="margin:0 0 16px;">You already have full access to every department — there\'s nothing left to upgrade.</p>';
+      list.innerHTML = '<p class="hint" style="margin:0 0 16px;">You already have full access — every department, Voice Commands, and the AI Assistant. Nothing left to upgrade.</p>';
       document.getElementById('subGateSubscribeBtn').style.display = 'none';
       document.getElementById('subGatePromoToggleBtn').style.display = 'none';
       document.getElementById('subGateGstLine').style.display = 'none';
@@ -1775,11 +1864,14 @@
     }
     list.innerHTML = selectable.map(function(p){
       var deptLabels = p.departments.map(departmentLabel).join(' + ');
+      var featLabels = (p.features || []).map(function(f){ return f === 'voice' ? '🎤 Voice Commands' : (f === 'ai' ? '🤖 AI Assistant' : f); });
       var isSel = p.planType === selectedPlanType;
-      return '<div class="sub-gate-plan-card'+(isSel?' selected':'')+'" data-plan-type="'+p.planType+'">'
+      var isPremium = p.planType === 'premium';
+      return '<div class="sub-gate-plan-card'+(isSel?' selected':'')+(isPremium?' premium':'')+'" data-plan-type="'+p.planType+'">'
+        + (isPremium ? '<span class="sub-gate-plan-card-badge">Premium</span>' : '')
         + '<div class="sub-gate-plan-card-top"><span class="sub-gate-plan-card-name">'+escapeHtml(p.name)+'</span>'
         + '<span class="sub-gate-plan-card-price">'+moneyINR(p.totalAmount)+'/yr</span></div>'
-        + '<div class="sub-gate-plan-card-depts">'+escapeHtml(deptLabels)+'</div>'
+        + '<div class="sub-gate-plan-card-depts">'+escapeHtml(deptLabels)+(featLabels.length ? ' + ' + escapeHtml(featLabels.join(' + ')) : '')+'</div>'
         + '</div>';
     }).join('');
     list.querySelectorAll('.sub-gate-plan-card').forEach(function(card){
@@ -2015,6 +2107,7 @@
     } else {
       notifMenu.style.display = 'none';
     }
+    document.getElementById('voiceMenu').style.display = window.EazzioApp.isVoiceEnabled() ? '' : 'none';
   }
 
   // ---------- sidebar collapse/expand ----------
@@ -6680,6 +6773,38 @@
       resetGateToDefault();
     });
   });
+
+  // ---------- public bridge for assets/js/voice-commands.js ----------
+  // Deliberately tiny: voice commands never get their own copy of business
+  // logic, they only ever call the SAME functions the buttons call — so
+  // voice inherits every permission/plan check automatically, for free.
+  window.EazzioApp = {
+    switchTab: switchTab,
+    showToast: showToast,
+    isVoiceEnabled: function(){
+      return !!(state.session && state.session.role === 'admin' &&
+        state.subscription && (state.subscription.features || []).indexOf('voice') !== -1);
+    },
+    // Returns a flat list of { label, sub, go() } across every search
+    // category (pages, rooms, staff, menu items, halls, promos, etc.) —
+    // the exact same results the topbar search box would show.
+    search: function(query){
+      var groups = buildSearchGroups(query);
+      var flat = [];
+      groups.forEach(function(g){ g.items.forEach(function(item){ flat.push(item); }); });
+      return flat;
+    },
+    // Opens the existing search overlay pre-filled with a query, for when
+    // a voice command is ambiguous (multiple matches) and the admin should
+    // pick — reuses the exact same UI a manual search would show.
+    openSearchUI: function(query){
+      var input = document.getElementById('globalSearchInput') || globalSearchInput;
+      input.value = query;
+      input.dispatchEvent(new Event('input'));
+      document.getElementById('topbarSearch').classList.add('mobile-open');
+      input.focus();
+    }
+  };
 
   // ---------- premium tactile ripple (touch/click feedback on buttons) ----------
   document.addEventListener('pointerdown', function(e){

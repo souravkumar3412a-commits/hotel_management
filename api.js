@@ -483,7 +483,10 @@
     getSubscriptionPlans: () => request('GET', '/subscription/plans'),
     validateSubscriptionPromo: (code, planType) => request('POST', '/subscription/validate-promo', { code, planType }),
     subscribeToPlan: (planType, promoCode) => request('POST', '/subscription/subscribe', { planType, promoCode: promoCode || null }),
-    verifySubscriptionPayment: (payload) => request('POST', '/subscription/verify', payload)
+    verifySubscriptionPayment: (payload) => request('POST', '/subscription/verify', payload),
+
+    // ---------- AI assistant (Premium) ----------
+    askAiAssistant: (message, history) => request('POST', '/ai/assistant', { message, history: history || [] })
   };
 
   global.api = api;
