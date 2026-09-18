@@ -2,36 +2,41 @@ const express = require('express');
 const crypto = require('crypto');
 const { pool } = require('../db');
 const { requireAuth } = require('../middleware/auth');
-const { PLAN_DEPARTMENTS } = require('../middleware/rbac');
+const { PLAN_DEPARTMENTS, PLAN_FEATURES } = require('../middleware/rbac');
 
 const router = express.Router();
 router.use(requireAuth);
 
 const GST_RATE = 0.18; // 18% GST on top of the base plan price
 
-// Single source of truth for plan pricing. departments comes from rbac.js
-// so access checks and pricing can never drift out of sync with each other.
+// Single source of truth for plan pricing. departments/features come from
+// rbac.js so access checks and pricing can never drift out of sync.
 const PLANS = {
-  room_banquet: { name: 'Room + Banquet Management', amount: 8000, departments: PLAN_DEPARTMENTS.room_banquet },
-  restaurant: { name: 'Restaurant Only', amount: 6000, departments: PLAN_DEPARTMENTS.restaurant },
-  all: { name: 'All Departments (Room + Banquet + Restaurant)', amount: 12000, departments: PLAN_DEPARTMENTS.all }
+  room_banquet: { name: 'Room + Banquet Management', amount: 8000, departments: PLAN_DEPARTMENTS.room_banquet, features: PLAN_FEATURES.room_banquet },
+  restaurant: { name: 'Restaurant Only', amount: 6000, departments: PLAN_DEPARTMENTS.restaurant, features: PLAN_FEATURES.restaurant },
+  all: { name: 'All Departments (Room + Banquet + Restaurant)', amount: 12000, departments: PLAN_DEPARTMENTS.all, features: PLAN_FEATURES.all },
+  premium: { name: 'Premium', amount: 18000, departments: PLAN_DEPARTMENTS.premium, features: PLAN_FEATURES.premium }
 };
 
 function isValidPlan(planType) {
   return Object.prototype.hasOwnProperty.call(PLANS, planType);
 }
 
-// True only when targetPlan unlocks every department currentPlan already
-// has, PLUS at least one more — i.e. a genuine upgrade, never sideways or
-// down. With just these 3 tiers this means: the only valid upgrade target
-// for room_banquet or restaurant is 'all'. A tenant already on 'all' has
-// nothing left to upgrade to.
+// True only when targetPlan covers every department AND every feature the
+// currentPlan already has, PLUS adds at least one more of either — i.e. a
+// genuine upgrade, never sideways or down. This is what makes 'all' ->
+// 'premium' count as a valid upgrade even though both cover the same 3
+// departments: premium adds the 'voice' and 'ai' features, which is enough
+// on its own to qualify.
 function isUpgrade(currentPlanType, targetPlanType) {
-  const current = new Set(PLANS[currentPlanType].departments);
-  const target = new Set(PLANS[targetPlanType].departments);
-  const coversEverything = [...current].every((d) => target.has(d));
-  const addsSomething = [...target].some((d) => !current.has(d));
-  return coversEverything && addsSomething;
+  const cur = PLANS[currentPlanType], tgt = PLANS[targetPlanType];
+  const curDepts = new Set(cur.departments), tgtDepts = new Set(tgt.departments);
+  const curFeats = new Set(cur.features), tgtFeats = new Set(tgt.features);
+  const deptsCovered = [...curDepts].every((d) => tgtDepts.has(d));
+  const featsCovered = [...curFeats].every((f) => tgtFeats.has(f));
+  const addsDept = [...tgtDepts].some((d) => !curDepts.has(d));
+  const addsFeat = [...tgtFeats].some((f) => !curFeats.has(f));
+  return deptsCovered && featsCovered && (addsDept || addsFeat);
 }
 
 // Only the Admin who owns a tenant has a subscription — Staff access is
@@ -75,6 +80,7 @@ function withGst(sub) {
     planType: sub.plan_type,
     planLabel: plan.name,
     departments: plan.departments,
+    features: plan.features,
     baseAmount: base,
     gstRate: GST_RATE,
     gstAmount,
@@ -108,7 +114,7 @@ router.get('/plans', requireAdminSelf, async (req, res) => {
     const p = PLANS[planType];
     const gstAmount = Math.round(p.amount * GST_RATE * 100) / 100;
     const totalAmount = Math.round((p.amount + gstAmount) * 100) / 100;
-    return { planType, name: p.name, departments: p.departments, baseAmount: p.amount, gstAmount, totalAmount };
+    return { planType, name: p.name, departments: p.departments, features: p.features, baseAmount: p.amount, gstAmount, totalAmount };
   });
   res.json(list);
 });
@@ -129,7 +135,7 @@ router.post('/validate-promo', requireAdminSelf, async (req, res) => {
     let payableBase = targetTotal;
     if (sub.status === 'active') {
       if (!isUpgrade(sub.plan_type, planType)) {
-        return res.status(400).json({ error: 'You can only upgrade to a plan that adds departments you don\'t already have.' });
+        return res.status(400).json({ error: 'You can only upgrade to a plan that adds departments or features you don\'t already have.' });
       }
       payableBase = targetTotal - withGst(sub).totalAmount;
     }
@@ -178,7 +184,7 @@ router.post('/subscribe', requireAdminSelf, async (req, res) => {
         return res.status(400).json({ error: 'You are already on this plan.' });
       }
       if (!isUpgrade(sub.plan_type, planType)) {
-        return res.status(400).json({ error: 'You can only upgrade to a plan that adds departments you don\'t already have — downgrading or switching sideways isn\'t supported.' });
+        return res.status(400).json({ error: 'You can only upgrade to a plan that adds departments or features you don\'t already have — downgrading or switching sideways isn\'t supported.' });
       }
     }
 

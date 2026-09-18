@@ -12,6 +12,7 @@ const restaurantRoutes = require('./routes/restaurant');
 const invoiceRoutes = require('./routes/invoices');
 const settingsRoutes = require('./routes/settings');
 const subscriptionRoutes = require('./routes/subscription');
+const aiRoutes = require('./routes/ai');
 
 const app = express();
 
@@ -72,6 +73,7 @@ app.use('/api/restaurant', restaurantRoutes);
 app.use('/api/invoices', invoiceRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/subscription', subscriptionRoutes);
+app.use('/api/ai', aiRoutes);
 
 app.get('/api/health', (req, res) => res.json({ ok: true }));
 
