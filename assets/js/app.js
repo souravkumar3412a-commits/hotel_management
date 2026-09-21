@@ -738,35 +738,33 @@
   // Top nav info links on the gate screen — a proper modal with real,
   // honest content about what's actually in the product (no fake demo,
   // no promises of pages that don't exist).
-  var gateInfoContent = {
-    modules: {
-      title: 'Key modules',
-      sub: 'Everything a hotel needs to run day to day, in one dashboard.',
-      body:
-        '<div class="gi-module-list">' +
-        moduleRow('M3 21V8l9-5 9 5v13,M9 21v-7h6v7', 'Room booking', 'Floors, categories, inventory, check-in/checkout and guest lookup across departments.') +
-        moduleRow('M3 21h18,M5 21V7l7-4 7 4v14,M9 21v-9,M15 21v-9', 'Banquet hall booking', 'Halls, pricing by hour/day/week, and a live booking calendar.') +
-        moduleRow('M3 2v7c0 1.1.9 2 2 2h2a2 2 0 0 0 2-2V2,M7 2v20,M17 2v9c-2 0-3 1-3 3v8', 'Restaurant management', 'Menu, live table billing, promo codes and order tracking.') +
-        moduleRow('M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2,M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z', 'Staff management', 'One account per department, with role-based access to only what they need.') +
-        moduleRow('M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z,M14 2v6h6', 'Invoicing & reports', 'Sequential GST-ready invoices, PDF sharing, and daily sales breakdowns.') +
-        '</div>'
-    },
-    pricing: {
-      title: 'Pricing',
-      sub: 'Pick only the departments you need — upgrade to full access any time later.',
-      body:
-        '<div class="gi-plan-list">'
-        + giPlanCard('Room + Banquet', '₹9,440', '₹8,000 + 18% GST', ['Room management', 'Banquet management'])
-        + giPlanCard('Restaurant Only', '₹7,080', '₹6,000 + 18% GST', ['Restaurant management'])
-        + giPlanCard('All Departments', '₹14,160', '₹12,000 + 18% GST', ['Room management', 'Banquet management', 'Restaurant management'], true)
-        + '</div>'
-        + '<div class="gi-module-list" style="margin-top:20px;">'
-        + moduleRow('M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2,M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z', 'Staff accounts', 'One per department included in your plan')
-        + moduleRow('M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z,M14 2v6h6', 'Invoicing, PDFs & reports', 'Included on every plan')
-        + '</div>'
-        + '<p class="gi-cta">Free to create — <a id="giCreateAccount">create an admin account</a>, then choose a plan from your dashboard.</p>'
-    }
-  };
+  var MKT_MODULES = [
+    { icon:'M3 21V8l9-5 9 5v13,M9 21v-7h6v7', title:'Room booking', desc:'Floors, categories, inventory, check-in/checkout and guest lookup across departments.' },
+    { icon:'M3 21h18,M5 21V7l7-4 7 4v14,M9 21v-9,M15 21v-9', title:'Banquet hall booking', desc:'Halls, pricing by hour/day/week, and a live booking calendar.' },
+    { icon:'M3 2v7c0 1.1.9 2 2 2h2a2 2 0 0 0 2-2V2,M7 2v20,M17 2v9c-2 0-3 1-3 3v8', title:'Restaurant management', desc:'Menu, live table billing, promo codes and order tracking.' },
+    { icon:'M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2,M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z', title:'Staff management', desc:'One account per department, with role-based access to only what they need.' },
+    { icon:'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z,M14 2v6h6', title:'Invoicing & reports', desc:'Sequential GST-ready invoices, PDF sharing, and daily sales breakdowns.' },
+    { icon:'M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3Z,M19 10v2a7 7 0 0 1-14 0v-2,M12 19v4,M8 23h8', title:'Voice Commands', desc:'"Show today\'s revenue" — navigate and search your dashboard hands-free.', badge:'Premium' },
+    { icon:'M12 3v3,M12 18v3,M4.2 4.2l2.1 2.1,M17.7 17.7l2.1 2.1,M3 12h3,M18 12h3,M4.2 19.8l2.1-2.1,M17.7 6.3l2.1-2.1', title:'AI Assistant', desc:'Ask plain-English questions about revenue, occupancy and top performers.', badge:'Premium' }
+  ];
+  var MKT_PLANS = [
+    { name:'Room + Banquet', total:'₹9,440', breakdown:'₹8,000 + 18% GST', depts:['Room management', 'Banquet management'] },
+    { name:'Restaurant Only', total:'₹7,080', breakdown:'₹6,000 + 18% GST', depts:['Restaurant management'] },
+    { name:'All Departments', total:'₹14,160', breakdown:'₹12,000 + 18% GST', depts:['Room management', 'Banquet management', 'Restaurant management'] },
+    { name:'Premium', total:'₹21,240', breakdown:'₹18,000 + 18% GST', depts:['Every department', 'Voice Commands', 'AI Assistant'], featured:true }
+  ];
+  function renderMarketingSections(){
+    var moduleGrid = document.getElementById('mktModuleGrid');
+    if(moduleGrid) moduleGrid.innerHTML = MKT_MODULES.map(function(m){
+      return moduleRow(m.icon, m.title + (m.badge ? ' <span class="mkt-badge">'+m.badge+'</span>' : ''), m.desc);
+    }).join('');
+    var planGrid = document.getElementById('mktPlanGrid');
+    if(planGrid) planGrid.innerHTML = MKT_PLANS.map(function(p){
+      return giPlanCard(p.name, p.total, p.breakdown, p.depts, p.featured);
+    }).join('');
+    var yearEl = document.getElementById('mktFooterYear');
+    if(yearEl) yearEl.textContent = String(new Date().getFullYear());
+  }
   function giPlanCard(name, total, breakdown, departments, featured){
     return '<div class="gi-plan-card' + (featured ? ' featured' : '') + '">'
       + (featured ? '<span class="gi-plan-badge">Full access</span>' : '')
@@ -779,28 +777,23 @@
     var paths = iconPaths.split(',').map(function(d){ return '<path d="' + d + '"/>'; }).join('');
     return '<div class="gi-module"><span class="gf-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + paths + '</svg></span><span><b>' + title + '</b><span>' + desc + '</span></span></div>';
   }
-  var gateInfoScrim = document.getElementById('gateInfoScrim');
-  function openGateInfo(key){
-    var data = gateInfoContent[key];
-    document.getElementById('gateInfoContent').innerHTML =
-      '<h3 class="gi-title">' + data.title + '</h3><p class="gi-sub">' + data.sub + '</p>' + data.body;
-    gateInfoScrim.classList.add('show');
-    var createLink = document.getElementById('giCreateAccount');
-    if(createLink){
-      createLink.addEventListener('click', function(){
-        closeGateInfo();
-        setGateTab('admin');
-        showAdminSignupPanel();
-        document.getElementById('signupFirstName').focus();
-      });
-    }
+  renderMarketingSections();
+  function scrollToMkt(id){
+    var el = document.getElementById(id);
+    if(el) el.scrollIntoView({ behavior:'smooth', block:'start' });
   }
-  function closeGateInfo(){ gateInfoScrim.classList.remove('show'); }
-  document.getElementById('gtnModulesBtn').addEventListener('click', function(){ openGateInfo('modules'); });
-  document.getElementById('gtnPricingBtn').addEventListener('click', function(){ openGateInfo('pricing'); });
-  document.getElementById('gateInfoClose').addEventListener('click', closeGateInfo);
-  gateInfoScrim.addEventListener('click', function(e){ if(e.target === gateInfoScrim) closeGateInfo(); });
-  document.addEventListener('keydown', function(e){ if(e.key === 'Escape') closeGateInfo(); });
+  document.getElementById('gtnModulesBtn').addEventListener('click', function(){ scrollToMkt('modulesSection'); });
+  document.getElementById('gtnPricingBtn').addEventListener('click', function(){ scrollToMkt('pricingSection'); });
+  function goToSignup(){
+    setGateTab('admin');
+    showAdminSignupPanel();
+    document.getElementById('signupFirstName').focus();
+  }
+  document.getElementById('giCreateAccount').addEventListener('click', goToSignup);
+  document.getElementById('mktCtaCreateAccount').addEventListener('click', function(){
+    document.getElementById('gateScreen').scrollIntoView({ behavior:'smooth', block:'start' });
+    goToSignup();
+  });
 
   function setBtnLoading(btn, loading, loadingLabel, normalLabel){
     if(loading){

@@ -53,14 +53,6 @@
     </div>
   </nav>
 
-  <div class="gate-info-scrim" id="gateInfoScrim">
-    <div class="gate-info-card">
-      <button type="button" class="gate-info-close" id="gateInfoClose" aria-label="Close">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-      </button>
-      <div id="gateInfoContent"></div>
-    </div>
-  </div>
 
   <div class="gate-panels">
   <div class="gate-brand-panel">
@@ -203,6 +195,42 @@
     </div>
   </div>
   </div>
+
+  <!-- ============== KEY MODULES (scrollable section, was a popup) ============== -->
+  <section class="mkt-section" id="modulesSection">
+    <div class="mkt-container">
+      <p class="mkt-eyebrow">Key Modules</p>
+      <h2 class="mkt-h2">Everything your hotel needs, in one dashboard</h2>
+      <p class="mkt-sub">Room, banquet and restaurant operations — plus staff, invoicing and reporting — without switching between five different tools.</p>
+      <div class="mkt-module-grid" id="mktModuleGrid"></div>
+    </div>
+  </section>
+
+  <!-- ============== PRICING (scrollable section, was a popup) ============== -->
+  <section class="mkt-section mkt-section-alt" id="pricingSection">
+    <div class="mkt-container">
+      <p class="mkt-eyebrow">Pricing</p>
+      <h2 class="mkt-h2">Simple, transparent pricing</h2>
+      <p class="mkt-sub">Pick only the departments you need. Upgrade to Premium — every department plus Voice Commands and the AI Assistant — any time from your dashboard.</p>
+      <div class="mkt-plan-grid" id="mktPlanGrid"></div>
+      <p class="gi-cta">Free to create — <a id="giCreateAccount" href="javascript:void(0)">create an admin account</a>, then choose a plan from your dashboard.</p>
+    </div>
+  </section>
+
+  <!-- ============== FINAL CTA + FOOTER ============== -->
+  <section class="mkt-cta-section">
+    <div class="mkt-container mkt-cta-inner">
+      <h2 class="mkt-h2" style="color:#fff;">Ready to run your hotel smarter?</h2>
+      <p class="mkt-sub" style="color:rgba(255,255,255,.75);">Create your free admin account in under a minute — no card required until you're ready to subscribe.</p>
+      <button type="button" class="btn accent" id="mktCtaCreateAccount" style="padding:14px 28px;font-size:14.5px;">Create your account</button>
+    </div>
+  </section>
+  <footer class="mkt-footer">
+    <div class="mkt-container mkt-footer-inner">
+      <span>© <span id="mktFooterYear"></span> Eazzio Hotel Management System</span>
+      <span>Secure &amp; Encrypted Access</span>
+    </div>
+  </footer>
 </div>
 
 <!-- ============== SUBSCRIPTION PAYWALL (Admin only) ==============
