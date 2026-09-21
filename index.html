@@ -19,7 +19,7 @@
 <!-- ============== WELCOME SPLASH ============== -->
 <div id="splashScreen">
   <div class="splash-inner">
-    <img class="splash-emblem" src="assets/eazzio-logo.png" alt="Eazzio" style="width:200px;height:auto;margin:0 auto 24px;display:block;">
+    <img class="splash-emblem" src="assets/eazzio-wordmark.png" alt="Eazzio" style="width:170px;height:auto;margin:0 auto 24px;display:block;">
     <h1 class="splash-title">Hotel Management System</h1>
     <p class="splash-tagline">One system for hotel rooms, banquet halls and the restaurant.</p>
     <div class="splash-loader"><span></span><span></span><span></span></div>
@@ -41,11 +41,14 @@
 
   <nav class="gate-topnav">
     <div class="gtn-brand">
-      <span class="gtn-emblem"><img src="assets/eazzio-logo.png" alt="Eazzio" style="height:42px;width:auto;display:block;"></span>
+      <span class="gtn-emblem"><img src="assets/eazzio-wordmark.png" alt="Eazzio" style="height:34px;width:auto;display:block;"></span>
+      <span class="gtn-brand-divider"></span>
+      <span class="gtn-brand-sub">Hotel Management System</span>
     </div>
     <div class="gtn-links gtn-links-end">
       <button type="button" class="gtn-link" id="gtnModulesBtn">Key Modules</button>
       <button type="button" class="gtn-link" id="gtnPricingBtn">Pricing</button>
+      <button type="button" class="gtn-link" id="gtnSupportBtn">Support</button>
       <button type="button" class="gtn-link gtn-link-demo" id="gtnDemoBtn">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:5px;vertical-align:-2px;"><polygon points="5 3 19 12 5 21 5 3"/></svg>
         Dashboard Demo
@@ -78,7 +81,8 @@
   <div class="gate-form-panel">
     <div class="gate-box">
       <div class="gate-card-logo">
-        <img src="assets/eazzio-logo.png" alt="Eazzio" style="width:210px;height:auto;margin:0 auto 6px;display:block;border-radius:8px;">
+        <img src="assets/eazzio-wordmark.png" alt="Eazzio" style="width:180px;height:auto;margin:0 auto 6px;display:block;">
+        <p style="letter-spacing:.14em;text-transform:uppercase;">Hotel Management System</p>
       </div>
 
       <div class="gate-tabs">
@@ -213,7 +217,25 @@
       <h2 class="mkt-h2">Simple, transparent pricing</h2>
       <p class="mkt-sub">Pick only the departments you need. Upgrade to Premium — every department plus Voice Commands and the AI Assistant — any time from your dashboard.</p>
       <div class="mkt-plan-grid" id="mktPlanGrid"></div>
-      <p class="gi-cta">Free to create — <a id="giCreateAccount" href="javascript:void(0)">create an admin account</a>, then choose a plan from your dashboard.</p>
+      <p class="gi-cta">Every plan is free to create — you only pay when you choose one from your dashboard. No card required to sign up.</p>
+    </div>
+  </section>
+
+  <!-- ============== SUPPORT ============== -->
+  <section class="mkt-section" id="supportSection">
+    <div class="mkt-container">
+      <p class="mkt-eyebrow">Support</p>
+      <h2 class="mkt-h2">Here to help</h2>
+      <p class="mkt-sub">Questions about billing, a bug you've hit, or help getting set up — reach out any time and we'll get back to you.</p>
+      <div class="mkt-support-card">
+        <span class="mkt-support-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z"/><path d="m4 6 8 7 8-7"/></svg>
+        </span>
+        <div>
+          <b>Email support</b>
+          <a href="mailto:eazziohotel@gmail.com">eazziohotel@gmail.com</a>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -228,6 +250,7 @@
   <footer class="mkt-footer">
     <div class="mkt-container mkt-footer-inner">
       <span>© <span id="mktFooterYear"></span> Eazzio Hotel Management System</span>
+      <a href="mailto:eazziohotel@gmail.com" class="mkt-footer-support">eazziohotel@gmail.com</a>
       <span>Secure &amp; Encrypted Access</span>
     </div>
   </footer>
@@ -404,6 +427,10 @@
                 Dark mode
                 <span class="theme-switch" id="themeSwitch"><span class="knob"></span></span>
               </button>
+              <a class="pd-item" id="supportRow" href="mailto:eazziohotel@gmail.com">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z"/><path d="m4 6 8 7 8-7"/></svg>
+                Contact Support
+              </a>
               <div class="pd-divider"></div>
               <button type="button" class="pd-item" id="logoutBtn">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
