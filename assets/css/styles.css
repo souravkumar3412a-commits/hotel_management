@@ -607,7 +607,7 @@ nav.tabs{display:flex;flex-direction:column;gap:2px;padding:0 12px;}
 #voiceMicBtn.listening{color:var(--danger);}
 #voiceMicBtn.listening::after{content:'';position:absolute;inset:-3px;border-radius:50%;border:2px solid var(--danger);animation:voicePulse 1.2s ease-out infinite;}
 @keyframes voicePulse{0%{transform:scale(.8);opacity:.9;}100%{transform:scale(1.6);opacity:0;}}
-.voice-status-pill{position:absolute;top:calc(100% + 8px);right:0;white-space:nowrap;background:var(--surface);border:1px solid var(--border);box-shadow:var(--shadow-lg);border-radius:99px;padding:7px 14px;font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px;z-index:60;}
+.voice-status-pill{position:absolute;top:calc(100% + 8px);right:0;max-width:340px;white-space:normal;line-height:1.4;background:var(--surface);border:1px solid var(--border);box-shadow:var(--shadow-lg);border-radius:14px;padding:9px 16px;font-size:12px;font-weight:600;z-index:60;}
 .voice-status-pill.listening{color:var(--danger);}
 .voice-status-pill.processing{color:var(--text-secondary);}
 .voice-status-pill.success{color:var(--success);}

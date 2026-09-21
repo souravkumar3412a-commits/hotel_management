@@ -161,11 +161,11 @@
   }
 
   function handleTranscript(transcript){
-    setStatus('processing', 'Understanding command…');
+    setStatus('processing', 'Heard: "' + transcript + '" — understanding…');
     var found = matchCommand(transcript);
     if(!found){
-      setStatus('error', 'I didn\'t understand that. Try "show today\'s revenue" or "find [name]".');
-      window.setTimeout(clearStatus, 3200);
+      setStatus('error', 'Heard: "' + transcript + '" — didn\'t recognize that command. Try "show today\'s revenue" or "find [name]".');
+      window.setTimeout(clearStatus, 5000);
       return;
     }
     var resultText;
