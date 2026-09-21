@@ -152,7 +152,7 @@ router.post('/assistant', requireFeature('ai'), aiLimiter, async (req, res) => {
     if (!geminiRes.ok) {
       const errText = await geminiRes.text();
       console.error('Gemini API error:', geminiRes.status, errText);
-      return res.status(502).json({ success: false, error: 'I couldn\'t retrieve the required hotel data right now. Please try again.' });
+      return res.status(502).json({ success: false, error: 'The AI service is temporarily unavailable. Your hotel data was retrieved fine — please try again in a moment.' });
     }
     const data = await geminiRes.json();
     const answer = data && data.candidates && data.candidates[0] && data.candidates[0].content
