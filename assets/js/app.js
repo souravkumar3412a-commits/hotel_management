@@ -749,13 +749,13 @@
   ];
   var MKT_PLANS = [
     { name:'Room + Banquet', tagline:'For hotels without an in-house restaurant.', total:'₹9,440', breakdown:'₹8,000 + 18% GST',
-      features:['Room management', 'Banquet hall management', '2 staff accounts (one per department)', 'Invoicing, PDFs & reports'] },
+      features:['Room management — floors, categories, check-in/checkout', 'Banquet hall management — hourly/daily/weekly pricing', '2 staff accounts (one per department)', 'Returning-guest lookup & booking history', 'GST-ready invoices, PDF sharing & Excel export', 'Live admin notifications for check-ins, check-outs & payments'] },
     { name:'Restaurant Only', tagline:'For standalone restaurants and cafés.', total:'₹7,080', breakdown:'₹6,000 + 18% GST',
-      features:['Restaurant management', '1 staff account', 'Live table billing & promo codes', 'Invoicing, PDFs & reports'] },
+      features:['Restaurant management — menu, live table billing', 'Mark menu items unavailable in one tap', 'Promo codes & discounts', '1 staff account', 'GST-ready invoices, PDF sharing & Excel export', 'Daily sales analytics'] },
     { name:'All Departments', tagline:'The full hotel, one dashboard.', total:'₹14,160', breakdown:'₹12,000 + 18% GST',
-      features:['Room management', 'Banquet hall management', 'Restaurant management', '3 staff accounts (one per department)', 'Invoicing, PDFs & reports'] },
+      features:['Room, banquet hall & restaurant management', '3 staff accounts (one per department)', 'Returning-guest lookup across every department', 'GST-ready invoices, PDF sharing & Excel export', 'Live admin notifications & subscription alerts', 'Daily & monthly sales analytics'] },
     { name:'Premium', tagline:'Everything, plus AI-powered insights.', total:'₹21,240', breakdown:'₹18,000 + 18% GST', featured:true,
-      features:['Every department included', '3 staff accounts', 'Voice Commands — hands-free navigation', 'AI Assistant — ask about revenue, occupancy & more', 'Invoicing, PDFs & reports'] }
+      features:['Every department included', '3 staff accounts', 'Voice Commands — hands-free navigation & search', 'AI Assistant — ask about revenue, occupancy & top performers', 'Returning-guest lookup & Excel export everywhere', 'Live admin notifications & desktop alerts'] }
   ];
   function renderMarketingSections(){
     var moduleGrid = document.getElementById('mktModuleGrid');
