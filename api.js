@@ -430,6 +430,8 @@
     createRoom: (room) => request('POST', '/rooms', room),
     updateRoom: (id, room) => request('PUT', '/rooms/' + id, room),
     deleteRoom: (id) => request('DELETE', '/rooms/' + id),
+    uploadRoomPhoto: (id, photoBase64, contentType) => request('POST', '/rooms/' + id + '/photos', { photoBase64, contentType }),
+    deleteRoomPhoto: (id, url) => request('DELETE', '/rooms/' + id + '/photos', { url }),
 
     getRoomBookings: (status) => request('GET', '/rooms/bookings' + (status ? '?status=' + status : '')),
     createRoomBooking: (booking) => request('POST', '/rooms/bookings', booking),
@@ -443,6 +445,8 @@
     createBanquetHall: (hall) => request('POST', '/banquets/halls', hall),
     updateBanquetHall: (id, hall) => request('PUT', '/banquets/halls/' + id, hall),
     deleteBanquetHall: (id) => request('DELETE', '/banquets/halls/' + id),
+    uploadHallPhoto: (id, photoBase64, contentType) => request('POST', '/banquets/halls/' + id + '/photos', { photoBase64, contentType }),
+    deleteHallPhoto: (id, url) => request('DELETE', '/banquets/halls/' + id + '/photos', { url }),
 
     getBanquetBookings: () => request('GET', '/banquets/bookings'),
     createBanquetBooking: (booking) => request('POST', '/banquets/bookings', booking),

@@ -417,7 +417,7 @@
       id: r.id, roomNo: parseInt(r.room_no, 10), floor: parseInt(r.floor, 10), categoryId: r.category_id,
       bedType: r.bed_type, ac: !!r.ac, maxAdults: r.max_adults, maxChildren: r.max_children,
       price: parseFloat(r.price), amenities: r.amenities || [], extraBedAllowed: r.extra_bed_allowed,
-      extraBedPrice: parseFloat(r.extra_bed_price || 0), outOfOrder: r.out_of_order,
+      extraBedPrice: parseFloat(r.extra_bed_price || 0), outOfOrder: r.out_of_order, photos: r.photos || [],
       status: r.booking_id ? 'occupied' : 'available',
       booking: r.booking_id ? { id: r.booking_id, guestName: r.guest_name, guestPhone: r.guest_phone, checkIn: r.check_in, checkOut: r.check_out, invoiceId: r.invoice_id, advanceAmount: parseFloat(r.advance_amount)||0, balancePaid: !!r.balance_paid } : null
     };
@@ -438,7 +438,7 @@
     return !!state.session && (state.session.role === 'admin' || state.session.department === 'banquet');
   }
   function mapServerHall(h){
-    return { id: h.id, name: h.name, capacity: h.capacity, outOfOrder: h.out_of_order, facilities: h.facilities || [], pricing: h.pricing || { hour:{enabled:false,price:0}, day:{enabled:false,price:0}, week:{enabled:false,price:0} } };
+    return { id: h.id, name: h.name, capacity: h.capacity, outOfOrder: h.out_of_order, facilities: h.facilities || [], photos: h.photos || [], pricing: h.pricing || { hour:{enabled:false,price:0}, day:{enabled:false,price:0}, week:{enabled:false,price:0} } };
   }
   function mapServerBanquetBooking(b){
     return {
@@ -3234,6 +3234,89 @@
 
   // ---------- room edit modal (Admin only) ----------
   var roomModalScrim = wireModal('roomModalScrim', ['roomModalClose','roomModalCancel']);
+  var ROOM_MAX_PHOTOS_CLIENT = 2;
+  var HALL_MAX_PHOTOS_CLIENT = 5;
+  // Resizes an image client-side (max 1280px on the longer side, JPEG ~82%
+  // quality) before upload — keeps Supabase Storage usage and upload time
+  // small without needing any server-side image processing.
+  function resizeImageFile(file, maxDim){
+    return new Promise(function(resolve, reject){
+      if(!/^image\/(jpeg|png|webp)$/.test(file.type)){
+        reject(new Error('Please choose a JPEG, PNG or WEBP image.'));
+        return;
+      }
+      var reader = new FileReader();
+      reader.onerror = function(){ reject(new Error('Could not read that file.')); };
+      reader.onload = function(e){
+        var img = new Image();
+        img.onerror = function(){ reject(new Error('That doesn\'t look like a valid image.')); };
+        img.onload = function(){
+          var scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+          var cw = Math.max(1, Math.round(img.width * scale));
+          var ch = Math.max(1, Math.round(img.height * scale));
+          var canvas = document.createElement('canvas');
+          canvas.width = cw; canvas.height = ch;
+          canvas.getContext('2d').drawImage(img, 0, 0, cw, ch);
+          var dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+          resolve({ base64: dataUrl.split(',')[1], contentType: 'image/jpeg' });
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+  // Renders a grid of photo thumbnails (each with a remove button) plus an
+  // "Add photo" tile when under the max count. Shared by both the room and
+  // banquet hall photo managers.
+  function renderPhotoManager(containerId, photos, maxCount, onAdd, onDelete){
+    var container = document.getElementById(containerId);
+    var html = photos.map(function(url, idx){
+      return '<div class="photo-tile"><img src="'+escapeHtml(url)+'" alt="Photo '+(idx+1)+'" loading="lazy">'
+        + '<button type="button" class="photo-tile-remove" data-photo-remove="'+idx+'" title="Remove photo">'
+        + '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>';
+    }).join('');
+    if(photos.length < maxCount){
+      html += '<button type="button" class="photo-tile photo-tile-add" id="'+containerId+'AddBtn">'
+        + '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>'
+        + '<span>Add photo</span></button>';
+    }
+    container.innerHTML = html;
+    container.querySelectorAll('[data-photo-remove]').forEach(function(btn){
+      btn.addEventListener('click', function(){ onDelete(parseInt(btn.dataset.photoRemove, 10)); });
+    });
+    var addBtn = document.getElementById(containerId + 'AddBtn');
+    if(addBtn) addBtn.addEventListener('click', onAdd);
+  }
+  function renderRoomPhotos(photos){
+    renderPhotoManager('roomEditPhotos', photos, ROOM_MAX_PHOTOS_CLIENT, function(){
+      document.getElementById('roomEditPhotoInput').click();
+    }, function(idx){
+      var url = photos[idx];
+      var hint = document.getElementById('roomEditPhotoHint');
+      hint.textContent = 'Removing…';
+      api.deleteRoomPhoto(roomEditingId, url).then(function(res){
+        hint.textContent = '';
+        var r = state.rooms.find(function(x){ return x.id === roomEditingId; });
+        if(r) r.photos = res.photos;
+        renderRoomPhotos(res.photos);
+      }).catch(function(e){ hint.textContent = e.message; });
+    });
+  }
+  document.getElementById('roomEditPhotoInput').addEventListener('change', function(e){
+    var file = e.target.files[0];
+    this.value = '';
+    if(!file || !roomEditingId) return;
+    var hint = document.getElementById('roomEditPhotoHint');
+    hint.textContent = 'Uploading…';
+    resizeImageFile(file, 1280).then(function(resized){
+      return api.uploadRoomPhoto(roomEditingId, resized.base64, resized.contentType);
+    }).then(function(res){
+      hint.textContent = '';
+      var r = state.rooms.find(function(x){ return x.id === roomEditingId; });
+      if(r) r.photos = res.photos;
+      renderRoomPhotos(res.photos);
+    }).catch(function(e){ hint.textContent = e.message; });
+  });
   var roomEditingId = null;
   function renderRoomEditAmenities(selected){
     var wrap = document.getElementById('roomEditAmenities');
@@ -3260,6 +3343,7 @@
     document.getElementById('roomEditExtraBed').checked = !!r.extraBedAllowed;
     document.getElementById('roomEditExtraBedPrice').value = r.extraBedPrice || 0;
     renderRoomEditAmenities(r.amenities || []);
+    renderRoomPhotos(r.photos || []);
     document.getElementById('roomEditError').classList.remove('show');
     roomModalScrim.classList.add('show');
   }
@@ -3823,10 +3907,40 @@
     return b ? b.label : basis;
   }
   function newBanquetHall(){
-    return { id: uid(), name:'', capacity:0, outOfOrder:false, facilities:[],
+    return { id: uid(), name:'', capacity:0, outOfOrder:false, facilities:[], photos:[],
       pricing: { hour:{enabled:false, price:0}, day:{enabled:false, price:0}, week:{enabled:false, price:0} } };
   }
   function hallById(id){ return state.banquetHalls.find(function(h){ return h.id === id; }); }
+  function renderHallPhotos(photos){
+    renderPhotoManager('banquetHallEditPhotos', photos, HALL_MAX_PHOTOS_CLIENT, function(){
+      document.getElementById('banquetHallEditPhotoInput').click();
+    }, function(idx){
+      var url = photos[idx];
+      var hint = document.getElementById('banquetHallEditPhotoHint');
+      hint.textContent = 'Removing…';
+      api.deleteHallPhoto(banquetHallEditingId, url).then(function(res){
+        hint.textContent = '';
+        var h = hallById(banquetHallEditingId);
+        if(h) h.photos = res.photos;
+        renderHallPhotos(res.photos);
+      }).catch(function(e){ hint.textContent = e.message; });
+    });
+  }
+  document.getElementById('banquetHallEditPhotoInput').addEventListener('change', function(e){
+    var file = e.target.files[0];
+    this.value = '';
+    if(!file || !banquetHallEditingId) return;
+    var hint = document.getElementById('banquetHallEditPhotoHint');
+    hint.textContent = 'Uploading…';
+    resizeImageFile(file, 1280).then(function(resized){
+      return api.uploadHallPhoto(banquetHallEditingId, resized.base64, resized.contentType);
+    }).then(function(res){
+      hint.textContent = '';
+      var h = hallById(banquetHallEditingId);
+      if(h) h.photos = res.photos;
+      renderHallPhotos(res.photos);
+    }).catch(function(e){ hint.textContent = e.message; });
+  });
   // One-time repair: bookings saved before a pricing fix could have totalAmount stuck at 0
   // even though unitPrice/durationCount were captured correctly — recompute those in place.
   function repairBanquetBookingTotalsIfNeeded(){
@@ -3963,6 +4077,17 @@
     renderBanquetHallEditFacilities(h.facilities || []);
     document.getElementById('banquetHallEditError').classList.remove('show');
     banquetHallModalScrim.dataset.newHallData = isNew ? JSON.stringify(h) : '';
+    var photoManager = document.getElementById('banquetHallEditPhotos');
+    var photoHint = document.getElementById('banquetHallEditPhotoHint');
+    var photoInput = document.getElementById('banquetHallEditPhotoInput');
+    if(isNew){
+      photoManager.innerHTML = '';
+      photoInput.style.display = 'none';
+      photoHint.textContent = 'Save this hall first, then come back to add photos.';
+    } else {
+      photoInput.style.display = 'none';
+      renderHallPhotos(h.photos || []);
+    }
     banquetHallModalScrim.classList.add('show');
   }
   document.getElementById('addBanquetHallBtn').addEventListener('click', function(){ openBanquetHallModal(null); });

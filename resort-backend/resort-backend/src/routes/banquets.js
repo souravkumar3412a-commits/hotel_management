@@ -2,6 +2,7 @@ const express = require('express');
 const { pool } = require('../db');
 const { requireAuth } = require('../middleware/auth');
 const { requireAdminDepartment, requireDepartment } = require('../middleware/rbac');
+const { uploadImageToSupabase, deleteImageFromSupabase } = require('../utils/storage');
 
 const router = express.Router();
 router.use(requireAuth);
@@ -33,6 +34,47 @@ router.put('/halls/:id', requireAdminDepartment('banquet'), async (req, res) => 
 router.delete('/halls/:id', requireAdminDepartment('banquet'), async (req, res) => {
   await pool.query('DELETE FROM banquet_halls WHERE id = $1 AND admin_id = $2', [req.params.id, req.user.adminId]);
   res.status(204).end();
+});
+
+const HALL_MAX_PHOTOS = 5;
+
+// POST /api/banquets/halls/:id/photos — body: { photoBase64, contentType }.
+router.post('/halls/:id/photos', requireAdminDepartment('banquet'), async (req, res) => {
+  const { photoBase64, contentType } = req.body;
+  if (!photoBase64 || !contentType) return res.status(400).json({ error: 'Missing photo data.' });
+  try {
+    const hallRes = await pool.query('SELECT photos FROM banquet_halls WHERE id=$1 AND admin_id=$2', [req.params.id, req.user.adminId]);
+    if (!hallRes.rows[0]) return res.status(404).json({ error: 'Hall not found.' });
+    const photos = hallRes.rows[0].photos || [];
+    if (photos.length >= HALL_MAX_PHOTOS) {
+      return res.status(409).json({ error: `This hall already has the maximum of ${HALL_MAX_PHOTOS} photos. Remove one first.` });
+    }
+    const result = await uploadImageToSupabase('hall-photos', `${req.user.adminId}/${req.params.id}`, photoBase64, contentType);
+    if (!result.ok) return res.status(result.status).json({ error: result.error });
+    const updatedPhotos = photos.concat([result.url]);
+    await pool.query('UPDATE banquet_halls SET photos=$1 WHERE id=$2', [JSON.stringify(updatedPhotos), req.params.id]);
+    res.status(201).json({ photos: updatedPhotos });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Something went wrong uploading the photo.' });
+  }
+});
+
+// DELETE /api/banquets/halls/:id/photos — body: { url }.
+router.delete('/halls/:id/photos', requireAdminDepartment('banquet'), async (req, res) => {
+  const { url } = req.body;
+  if (!url) return res.status(400).json({ error: 'Missing photo URL.' });
+  try {
+    const hallRes = await pool.query('SELECT photos FROM banquet_halls WHERE id=$1 AND admin_id=$2', [req.params.id, req.user.adminId]);
+    if (!hallRes.rows[0]) return res.status(404).json({ error: 'Hall not found.' });
+    const photos = (hallRes.rows[0].photos || []).filter((p) => p !== url);
+    await pool.query('UPDATE banquet_halls SET photos=$1 WHERE id=$2', [JSON.stringify(photos), req.params.id]);
+    deleteImageFromSupabase('hall-photos', url);
+    res.json({ photos });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Something went wrong removing the photo.' });
+  }
 });
 
 // ---------- bookings ----------

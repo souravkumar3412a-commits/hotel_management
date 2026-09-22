@@ -1773,6 +1773,12 @@
         <label>Amenities</label>
         <div id="roomEditAmenities" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;margin-top:8px;"></div>
       </div>
+      <div class="field" style="margin-bottom:0;margin-top:14px;">
+        <label>Room photos (up to 2)</label>
+        <div id="roomEditPhotos" class="photo-manager"></div>
+        <input type="file" id="roomEditPhotoInput" accept="image/jpeg,image/png,image/webp" style="display:none;">
+        <p class="hint" id="roomEditPhotoHint" style="margin-top:6px;"></p>
+      </div>
       <p class="error-text" id="roomEditError"></p>
     </div>
     <div class="modal-foot">
@@ -1831,6 +1837,12 @@
       <div class="field" style="margin-bottom:0;margin-top:14px;">
         <label>Facilities</label>
         <div id="banquetHallEditFacilities" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;margin-top:8px;"></div>
+      </div>
+      <div class="field" style="margin-bottom:0;margin-top:14px;" id="banquetHallPhotoField">
+        <label>Hall photos (up to 5)</label>
+        <div id="banquetHallEditPhotos" class="photo-manager"></div>
+        <input type="file" id="banquetHallEditPhotoInput" accept="image/jpeg,image/png,image/webp" style="display:none;">
+        <p class="hint" id="banquetHallEditPhotoHint" style="margin-top:6px;"></p>
       </div>
       <p class="error-text" id="banquetHallEditError"></p>
     </div>

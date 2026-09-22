@@ -2,6 +2,7 @@ const express = require('express');
 const { pool } = require('../db');
 const { requireAuth } = require('../middleware/auth');
 const { requireAdminDepartment, requireDepartment } = require('../middleware/rbac');
+const { uploadImageToSupabase, deleteImageFromSupabase } = require('../utils/storage');
 
 const router = express.Router();
 router.use(requireAuth);
@@ -93,6 +94,50 @@ router.delete('/:id', requireAdminDepartment('room'), async (req, res) => {
   }
   await pool.query('DELETE FROM rooms WHERE id = $1 AND admin_id = $2', [req.params.id, req.user.adminId]);
   res.status(204).end();
+});
+
+const ROOM_MAX_PHOTOS = 2;
+
+// POST /api/rooms/:id/photos — body: { photoBase64, contentType }. Uploads
+// one photo to Supabase Storage and appends its URL to this room's photo
+// list, capped at ROOM_MAX_PHOTOS.
+router.post('/:id/photos', requireAdminDepartment('room'), async (req, res) => {
+  const { photoBase64, contentType } = req.body;
+  if (!photoBase64 || !contentType) return res.status(400).json({ error: 'Missing photo data.' });
+  try {
+    const roomRes = await pool.query('SELECT photos FROM rooms WHERE id=$1 AND admin_id=$2', [req.params.id, req.user.adminId]);
+    if (!roomRes.rows[0]) return res.status(404).json({ error: 'Room not found.' });
+    const photos = roomRes.rows[0].photos || [];
+    if (photos.length >= ROOM_MAX_PHOTOS) {
+      return res.status(409).json({ error: `This room already has the maximum of ${ROOM_MAX_PHOTOS} photos. Remove one first.` });
+    }
+    const result = await uploadImageToSupabase('room-photos', `${req.user.adminId}/${req.params.id}`, photoBase64, contentType);
+    if (!result.ok) return res.status(result.status).json({ error: result.error });
+    const updatedPhotos = photos.concat([result.url]);
+    await pool.query('UPDATE rooms SET photos=$1 WHERE id=$2', [JSON.stringify(updatedPhotos), req.params.id]);
+    res.status(201).json({ photos: updatedPhotos });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Something went wrong uploading the photo.' });
+  }
+});
+
+// DELETE /api/rooms/:id/photos — body: { url }. Removes one photo from the
+// room's list and best-effort deletes it from Storage.
+router.delete('/:id/photos', requireAdminDepartment('room'), async (req, res) => {
+  const { url } = req.body;
+  if (!url) return res.status(400).json({ error: 'Missing photo URL.' });
+  try {
+    const roomRes = await pool.query('SELECT photos FROM rooms WHERE id=$1 AND admin_id=$2', [req.params.id, req.user.adminId]);
+    if (!roomRes.rows[0]) return res.status(404).json({ error: 'Room not found.' });
+    const photos = (roomRes.rows[0].photos || []).filter((p) => p !== url);
+    await pool.query('UPDATE rooms SET photos=$1 WHERE id=$2', [JSON.stringify(photos), req.params.id]);
+    deleteImageFromSupabase('room-photos', url); // best-effort, not awaited on the response
+    res.json({ photos });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Something went wrong removing the photo.' });
+  }
 });
 
 // ---------- bookings ----------
