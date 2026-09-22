@@ -739,19 +739,19 @@
   // honest content about what's actually in the product (no fake demo,
   // no promises of pages that don't exist).
   var MKT_MODULES = [
-    { icon:'M3 21V8l9-5 9 5v13,M9 21v-7h6v7', title:'Room booking', desc:'Floors, categories, inventory, check-in/checkout and guest lookup across departments.' },
-    { icon:'M3 21h18,M5 21V7l7-4 7 4v14,M9 21v-9,M15 21v-9', title:'Banquet hall booking', desc:'Halls, pricing by hour/day/week, and a live booking calendar.' },
-    { icon:'M3 2v7c0 1.1.9 2 2 2h2a2 2 0 0 0 2-2V2,M7 2v20,M17 2v9c-2 0-3 1-3 3v8', title:'Restaurant management', desc:'Menu, live table billing, promo codes and order tracking.' },
-    { icon:'M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2,M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z', title:'Staff management', desc:'One account per department, with role-based access to only what they need.' },
-    { icon:'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z,M14 2v6h6', title:'Invoicing & reports', desc:'Sequential GST-ready invoices, PDF sharing, and daily sales breakdowns.' },
-    { icon:'M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3Z,M19 10v2a7 7 0 0 1-14 0v-2,M12 19v4,M8 23h8', title:'Voice Commands', desc:'"Show today\'s revenue" — navigate and search your dashboard hands-free.', badge:'Premium' },
-    { icon:'M12 3v3,M12 18v3,M4.2 4.2l2.1 2.1,M17.7 17.7l2.1 2.1,M3 12h3,M18 12h3,M4.2 19.8l2.1-2.1,M17.7 6.3l2.1-2.1', title:'AI Assistant', desc:'Ask plain-English questions about revenue, occupancy and top performers.', badge:'Premium' }
+    { icon:'M3 21V8l9-5 9 5v13,M9 21v-7h6v7', title:'Room booking', desc:'Floors, categories, room inventory, check-in/checkout, guest ID capture, and a returning-guest lookup that surfaces past stays and total spend across departments.' },
+    { icon:'M3 21h18,M5 21V7l7-4 7 4v14,M9 21v-9,M15 21v-9', title:'Banquet hall booking', desc:'Manage multiple halls, set pricing by hour, day or week, track advance payments and balances, and see every event on a live booking calendar.' },
+    { icon:'M3 2v7c0 1.1.9 2 2 2h2a2 2 0 0 0 2-2V2,M7 2v20,M17 2v9c-2 0-3 1-3 3v8', title:'Restaurant management', desc:'Live table billing, a full menu with veg/non-veg tagging, one-tap "mark unavailable" for sold-out items, promo codes, and order tracking from order to invoice.' },
+    { icon:'M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2,M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z', title:'Staff management', desc:'One account per department (Room, Banquet, Restaurant), each seeing only their own department — role-based access enforced on every screen and every action.' },
+    { icon:'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z,M14 2v6h6', title:'Invoicing & reports', desc:'Sequential GST-ready invoices, PDF sharing over WhatsApp/email, one-click Excel export for any list, and daily sales breakdowns by department.' },
+    { icon:'M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3Z,M19 10v2a7 7 0 0 1-14 0v-2,M12 19v4,M8 23h8', title:'Voice Commands', desc:'"Show today\'s revenue" — navigate and search your dashboard hands-free, right from the topbar, no typing needed.', badge:'Premium' },
+    { icon:'M12 3v3,M12 18v3,M4.2 4.2l2.1 2.1,M17.7 17.7l2.1 2.1,M3 12h3,M18 12h3,M4.2 19.8l2.1-2.1,M17.7 6.3l2.1-2.1', title:'AI Assistant', desc:'Ask plain-English questions about revenue, occupancy, growth vs. last month, top-selling items and top customers — answered from your own live data.', badge:'Premium' }
   ];
   var MKT_PLANS = [
-    { name:'Room + Banquet', tagline:'For hotels without an in-house restaurant.', total:'₹9,440', breakdown:'₹8,000 + 18% GST',
-      features:['Room management — floors, categories, check-in/checkout', 'Banquet hall management — hourly/daily/weekly pricing', '2 staff accounts (one per department)', 'Returning-guest lookup & booking history', 'GST-ready invoices, PDF sharing & Excel export', 'Live admin notifications for check-ins, check-outs & payments'] },
     { name:'Restaurant Only', tagline:'For standalone restaurants and cafés.', total:'₹7,080', breakdown:'₹6,000 + 18% GST',
       features:['Restaurant management — menu, live table billing', 'Mark menu items unavailable in one tap', 'Promo codes & discounts', '1 staff account', 'GST-ready invoices, PDF sharing & Excel export', 'Daily sales analytics'] },
+    { name:'Room + Banquet', tagline:'For hotels without an in-house restaurant.', total:'₹9,440', breakdown:'₹8,000 + 18% GST',
+      features:['Room management — floors, categories, check-in/checkout', 'Banquet hall management — hourly/daily/weekly pricing', '2 staff accounts (one per department)', 'Returning-guest lookup & booking history', 'GST-ready invoices, PDF sharing & Excel export', 'Live admin notifications for check-ins, check-outs & payments'] },
     { name:'All Departments', tagline:'The full hotel, one dashboard.', total:'₹14,160', breakdown:'₹12,000 + 18% GST',
       features:['Room, banquet hall & restaurant management', '3 staff accounts (one per department)', 'Returning-guest lookup across every department', 'GST-ready invoices, PDF sharing & Excel export', 'Live admin notifications & subscription alerts', 'Daily & monthly sales analytics'] },
     { name:'Premium', tagline:'Everything, plus AI-powered insights.', total:'₹21,240', breakdown:'₹18,000 + 18% GST', featured:true,
@@ -773,7 +773,7 @@
   var CHECK_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
   function giPlanCard(plan){
     return '<div class="gi-plan-card' + (plan.featured ? ' featured' : '') + '">'
-      + (plan.featured ? '<span class="gi-plan-badge">Full access</span>' : '')
+      + (plan.featured ? '<span class="gi-plan-badge">Full Access + AI</span>' : '')
       + '<div class="gi-plan-card-top"><b>' + plan.name + '</b></div>'
       + '<p class="gi-plan-card-tagline">' + plan.tagline + '</p>'
       + '<div class="gi-plan-card-price">' + plan.total + '<small>/yr</small></div>'

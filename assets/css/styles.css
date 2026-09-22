@@ -179,7 +179,7 @@ button{font-family:'Inter',sans-serif;cursor:pointer;}
 .gi-plan-card-features li{display:flex;align-items:flex-start;gap:9px;font-size:12.5px;color:#3d4552;line-height:1.5;}
 .gi-plan-card-features li svg{flex-shrink:0;margin-top:2px;color:var(--accent);}
 .gi-plan-card-btn{width:100%;justify-content:center;margin-top:auto;}
-.gi-plan-badge{position:absolute;top:-10px;right:20px;font-size:9.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;background:var(--accent);color:#fff;padding:3px 10px;border-radius:99px;}
+.gi-plan-badge{position:absolute;top:-10px;right:20px;font-size:9.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;background:var(--accent);color:#fff;padding:3px 10px;border-radius:99px;white-space:nowrap;}
 .gi-cta{margin-top:32px;padding-top:22px;border-top:1px solid #eae5d9;font-size:13px;color:#5b6473;text-align:center;}
 .gi-cta a{color:var(--accent);font-weight:600;cursor:pointer;text-decoration:none;}
 .gi-cta a:hover{text-decoration:underline;}
