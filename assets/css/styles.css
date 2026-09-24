@@ -258,8 +258,8 @@ button{font-family:'Inter',sans-serif;cursor:pointer;}
 .sub-success-icon{width:64px;height:64px;border-radius:50%;background:var(--success-bg);color:var(--success);display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:700;margin:0 auto 20px;animation:popIn .4s cubic-bezier(.34,1.56,.64,1);}
 @keyframes popIn{from{transform:scale(0);opacity:0;}to{transform:scale(1);opacity:1;}}
 .sub-gate-card{
-  position:relative;width:100%;max-width:460px;background:var(--surface);border-radius:var(--radius-lg);
-  box-shadow:0 30px 80px rgba(0,0,0,.45);padding:44px 40px 36px;text-align:center;
+  position:relative;width:100%;max-width:760px;background:var(--surface);border-radius:var(--radius-lg);
+  box-shadow:0 30px 80px rgba(0,0,0,.45);padding:44px 40px 36px;text-align:center;max-height:88vh;overflow-y:auto;
   animation:fadeInUp .35s ease;
 }
 .sub-gate-close{position:absolute;top:16px;right:16px;width:32px;height:32px;border-radius:50%;border:1px solid var(--border);background:transparent;color:var(--text-muted);font-size:20px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;}
@@ -273,18 +273,11 @@ button{font-family:'Inter',sans-serif;cursor:pointer;}
 .sub-gate-plan-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
 .sub-gate-plan-name{font-weight:700;font-size:14.5px;}
 .sub-gate-plan-badge{font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;background:var(--accent);color:var(--text-on-primary);padding:3px 9px;border-radius:99px;}
-.sub-gate-plan-list{display:flex;flex-direction:column;gap:10px;margin-bottom:16px;text-align:left;}
-.sub-gate-plan-card{border:1.5px solid var(--border-strong);border-radius:var(--radius-md);padding:14px 16px;cursor:pointer;background:var(--primary-tint);transition:border-color .15s,background .15s;position:relative;}
-.sub-gate-plan-card.premium{border-color:#b8860b;background:linear-gradient(135deg, rgba(184,134,11,.08), var(--primary-tint));}
-.sub-gate-plan-card.premium.selected{border-color:#b8860b;background:linear-gradient(135deg, rgba(184,134,11,.16), var(--primary-tint));}
-.sub-gate-plan-card-badge{position:absolute;top:-8px;right:12px;font-size:9px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;background:#b8860b;color:#fff;padding:2px 8px;border-radius:99px;}
-.sub-gate-plan-card:hover{border-color:var(--accent);}
-.sub-gate-plan-card.selected{border-color:var(--accent);background:color-mix(in srgb, var(--accent) 10%, var(--primary-tint));}
-.sub-gate-plan-card-top{display:flex;align-items:center;justify-content:space-between;gap:8px;}
-.sub-gate-plan-card-name{font-weight:700;font-size:13.5px;}
-.sub-gate-plan-card-price{font-weight:700;font-size:13.5px;white-space:nowrap;}
-.sub-gate-plan-card-depts{font-size:11.5px;color:var(--text-muted);margin-top:4px;}
-.sub-gate-plan-card-current{font-size:10px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:var(--accent);margin-top:4px;}
+.sub-gate-plan-list{display:grid;grid-template-columns:repeat(2, 1fr);gap:14px;margin-bottom:20px;text-align:left;}
+.sub-gate-plan-card{cursor:pointer;}
+.sub-gate-plan-card.selected{border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent);}
+.sub-gate-plan-card.premium.selected{border-color:#b8860b;box-shadow:0 0 0 2px rgba(184,134,11,.35);}
+@media (max-width:600px){.sub-gate-plan-list{grid-template-columns:1fr;}}
 .sub-gate-gst-line{font-size:13px;color:var(--text-secondary);margin:0 0 18px;text-align:center;}
 .sub-gate-gst-line b{color:var(--primary);}
 .sub-gate-promo{text-align:left;margin:14px 0 4px;}

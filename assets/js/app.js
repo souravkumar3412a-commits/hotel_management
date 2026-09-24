@@ -748,15 +748,16 @@
     { icon:'M12 3v3,M12 18v3,M4.2 4.2l2.1 2.1,M17.7 17.7l2.1 2.1,M3 12h3,M18 12h3,M4.2 19.8l2.1-2.1,M17.7 6.3l2.1-2.1', title:'AI Assistant', desc:'Ask plain-English questions about revenue, occupancy, growth vs. last month, top-selling items and top customers — answered from your own live data.', badge:'Premium' }
   ];
   var MKT_PLANS = [
-    { name:'Restaurant Only', tagline:'For standalone restaurants and cafés.', total:'₹7,080', breakdown:'₹6,000 + 18% GST',
+    { planType:'restaurant', name:'Restaurant Only', tagline:'For standalone restaurants and cafés.', total:'₹7,080', breakdown:'₹6,000 + 18% GST',
       features:['Restaurant management — menu, live table billing', 'Mark menu items unavailable in one tap', 'Promo codes & discounts', '1 staff account', 'GST-ready invoices, PDF sharing & Excel export', 'Daily sales analytics'] },
-    { name:'Room + Banquet', tagline:'For hotels without an in-house restaurant.', total:'₹9,440', breakdown:'₹8,000 + 18% GST',
+    { planType:'room_banquet', name:'Room + Banquet', tagline:'For hotels without an in-house restaurant.', total:'₹9,440', breakdown:'₹8,000 + 18% GST',
       features:['Room management — floors, categories, check-in/checkout', 'Banquet hall management — hourly/daily/weekly pricing', '2 staff accounts (one per department)', 'Returning-guest lookup & booking history', 'GST-ready invoices, PDF sharing & Excel export', 'Live admin notifications for check-ins, check-outs & payments'] },
-    { name:'All Departments', tagline:'The full hotel, one dashboard.', total:'₹14,160', breakdown:'₹12,000 + 18% GST',
+    { planType:'all', name:'All Departments', tagline:'The full hotel, one dashboard.', total:'₹14,160', breakdown:'₹12,000 + 18% GST',
       features:['Room, banquet hall & restaurant management', '3 staff accounts (one per department)', 'Returning-guest lookup across every department', 'GST-ready invoices, PDF sharing & Excel export', 'Live admin notifications & subscription alerts', 'Daily & monthly sales analytics'] },
-    { name:'Premium', tagline:'Everything, plus AI-powered insights.', total:'₹21,240', breakdown:'₹18,000 + 18% GST', featured:true,
+    { planType:'premium', name:'Premium', tagline:'Everything, plus AI-powered insights.', total:'₹21,240', breakdown:'₹18,000 + 18% GST', featured:true,
       features:['Every department included', '3 staff accounts', 'Voice Commands — hands-free navigation & search', 'AI Assistant — ask about revenue, occupancy & top performers', 'Returning-guest lookup & Excel export everywhere', 'Live admin notifications & desktop alerts'] }
   ];
+  function mktPlanCopy(planType){ return MKT_PLANS.find(function(p){ return p.planType === planType; }); }
   function renderMarketingSections(){
     var moduleGrid = document.getElementById('mktModuleGrid');
     if(moduleGrid) moduleGrid.innerHTML = MKT_MODULES.map(function(m){
@@ -1867,15 +1868,18 @@
       selectedPlanType = selectable[0] ? selectable[0].planType : null;
     }
     list.innerHTML = selectable.map(function(p){
-      var deptLabels = p.departments.map(departmentLabel).join(' + ');
-      var featLabels = (p.features || []).map(function(f){ return f === 'voice' ? '🎤 Voice Commands' : (f === 'ai' ? '🤖 AI Assistant' : f); });
+      var copy = mktPlanCopy(p.planType) || { tagline:'', features:[] };
       var isSel = p.planType === selectedPlanType;
       var isPremium = p.planType === 'premium';
-      return '<div class="sub-gate-plan-card'+(isSel?' selected':'')+(isPremium?' premium':'')+'" data-plan-type="'+p.planType+'">'
-        + (isPremium ? '<span class="sub-gate-plan-card-badge">Premium</span>' : '')
-        + '<div class="sub-gate-plan-card-top"><span class="sub-gate-plan-card-name">'+escapeHtml(p.name)+'</span>'
-        + '<span class="sub-gate-plan-card-price">'+moneyINR(p.totalAmount)+'/yr</span></div>'
-        + '<div class="sub-gate-plan-card-depts">'+escapeHtml(deptLabels)+(featLabels.length ? ' + ' + escapeHtml(featLabels.join(' + ')) : '')+'</div>'
+      return '<div class="gi-plan-card sub-gate-plan-card'+(isSel?' selected':'')+(isPremium?' premium':'')+'" data-plan-type="'+p.planType+'">'
+        + (isPremium ? '<span class="gi-plan-badge">Full Access + AI</span>' : '')
+        + '<div class="gi-plan-card-top"><b>'+escapeHtml(p.name)+'</b></div>'
+        + '<p class="gi-plan-card-tagline">'+escapeHtml(copy.tagline)+'</p>'
+        + '<div class="gi-plan-card-price">'+moneyINR(p.totalAmount)+'<small>/yr</small></div>'
+        + '<div class="gi-plan-card-breakdown">'+moneyINR(p.baseAmount)+' + 18% GST</div>'
+        + '<ul class="gi-plan-card-features">'
+        + copy.features.map(function(f){ return '<li>'+CHECK_SVG+'<span>'+escapeHtml(f)+'</span></li>'; }).join('')
+        + '</ul>'
         + '</div>';
     }).join('');
     list.querySelectorAll('.sub-gate-plan-card').forEach(function(card){
