@@ -136,6 +136,8 @@ button{font-family:'Inter',sans-serif;cursor:pointer;}
 .gtn-link:hover{color:#b98a2f;}
 .gtn-link-demo{display:flex;align-items:center;background:rgba(217,164,65,.12);border:1px solid rgba(217,164,65,.35);border-radius:20px;padding:6px 14px;color:#8a5c00;}
 .gtn-link-demo:hover{background:rgba(217,164,65,.22);color:#7a5000;}
+.gtn-link-green{background:#1a9c5c;border:1px solid #1a9c5c;border-radius:20px;padding:6px 16px;color:#ffffff;transition:background .18s ease, border-color .18s ease, transform .15s ease;}
+.gtn-link-green:hover{background:#158049;border-color:#158049;color:#ffffff;transform:translateY(-1px);}
 
 .mkt-section{padding:88px 24px;background:#fff;}
 .mkt-section-alt{background:#f7f4ee;}
@@ -146,13 +148,44 @@ button{font-family:'Inter',sans-serif;cursor:pointer;}
 .mkt-module-grid{display:grid;grid-template-columns:repeat(3, 1fr);gap:28px 32px;}
 .mkt-plan-grid{display:grid;grid-template-columns:repeat(4, 1fr);gap:18px;align-items:stretch;}
 .mkt-badge{display:inline-block;font-size:9px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;background:linear-gradient(135deg,#b8860b,#d9a441);color:#fff;padding:2px 7px;border-radius:99px;vertical-align:2px;margin-left:5px;}
-.mkt-cta-section{padding:76px 24px;background:linear-gradient(135deg,#0b1b30,#16324f);text-align:center;}
-.mkt-cta-inner{display:flex;flex-direction:column;align-items:center;gap:14px;}
-.mkt-footer{padding:22px 24px;background:#0b1420;}
-.mkt-footer-inner{display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;font-size:11.5px;color:rgba(255,255,255,.5);}
+
+/* ---------- scroll-reveal, used across Key Modules / Pricing / Support / final CTA ---------- */
+.reveal{opacity:0;transform:translateY(24px);transition:opacity .6s cubic-bezier(.2,.9,.25,1), transform .6s cubic-bezier(.2,.9,.25,1);}
+.reveal.in-view{opacity:1;transform:translateY(0);}
+.mkt-h2.reveal{transition-delay:.08s;}
+.mkt-sub.reveal{transition-delay:.16s;}
+.gi-cta.reveal{transition-delay:.1s;}
+.gi-module.reveal,.gi-plan-card.reveal{transition-delay:calc(var(--ri, 0) * .08s);}
+.mkt-cta-btn.reveal{transition-delay:.24s;}
+.mkt-cta-trust.reveal{transition-delay:.32s;}
+@media (prefers-reduced-motion:reduce){
+  .reveal{opacity:1 !important;transform:none !important;transition:none !important;}
+}
+
+.mkt-cta-section{position:relative;overflow:hidden;padding:84px 24px;background:linear-gradient(135deg,#0b1b30,#16324f);text-align:center;}
+.mkt-cta-decor{position:absolute;inset:-20%;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(circle at 18% 22%, rgba(217,164,65,.16) 0%, transparent 45%),
+    radial-gradient(circle at 84% 78%, rgba(217,164,65,.10) 0%, transparent 50%),
+    radial-gradient(circle, rgba(255,255,255,.09) 1px, transparent 1px);
+  background-size:auto, auto, 26px 26px;
+}
+.mkt-cta-inner{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:14px;}
+.mkt-cta-badge{width:52px;height:52px;border-radius:50%;background:rgba(217,164,65,.16);border:1px solid rgba(217,164,65,.4);color:var(--accent);display:flex;align-items:center;justify-content:center;margin-bottom:6px;}
+.mkt-cta-btn{position:relative;box-shadow:0 0 0 0 rgba(217,164,65,.45);animation:mktCtaPulse 2.6s ease-in-out infinite;}
+.mkt-cta-btn:hover{animation-play-state:paused;}
+@keyframes mktCtaPulse{0%{box-shadow:0 0 0 0 rgba(217,164,65,.4);}70%{box-shadow:0 0 0 14px rgba(217,164,65,0);}100%{box-shadow:0 0 0 0 rgba(217,164,65,0);}}
+.mkt-cta-trust{display:flex;flex-wrap:wrap;justify-content:center;gap:20px;margin-top:10px;}
+.mkt-cta-trust span{display:flex;align-items:center;gap:6px;font-size:12px;color:rgba(255,255,255,.68);}
+.mkt-cta-trust svg{color:#7be0a8;flex-shrink:0;}
+
+.mkt-footer{padding:22px 24px;background:#0b1420;border-top:1px solid rgba(217,164,65,.14);}
+.mkt-footer-inner{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;font-size:11.5px;color:rgba(255,255,255,.5);}
+.mkt-footer-brand{display:flex;align-items:center;gap:9px;}
 .mkt-footer-support{color:rgba(255,255,255,.7);text-decoration:none;}
 .mkt-footer-support:hover{color:var(--accent);text-decoration:underline;}
-.mkt-support-card{display:flex;align-items:center;gap:16px;max-width:420px;margin:0 auto;background:#fff;border:1.5px solid #eae5d9;border-radius:16px;padding:22px 26px;}
+.mkt-support-card{display:flex;align-items:center;gap:16px;max-width:420px;margin:0 auto;background:#fff;border:1.5px solid #eae5d9;border-radius:16px;padding:22px 26px;transition:border-color .18s ease, box-shadow .18s ease, transform .18s ease;}
+.mkt-support-card:hover{border-color:var(--accent);box-shadow:0 10px 26px rgba(20,16,10,.08);transform:translateY(-2px);}
 .mkt-support-icon{width:48px;height:48px;flex-shrink:0;border-radius:50%;background:rgba(217,164,65,.12);color:var(--accent);display:flex;align-items:center;justify-content:center;}
 .mkt-support-card b{display:block;font-size:13px;color:#1a2436;margin-bottom:3px;}
 .mkt-support-card a{font-size:15px;font-weight:600;color:var(--accent);text-decoration:none;}
@@ -235,7 +268,7 @@ button{font-family:'Inter',sans-serif;cursor:pointer;}
 @media (prefers-reduced-motion:reduce){
   .gate-brand-panel,.gate-brand-panel::after,
   .gbp-top,.gbp-mid .eyebrow,.gbp-mid h1,.gbp-mid p,.gbp-feat,.gbp-stat,.gbp-bottom,
-  .gate-form-panel,.gate-box,.gbp-preview-card,.gpc-live-dot,.gpc-bars span,
+  .gate-form-panel,.gate-box,
   .gate-secure-note svg{
     animation:none !important;opacity:1 !important;transform:none !important;clip-path:none !important;
   }
@@ -272,36 +305,6 @@ button{font-family:'Inter',sans-serif;cursor:pointer;}
 
 @keyframes gateFadeUp{ from{ opacity:0; transform:translateY(16px); } to{ opacity:1; transform:translateY(0); } }
 @keyframes gateWipeIn{ from{ opacity:0; clip-path:inset(0 100% -20% 0); } to{ opacity:1; clip-path:inset(0 0% -20% 0); } }
-
-/* ---------- floating "live" product preview card (brand panel hero) ---------- */
-.gbp-preview-card{
-  position:absolute; z-index:2; top:130px; right:44px; width:206px;
-  background:rgba(8,18,34,.72); -webkit-backdrop-filter:blur(14px) saturate(140%); backdrop-filter:blur(14px) saturate(140%);
-  border:1px solid rgba(217,164,65,.28); border-radius:16px; padding:16px 18px 15px;
-  box-shadow:0 24px 48px -16px rgba(0,0,0,.55), 0 1px 0 rgba(255,255,255,.06) inset;
-  opacity:0; transform:translateY(28px) scale(.92) rotate(-2deg);
-  animation:gpcIn .7s cubic-bezier(.2,.9,.25,1) .6s forwards, gpcFloat 6s ease-in-out 1.3s infinite;
-}
-@keyframes gpcIn{ to{ opacity:1; transform:translateY(0) scale(1) rotate(-2deg); } }
-@keyframes gpcFloat{ 0%,100%{ transform:translateY(0) rotate(-2deg); } 50%{ transform:translateY(-9px) rotate(-1.2deg); } }
-.gpc-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:8px;}
-.gpc-live{display:flex;align-items:center;gap:5px;font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:#7be0a8;flex-shrink:0;}
-.gpc-live-dot{width:6px;height:6px;border-radius:50%;background:#3ecb75;animation:gpcPulse 1.8s ease-out infinite;}
-@keyframes gpcPulse{0%{box-shadow:0 0 0 0 rgba(62,203,117,.55);}70%{box-shadow:0 0 0 7px rgba(62,203,117,0);}100%{box-shadow:0 0 0 0 rgba(62,203,117,0);}}
-.gpc-label{font-size:10px;color:var(--text-on-primary-muted);text-align:right;}
-.gpc-value{font-family:'Playfair Display',serif;font-size:25px;font-weight:700;color:#fff;line-height:1;margin-bottom:6px;}
-.gpc-delta{display:flex;align-items:center;gap:4px;font-size:11px;color:#7be0a8;margin-bottom:14px;}
-.gpc-bars{display:flex;align-items:flex-end;gap:5px;height:36px;}
-.gpc-bars span{flex:1;border-radius:3px 3px 0 0;background:linear-gradient(180deg,var(--accent),rgba(217,164,65,.35));height:var(--h);transform:scaleY(0);transform-origin:bottom;animation:gpcGrow .9s cubic-bezier(.2,.9,.25,1) forwards;}
-.gpc-bars span:nth-child(1){animation-delay:1.05s;}
-.gpc-bars span:nth-child(2){animation-delay:1.13s;}
-.gpc-bars span:nth-child(3){animation-delay:1.21s;}
-.gpc-bars span:nth-child(4){animation-delay:1.29s;}
-.gpc-bars span:nth-child(5){animation-delay:1.37s;}
-.gpc-bars span:nth-child(6){animation-delay:1.45s;}
-.gpc-bars span:nth-child(7){animation-delay:1.53s;}
-@keyframes gpcGrow{ to{ transform:scaleY(1); } }
-@media (max-width:1150px){ .gbp-preview-card{ display:none; } }
 
 
 .gate-form-panel{flex:1 1 54%;display:flex;align-items:center;justify-content:center;padding:40px 24px;overflow-y:auto;

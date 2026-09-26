@@ -783,8 +783,8 @@
   function mktPlanCopy(planType){ return MKT_PLANS.find(function(p){ return p.planType === planType; }); }
   function renderMarketingSections(){
     var moduleGrid = document.getElementById('mktModuleGrid');
-    if(moduleGrid) moduleGrid.innerHTML = MKT_MODULES.map(function(m){
-      return moduleRow(m.icon, m.title + (m.badge ? ' <span class="mkt-badge">'+m.badge+'</span>' : ''), m.desc);
+    if(moduleGrid) moduleGrid.innerHTML = MKT_MODULES.map(function(m, i){
+      return moduleRow(m.icon, m.title + (m.badge ? ' <span class="mkt-badge">'+m.badge+'</span>' : ''), m.desc, i);
     }).join('');
     var planGrid = document.getElementById('mktPlanGrid');
     if(planGrid) planGrid.innerHTML = MKT_PLANS.map(giPlanCard).join('');
@@ -795,8 +795,8 @@
     if(yearEl) yearEl.textContent = String(new Date().getFullYear());
   }
   var CHECK_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
-  function giPlanCard(plan){
-    return '<div class="gi-plan-card' + (plan.featured ? ' featured' : '') + '">'
+  function giPlanCard(plan, i){
+    return '<div class="gi-plan-card reveal' + (plan.featured ? ' featured' : '') + '" style="--ri:' + i + '">'
       + (plan.featured ? '<span class="gi-plan-badge">Full Access + AI</span>' : '')
       + '<div class="gi-plan-card-top"><b>' + plan.name + '</b></div>'
       + '<p class="gi-plan-card-tagline">' + plan.tagline + '</p>'
@@ -808,9 +808,9 @@
       + '<button type="button" class="btn' + (plan.featured ? ' accent' : ' ghost') + ' gi-plan-card-btn" data-plan-cta>Get Started</button>'
       + '</div>';
   }
-  function moduleRow(iconPaths, title, desc){
+  function moduleRow(iconPaths, title, desc, i){
     var paths = iconPaths.split(',').map(function(d){ return '<path d="' + d + '"/>'; }).join('');
-    return '<div class="gi-module"><span class="gf-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + paths + '</svg></span><span><b>' + title + '</b><span>' + desc + '</span></span></div>';
+    return '<div class="gi-module reveal" style="--ri:' + (i||0) + '"><span class="gf-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + paths + '</svg></span><span><b>' + title + '</b><span>' + desc + '</span></span></div>';
   }
   renderMarketingSections();
   function scrollToMkt(id){
@@ -825,6 +825,19 @@
     showAdminSignupPanel();
     document.getElementById('signupFirstName').focus();
   }
+  function goToLogin(){
+    setGateTab('admin');
+    showAdminLoginPanel();
+    document.getElementById('loginEmail').focus();
+  }
+  document.getElementById('gtnNewUserBtn').addEventListener('click', function(){
+    document.getElementById('gateScreen').scrollIntoView({ behavior:'smooth', block:'start' });
+    goToSignup();
+  });
+  document.getElementById('gtnLoginBtn').addEventListener('click', function(){
+    document.getElementById('gateScreen').scrollIntoView({ behavior:'smooth', block:'start' });
+    goToLogin();
+  });
   document.getElementById('mktCtaCreateAccount').addEventListener('click', function(){
     document.getElementById('gateScreen').scrollIntoView({ behavior:'smooth', block:'start' });
     goToSignup();
