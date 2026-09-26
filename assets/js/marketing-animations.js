@@ -10,9 +10,22 @@
   'use strict';
 
   var targets = document.querySelectorAll('.reveal');
-  if(!targets.length) return;
-
   var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // Cursor-tracking spotlight glow on the Key Modules / Pricing cards — sets
+  // --mx/--my to the pointer's position inside each card; styles.css turns
+  // that into a soft radial highlight that only shows on hover. This is
+  // directly tied to the user's own pointer movement (not autoplaying), so
+  // it runs regardless of the reduced-motion setting below.
+  document.querySelectorAll('.gi-module, .gi-plan-card').forEach(function(card){
+    card.addEventListener('mousemove', function(e){
+      var r = card.getBoundingClientRect();
+      card.style.setProperty('--mx', (e.clientX - r.left) + 'px');
+      card.style.setProperty('--my', (e.clientY - r.top) + 'px');
+    });
+  });
+
+  if(!targets.length) return;
   if(reduceMotion || !('IntersectionObserver' in window)){
     targets.forEach(function(el){ el.classList.add('in-view'); });
     return;

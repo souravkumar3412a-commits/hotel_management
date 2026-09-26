@@ -157,11 +157,51 @@ button{font-family:'Inter',sans-serif;cursor:pointer;}
 .mkt-h2.reveal{transition-delay:.08s;}
 .mkt-sub.reveal{transition-delay:.16s;}
 .gi-cta.reveal{transition-delay:.1s;}
-.gi-module.reveal,.gi-plan-card.reveal{transition-delay:calc(var(--ri, 0) * .08s);}
 .mkt-cta-btn.reveal{transition-delay:.24s;}
 .mkt-cta-trust.reveal{transition-delay:.32s;}
 @media (prefers-reduced-motion:reduce){
   .reveal{opacity:1 !important;transform:none !important;transition:none !important;}
+}
+
+/* ---------- Key Modules / Pricing cards — 3D entrance + icon draw-in + cursor-tracking glow ---------- */
+.gi-module.reveal,.gi-plan-card.reveal{
+  opacity:0;transform:perspective(900px) rotateX(-16deg) translateY(30px) scale(.94);
+  transform-origin:center bottom;
+  transition:opacity .7s cubic-bezier(.16,.84,.44,1), transform .7s cubic-bezier(.16,.84,.44,1);
+  transition-delay:calc(var(--ri, 0) * .09s);
+}
+.gi-module.reveal.in-view,.gi-plan-card.reveal.in-view{
+  opacity:1;transform:perspective(900px) rotateX(0deg) translateY(0) scale(1);
+}
+.gi-module .gf-ico{transform:scale(0) rotate(-20deg);transition:transform .5s cubic-bezier(.34,1.56,.64,1);transition-delay:calc(var(--ri, 0) * .09s + .18s);}
+.gi-module.reveal.in-view .gf-ico{transform:scale(1) rotate(0deg);}
+.gi-module .gf-ico svg path{stroke-dasharray:24;stroke-dashoffset:24;}
+.gi-module.reveal.in-view .gf-ico svg path{animation:iconDraw .6s ease forwards;animation-delay:calc(var(--ri, 0) * .09s + .32s);}
+@keyframes iconDraw{ to{ stroke-dashoffset:0; } }
+@media (prefers-reduced-motion:reduce){
+  .gi-module .gf-ico,.gi-module .gf-ico svg path{ animation:none !important;transform:none !important;stroke-dashoffset:0 !important;transition:none !important; }
+}
+/* cursor-tracking spotlight glow, revealed on hover */
+.gi-module,.gi-plan-card{position:relative;}
+.gi-module::before,.gi-plan-card::before{
+  content:"";position:absolute;inset:0;z-index:0;pointer-events:none;border-radius:inherit;
+  background:radial-gradient(240px circle at var(--mx,50%) var(--my,50%), rgba(15,157,118,.14), transparent 62%);
+  opacity:0;transition:opacity .35s ease;
+}
+.gi-module:hover::before,.gi-plan-card:hover::before{opacity:1;}
+.gi-module > *,.gi-plan-card > *{position:relative;z-index:1;}
+.gi-plan-card > .gi-plan-badge{z-index:2;}
+.gi-plan-card-features li{opacity:0;transform:translateX(-8px);}
+.gi-plan-card.reveal.in-view .gi-plan-card-features li{animation:planFeatIn .45s ease forwards;}
+.gi-plan-card.reveal.in-view .gi-plan-card-features li:nth-child(1){animation-delay:calc(var(--ri,0)*.09s + .34s);}
+.gi-plan-card.reveal.in-view .gi-plan-card-features li:nth-child(2){animation-delay:calc(var(--ri,0)*.09s + .40s);}
+.gi-plan-card.reveal.in-view .gi-plan-card-features li:nth-child(3){animation-delay:calc(var(--ri,0)*.09s + .46s);}
+.gi-plan-card.reveal.in-view .gi-plan-card-features li:nth-child(4){animation-delay:calc(var(--ri,0)*.09s + .52s);}
+.gi-plan-card.reveal.in-view .gi-plan-card-features li:nth-child(5){animation-delay:calc(var(--ri,0)*.09s + .58s);}
+.gi-plan-card.reveal.in-view .gi-plan-card-features li:nth-child(6){animation-delay:calc(var(--ri,0)*.09s + .64s);}
+@keyframes planFeatIn{ to{ opacity:1; transform:translateX(0); } }
+@media (prefers-reduced-motion:reduce){
+  .gi-plan-card-features li{ animation:none !important;opacity:1 !important;transform:none !important; }
 }
 
 .mkt-cta-section{position:relative;overflow:hidden;padding:84px 24px;background:linear-gradient(135deg,#0b1b30,#16324f);text-align:center;}

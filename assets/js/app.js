@@ -809,7 +809,7 @@
       + '</div>';
   }
   function moduleRow(iconPaths, title, desc, i){
-    var paths = iconPaths.split(',').map(function(d){ return '<path d="' + d + '"/>'; }).join('');
+    var paths = iconPaths.split(',').map(function(d){ return '<path d="' + d + '" pathLength="24"/>'; }).join('');
     return '<div class="gi-module reveal" style="--ri:' + (i||0) + '"><span class="gf-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + paths + '</svg></span><span><b>' + title + '</b><span>' + desc + '</span></span></div>';
   }
   renderMarketingSections();
