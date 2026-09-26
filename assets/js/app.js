@@ -2085,7 +2085,7 @@
         name: 'Hotel Management System',
         description: order.planLabel + (order.isUpgrade ? ' — plan upgrade' : ' — annual subscription'),
         order_id: order.orderId,
-        theme: { color: '#d9a441' },
+        theme: { color: '#0f9d76' },
         handler: function(response){
           // Razorpay only calls this after the user actually completes payment.
           // We still don't trust it as "success" until the backend verifies
@@ -6645,7 +6645,7 @@
   }
 
   function chartColors(){
-    return { accent:'#d9a441', primary:'#17375e', muted:'#928c7e', success:'#2f7d52', info:'#2f6690', grid:'#e5e2da' };
+    return { accent:'#0f9d76', primary:'#153353', muted:'#928c7e', success:'#2f7d52', info:'#2f6690', grid:'#e5e2da' };
   }
   function renderAnalysisCharts(list){
     if(typeof Chart === 'undefined') return;
@@ -6668,7 +6668,7 @@
         type: 'line',
         data: { labels: labels, datasets: [{
           label: 'Revenue', data: days.map(function(d){ return byDay[d]; }),
-          borderColor: c.accent, backgroundColor: 'rgba(217,164,65,.12)', fill: true, tension: .35,
+          borderColor: c.accent, backgroundColor: 'rgba(15,157,118,.12)', fill: true, tension: .35,
           pointRadius: 3, pointBackgroundColor: c.accent, borderWidth: 2.4
         }]},
         options: {
