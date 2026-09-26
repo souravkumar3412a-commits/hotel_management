@@ -75,6 +75,20 @@
         <div class="gbp-stat"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg><span><b>Smart</b><span>Growth</span></span></div>
       </div>
     </div>
+    <div class="gbp-preview-card" aria-hidden="true">
+      <div class="gpc-head">
+        <span class="gpc-live"><span class="gpc-live-dot"></span>Live</span>
+        <span class="gpc-label">Today's revenue</span>
+      </div>
+      <div class="gpc-value" id="gatePreviewRevenue">₹0</div>
+      <div class="gpc-delta">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+        12.4% vs yesterday
+      </div>
+      <div class="gpc-bars">
+        <span style="--h:38%"></span><span style="--h:55%"></span><span style="--h:44%"></span><span style="--h:70%"></span><span style="--h:60%"></span><span style="--h:82%"></span><span style="--h:66%"></span>
+      </div>
+    </div>
     <p class="gbp-bottom">DATA SAVED SECURELY IN THE CLOUD</p>
   </div>
 
@@ -86,6 +100,7 @@
       </div>
 
       <div class="gate-tabs">
+        <span class="gate-tab-indicator" id="gateTabIndicator"></span>
         <button type="button" class="gate-tab active" id="tabAdmin" data-role-tab="admin">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 5v6c0 5 3.4 8.7 8 11 4.6-2.3 8-6 8-11V5l-8-3Z"/></svg>
           Admin Login
@@ -527,6 +542,32 @@
           <div class="card">
             <div class="card-head"><div><h3>Pending payments</h3><p class="card-sub">Banquet bookings with a balance still outstanding.</p></div></div>
             <div id="dashPendingPayments"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- STAFF DASHBOARD (department-scoped — each staff member sees only their own department's numbers) -->
+      <section class="section" data-section="staff-dashboard">
+        <div class="page-head">
+          <div>
+            <p class="eyebrow" id="staffDashEyebrow">Overview</p>
+            <h2>Dashboard</h2>
+            <p id="staffDashDesc">How your department is performing today.</p>
+          </div>
+          <div class="date-badge" id="staffDashDateBadge"></div>
+        </div>
+
+        <p class="section-block-label" style="border-bottom:none;padding-bottom:0;margin-bottom:14px;">Today's performance</p>
+        <div class="kpi-grid" id="staffDashKpiGrid"></div>
+
+        <div class="dash-grid" style="margin-top:20px;">
+          <div class="card">
+            <div class="card-head"><div><h3>Recent activity</h3><p class="card-sub" id="staffDashRecentSub">Your department's latest bills.</p></div></div>
+            <div id="staffDashRecent"></div>
+          </div>
+          <div class="card" id="staffDashPendingCard" style="display:none;">
+            <div class="card-head"><div><h3>Pending payments</h3><p class="card-sub">Bookings with a balance still outstanding.</p></div></div>
+            <div id="staffDashPending"></div>
           </div>
         </div>
       </section>
@@ -1917,6 +1958,7 @@
 <div id="toastWrap"></div>
 
 <script src="assets/js/splash.js" defer></script>
+<script src="assets/js/gate-animations.js" defer></script>
 <script src="assets/js/app.js" defer></script>
 <script src="assets/js/voice-commands.js" defer></script>
 </body>

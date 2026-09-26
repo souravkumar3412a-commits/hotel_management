@@ -188,12 +188,14 @@
     return arr.length ? arr : STAFF_TABS_FALLBACK;
   }
   var ROOM_STAFF_TABS = [
-    { key:'room-booking', label:'Room Management', num:'01', icon:'billing' },
-    { key:'room-history', label:'History', num:'02', icon:'history' }
+    { key:'staff-dashboard', label:'Dashboard', num:'01', icon:'dashboard' },
+    { key:'room-booking', label:'Room Management', num:'02', icon:'billing' },
+    { key:'room-history', label:'History', num:'03', icon:'history' }
   ];
   var BANQUET_STAFF_TABS = [
-    { key:'banquet-booking', label:'Banquet Booking', num:'01', icon:'billing' },
-    { key:'banquet-history', label:'History', num:'02', icon:'history' }
+    { key:'staff-dashboard', label:'Dashboard', num:'01', icon:'dashboard' },
+    { key:'banquet-booking', label:'Banquet Booking', num:'02', icon:'billing' },
+    { key:'banquet-history', label:'History', num:'03', icon:'history' }
   ];
   // Routes a logged-in staff member to the tabs for their assigned department.
   // Uses state.session.department — set directly from the login response
@@ -203,11 +205,15 @@
     var dept = state.session.department;
     if(dept === 'room') return ROOM_STAFF_TABS;
     if(dept === 'banquet') return BANQUET_STAFF_TABS;
-    var tableTabs = buildStaffTableTabs();
-    return tableTabs.concat([{ key:'history', label:'History', num:String(tableTabs.length + 1).padStart(2,'0'), icon:'history' }]);
+    var dashTab = { key:'staff-dashboard', label:'Dashboard', num:'01', icon:'dashboard' };
+    var tableTabs = buildStaffTableTabs().map(function(t, i){
+      return Object.assign({}, t, { num:String(i + 2).padStart(2,'0') });
+    });
+    return [dashTab].concat(tableTabs).concat([{ key:'history', label:'History', num:String(tableTabs.length + 2).padStart(2,'0'), icon:'history' }]);
   }
   var SECTION_META = {
     dashboard:{crumb:'Overview', title:'Dashboard'},
+    'staff-dashboard':{crumb:'Staff', title:'Dashboard'},
     'ai-assistant':{crumb:'Admin', title:'AI Assistant'},
     setup:{crumb:'Admin', title:'Hotel details'},
     menu:{crumb:'Admin / Restaurant', title:'Add new item'},
@@ -696,15 +702,32 @@
   // "choose a role" screen.
   var gateTabs = document.querySelectorAll('.gate-tab');
   var gateRolePanels = document.querySelectorAll('.gate-role-panel');
+  // Slides the little highlight pill behind whichever tab (Admin/Staff) is
+  // active, instead of the highlight just snapping between them.
+  function moveGateTabIndicator(activeBtn){
+    var ind = document.getElementById('gateTabIndicator');
+    if(!ind || !activeBtn) return;
+    ind.style.width = activeBtn.offsetWidth + 'px';
+    ind.style.transform = 'translateX(' + activeBtn.offsetLeft + 'px)';
+  }
   function setGateTab(role){
     gateTabs.forEach(function(t){ t.classList.toggle('active', t.dataset.roleTab === role); });
     gateRolePanels.forEach(function(p){ p.classList.toggle('active', p.dataset.rolePanel === role); });
+    moveGateTabIndicator(document.getElementById(role === 'staff' ? 'tabStaff' : 'tabAdmin'));
     if(role === 'staff'){
       document.getElementById('staffLoginError').classList.remove('show');
     }
   }
   document.getElementById('tabAdmin').addEventListener('click', function(){ setGateTab('admin'); });
   document.getElementById('tabStaff').addEventListener('click', function(){ setGateTab('staff'); });
+  // Position the indicator correctly on first paint and whenever the
+  // viewport resizes (the tabs are flexible-width, so their pixel
+  // positions shift between mobile and desktop).
+  moveGateTabIndicator(document.getElementById('tabAdmin'));
+  window.addEventListener('resize', function(){
+    var active = document.querySelector('.gate-tab.active');
+    moveGateTabIndicator(active || document.getElementById('tabAdmin'));
+  });
 
   // Used by logout / failed-session-restore to land back on a clean,
   // logged-out gate screen (Admin tab, login view — not signup).
@@ -1196,6 +1219,7 @@
     if(tableMatch) selectTable(tableMatch[1]);
     closeMobileSidebar();
     if(name === 'dashboard') renderDashboard();
+    if(name === 'staff-dashboard') renderStaffDashboard();
     if(name === 'ai-assistant') scrollAiChatToBottom();
     if(name === 'analysis') renderSalesAnalysis();
     if(name === 'room-booking'){ renderRoomTicket(); renderRoomBookingPage(); }
@@ -2105,6 +2129,7 @@
     renderStaffList();
     renderPromoList();
     renderDashboard();
+    renderStaffDashboard();
     initSidebarToggle();
     initDashboardClock();
     var notifMenu = document.getElementById('notifMenu');
@@ -2137,9 +2162,11 @@
   // whenever the dashboard happened to re-render — so it froze at whatever
   // time that was and never ticked forward. This keeps it live.
   function updateDashboardClock(){
+    var badgeHtml = '<span class="db-ico">'+ICONS.history+'</span><span>'+new Date().toLocaleDateString('en-IN',{weekday:'short', day:'2-digit', month:'short', year:'numeric'})+' &nbsp;<b>'+new Date().toLocaleTimeString('en-IN',{hour:'2-digit', minute:'2-digit'})+'</b></span>';
     var dateBadge = document.getElementById('dashDateBadge');
-    if(!dateBadge) return;
-    dateBadge.innerHTML = '<span class="db-ico">'+ICONS.history+'</span><span>'+new Date().toLocaleDateString('en-IN',{weekday:'short', day:'2-digit', month:'short', year:'numeric'})+' &nbsp;<b>'+new Date().toLocaleTimeString('en-IN',{hour:'2-digit', minute:'2-digit'})+'</b></span>';
+    if(dateBadge) dateBadge.innerHTML = badgeHtml;
+    var staffBadge = document.getElementById('staffDashDateBadge');
+    if(staffBadge) staffBadge.innerHTML = badgeHtml;
   }
   var dashboardClockInterval = null;
   function initDashboardClock(){
@@ -6085,6 +6112,145 @@
     renderAnalyticsCharts(getDashboardRange(dashboardRangeKey));
     renderMonthlyRevenueChart();
     });
+  }
+
+  // ---------- Staff dashboard (department-scoped) ----------
+  // Unlike the admin Dashboard above (which shows every department combined),
+  // each staff member only ever sees their OWN department's numbers here —
+  // Room staff never sees Banquet/Restaurant figures and vice versa. This
+  // mirrors the backend's requireDepartment() access rules: every call below
+  // hits an endpoint that staff member's department is already allowed to use.
+  function renderStaffDashboard(){
+    if(!state.session || state.session.role !== 'staff') return;
+    if(!document.getElementById('staffDashKpiGrid')) return;
+    updateDashboardClock();
+    var dept = state.session.department;
+    if(dept === 'room') return renderRoomStaffDashboard();
+    if(dept === 'banquet') return renderBanquetStaffDashboard();
+    return renderRestaurantStaffDashboard();
+  }
+
+  function setStaffDashHead(eyebrow, desc, recentSub, showPending){
+    document.getElementById('staffDashEyebrow').textContent = eyebrow;
+    document.getElementById('staffDashDesc').textContent = desc;
+    document.getElementById('staffDashRecentSub').textContent = recentSub;
+    document.getElementById('staffDashPendingCard').style.display = showPending ? '' : 'none';
+  }
+
+  function renderRoomStaffDashboard(){
+    setStaffDashHead('Room Management', 'Today\'s occupancy, revenue and check-ins/outs for your department.', 'The latest room bills generated by your team.', false);
+    return Promise.all([
+      fetchRoomSetupFromServer().catch(function(){}),
+      api.getInvoices('room').then(function(rows){ state.roomInvoices = rows.map(mapServerRoomInvoiceListRow); }).catch(function(){}),
+      api.getRoomBookings().then(function(rows){ state.allRoomBookings = rows.map(mapServerRoomBookingRaw); }).catch(function(){ state.allRoomBookings = state.allRoomBookings || []; })
+    ]).then(function(){
+      var today = localDateStr(new Date());
+      var totalRooms = state.rooms.length;
+      var occupiedNow = state.rooms.filter(function(r){ return r.status === 'occupied'; }).length;
+      var occupancyPct = totalRooms ? Math.round((occupiedNow / totalRooms) * 100) : 0;
+      var roomInvoices = state.roomInvoices || [];
+      var todayInvoices = roomInvoices.filter(function(i){ return localDateStr(new Date(i.date)) === today; });
+      var todayRevenue = todayInvoices.reduce(function(s,i){ return s + (Number(i.total)||0); }, 0);
+      var checkInsToday = (state.allRoomBookings||[]).filter(function(b){ return b.checkIn && localDateStr(new Date(b.checkIn)) === today; }).length;
+      var checkOutsToday = (state.allRoomBookings||[]).filter(function(b){ return b.status === 'completed' && b.checkOut && localDateStr(new Date(b.checkOut)) === today; }).length;
+
+      document.getElementById('staffDashKpiGrid').innerHTML =
+        kpiCard('Occupancy', occupancyPct + '%', 'room', '<div class="kpi-delta" style="color:var(--text-muted);">'+occupiedNow+' of '+totalRooms+' rooms</div>')
+        + kpiCard('Revenue today', money(todayRevenue), 'sales')
+        + kpiCard('Check-ins today', String(checkInsToday), 'orders')
+        + kpiCard('Check-outs today', String(checkOutsToday), 'history')
+        + kpiCard('Total bills', String(roomInvoices.length), 'invoices');
+
+      renderStaffDashRecentList(roomInvoices.slice().sort(function(a,b){ return new Date(b.date) - new Date(a.date); }), ICONS.room, 'No invoices yet', 'Generated room bills will appear here.');
+    });
+  }
+
+  function renderBanquetStaffDashboard(){
+    setStaffDashHead('Banquet Management', 'Today\'s revenue, upcoming events and outstanding balances for your department.', 'The latest banquet bookings taken by your team.', true);
+    return fetchBanquetBookingsFromServer().catch(function(){}).then(function(){
+      var today = localDateStr(new Date());
+      var bookings = (state.banquetBookings || []).filter(function(b){ return b.status !== 'cancelled'; });
+      var todayRevenue = bookings.filter(function(b){ return localDateStr(new Date(b.createdAt)) === today; })
+        .reduce(function(s,b){ return s + (Number(b.totalAmount)||0); }, 0);
+      var now = new Date();
+      var upcomingEvents = bookings.filter(function(b){ return new Date(b.startISO) >= now; }).length;
+      var eventsThisMonth = bookings.filter(function(b){
+        var d = new Date(b.startISO);
+        return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+      }).length;
+      var pendingTotal = bookings.filter(function(b){ return !b.balancePaid && (b.totalAmount - b.advanceAmount) > 0; })
+        .reduce(function(s,b){ return s + (b.totalAmount - b.advanceAmount); }, 0);
+
+      document.getElementById('staffDashKpiGrid').innerHTML =
+        kpiCard('Revenue today', money(todayRevenue), 'sales')
+        + kpiCard('Events this month', String(eventsThisMonth), 'banquet')
+        + kpiCard('Upcoming events', String(upcomingEvents), 'orders')
+        + kpiCard('Pending payments', money(pendingTotal), 'invoices');
+
+      var recentBookings = bookings.slice().sort(function(a,b){ return new Date(b.createdAt) - new Date(a.createdAt); }).slice(0,6);
+      var recentWrap = document.getElementById('staffDashRecent');
+      if(recentBookings.length === 0){
+        recentWrap.innerHTML = emptyState(ICONS.banquet, 'No bookings yet', 'Banquet bookings will appear here.');
+      } else {
+        recentWrap.innerHTML = recentBookings.map(function(b){
+          var d = new Date(b.createdAt).toLocaleDateString('en-IN', { day:'2-digit', month:'short' });
+          return '<div class="dash-list-row"><span class="dlr-left"><span class="dlr-ico">'+ICONS.banquet+'</span><span class="dlr-body"><span class="dlr-name">'+escapeHtml(b.customerName)+'</span> <span class="dlr-meta">'+escapeHtml(b.bookingCode||'')+' · '+d+'</span></span></span><span class="dlr-amt">'+money(b.totalAmount)+'</span></div>';
+        }).join('');
+      }
+
+      var pendingWrap = document.getElementById('staffDashPending');
+      var pending = bookings.filter(function(b){ return !b.balancePaid && (b.totalAmount - b.advanceAmount) > 0; })
+        .sort(function(a,b){ return new Date(a.startISO) - new Date(b.startISO); });
+      if(pending.length === 0){
+        pendingWrap.innerHTML = emptyState(ICONS.check, 'All settled up', 'No outstanding banquet balances right now.');
+      } else {
+        pendingWrap.innerHTML = pending.slice(0,8).map(function(b){
+          var balance = b.totalAmount - b.advanceAmount;
+          var d = new Date(b.startISO).toLocaleDateString('en-IN', { day:'2-digit', month:'short' });
+          return '<div class="dash-list-row"><span class="dlr-left"><span class="dlr-ico">'+ICONS.banquet+'</span><span class="dlr-body"><span class="dlr-name">'+escapeHtml(b.customerName)+'</span> <span class="dlr-meta">'+escapeHtml(b.bookingCode||'')+' · Event '+d+'</span></span></span><span class="dlr-amt" style="color:var(--danger);">'+money(balance)+'</span></div>';
+        }).join('');
+      }
+    });
+  }
+
+  function renderRestaurantStaffDashboard(){
+    setStaffDashHead('Restaurant Management', 'Today\'s sales, orders and top items for your department.', 'The latest restaurant bills generated by your team.', false);
+    return Promise.all([
+      fetchTablesFromServer().catch(function(){}),
+      api.getInvoices('restaurant').then(function(rows){ state.restaurantInvoices = rows.map(mapServerRestaurantInvoiceListRow); }).catch(function(){})
+    ]).then(function(){
+      var today = localDateStr(new Date());
+      var invoices = state.restaurantInvoices || [];
+      var todayInvoices = invoices.filter(function(i){ return localDateStr(new Date(i.date)) === today; });
+      var todaySales = todayInvoices.reduce(function(s,i){ return s + (Number(i.total)||0); }, 0);
+      var avgOrderValue = todayInvoices.length ? todaySales / todayInvoices.length : 0;
+      var occupiedTables = Object.keys(state.tables || {}).filter(function(k){ return state.tables[k] && state.tables[k].status === 'active'; }).length;
+      var totalTables = state.tableCount || Object.keys(state.tables || {}).length;
+
+      document.getElementById('staffDashKpiGrid').innerHTML =
+        kpiCard('Sales today', money(todaySales), 'sales')
+        + kpiCard('Orders today', String(todayInvoices.length), 'orders')
+        + kpiCard('Active tables', occupiedTables + ' of ' + totalTables, 'dish')
+        + kpiCard('Avg. order value', money(avgOrderValue), 'avg');
+
+      renderStaffDashRecentList(invoices.slice().sort(function(a,b){ return new Date(b.date) - new Date(a.date); }), ICONS.dish, 'No invoices yet', 'Generated restaurant bills will appear here.');
+    });
+  }
+
+  // Shared "recent activity" list renderer for the staff dashboard — same
+  // dash-list-row markup the admin Dashboard uses, just fed one department's
+  // invoices at a time.
+  function renderStaffDashRecentList(invoices, icoHtml, emptyTitle, emptySub){
+    var wrap = document.getElementById('staffDashRecent');
+    if(!wrap) return;
+    if(invoices.length === 0){
+      wrap.innerHTML = emptyState(icoHtml, emptyTitle, emptySub);
+      return;
+    }
+    wrap.innerHTML = invoices.slice(0,6).map(function(inv){
+      var d = new Date(inv.date).toLocaleDateString('en-IN', { day:'2-digit', month:'short' });
+      return '<div class="dash-list-row"><span class="dlr-left"><span class="dlr-ico">'+icoHtml+'</span><span class="dlr-body"><span class="dlr-name">'+escapeHtml(inv.invoiceNo)+'</span> <span class="dlr-meta">'+escapeHtml(inv.customerName||'')+' · '+d+'</span></span></span><span class="dlr-amt">'+money(inv.total)+'</span></div>';
+    }).join('');
   }
 
   // ---------- Today's performance KPIs ----------
