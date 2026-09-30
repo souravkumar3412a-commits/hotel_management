@@ -13,8 +13,11 @@ CREATE TABLE admins (
   photo_url     TEXT,
   auth_provider TEXT NOT NULL DEFAULT 'password',   -- 'password' or 'google'
   google_sub    TEXT UNIQUE,             -- Google's stable account id, once linked
+  reset_token_hash    TEXT,              -- sha256 of the one-time password-reset token (never store the raw token)
+  reset_token_expires TIMESTAMPTZ,       -- reset link is rejected once this passes, even if the hash matches
   created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+CREATE INDEX idx_admins_reset_token ON admins(reset_token_hash) WHERE reset_token_hash IS NOT NULL;
 
 CREATE TABLE staff (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),

@@ -1,12 +1,17 @@
 const express = require('express');
+const crypto = require('crypto');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { pool } = require('../db');
 const { requireAuth } = require('../middleware/auth');
+const { sendPasswordResetEmail } = require('../utils/mailer');
 
 const router = express.Router();
 const SALT_ROUNDS = 12;
 const TOKEN_EXPIRY = '12h';
+
+// How long a password-reset link stays valid after it's requested.
+const RESET_TOKEN_TTL_MINUTES = 30;
 
 function sign(payload) {
   return jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: TOKEN_EXPIRY });
@@ -184,6 +189,95 @@ router.put('/staff/profile', requireAuth, async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Something went wrong updating your profile.' });
+  }
+});
+
+// ============================================================
+// Admin password reset (self-service)
+// ============================================================
+// Staff deliberately do NOT get a self-service reset here — their admin
+// already has PUT /api/staff/:id/reset-password for that (see routes/staff.js).
+// An admin has no one "above" them to ask, so they need their own flow.
+
+// POST /api/auth/admin/forgot-password — body: { email }
+// Always responds with the same generic message whether or not the email
+// exists, so this endpoint can't be used to check which emails have an
+// account here (a common account-enumeration mistake).
+router.post('/admin/forgot-password', async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: 'Email is required.' });
+  const normalizedEmail = String(email).trim().toLowerCase();
+  const genericResponse = { message: 'If an account exists for that email, we\'ve sent a password reset link.' };
+
+  try {
+    const result = await pool.query('SELECT id, first_name, email, auth_provider FROM admins WHERE email = $1', [normalizedEmail]);
+    const admin = result.rows[0];
+
+    // Deliberately return the SAME response whether the admin exists, has no
+    // password (Google-only account), or the email fails to send — the
+    // person on the other end can't distinguish any of these cases, and
+    // that's the point. Only a genuinely broken request (bad email format
+    // above) gets a different response.
+    if (!admin || admin.auth_provider === 'google') {
+      return res.json(genericResponse);
+    }
+
+    // Raw token goes in the emailed link; only its SHA-256 hash is ever
+    // stored, so a leaked database backup alone can't be used to reset
+    // anyone's password.
+    const rawToken = crypto.randomBytes(32).toString('hex');
+    const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+    const expiresAt = new Date(Date.now() + RESET_TOKEN_TTL_MINUTES * 60 * 1000);
+
+    await pool.query(
+      'UPDATE admins SET reset_token_hash = $1, reset_token_expires = $2 WHERE id = $3',
+      [tokenHash, expiresAt, admin.id]
+    );
+
+    const frontendOrigin = (process.env.FRONTEND_ORIGIN || '').split(',')[0].trim() || 'http://127.0.0.1:5500';
+    const resetLink = `${frontendOrigin}/reset-password.html?token=${rawToken}`;
+
+    const sendResult = await sendPasswordResetEmail({ to: admin.email, firstName: admin.first_name, resetLink, ttlMinutes: RESET_TOKEN_TTL_MINUTES });
+    if (!sendResult.ok) {
+      // Log the real reason server-side for you to debug — never leak it to
+      // the client, and never let a mail-server hiccup reveal account existence.
+      console.error('Password reset email failed to send:', sendResult.error);
+    }
+    res.json(genericResponse);
+  } catch (err) {
+    console.error(err);
+    // Still generic — an unexpected error here shouldn't tell anyone
+    // whether the email exists either.
+    res.json(genericResponse);
+  }
+});
+
+// POST /api/auth/admin/reset-password — body: { token, newPassword }
+router.post('/admin/reset-password', async (req, res) => {
+  const { token, newPassword } = req.body;
+  if (!token || !newPassword) return res.status(400).json({ error: 'Reset token and new password are required.' });
+  if (newPassword.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters.' });
+  try {
+    const tokenHash = crypto.createHash('sha256').update(String(token)).digest('hex');
+    const result = await pool.query(
+      'SELECT id FROM admins WHERE reset_token_hash = $1 AND reset_token_expires > now()',
+      [tokenHash]
+    );
+    const admin = result.rows[0];
+    if (!admin) {
+      return res.status(400).json({ error: 'This reset link is invalid or has expired. Please request a new one.' });
+    }
+    const hash = await bcrypt.hash(newPassword, SALT_ROUNDS);
+    // Clearing the token fields makes the link single-use — a second
+    // attempt with the same link (or a leaked/replayed one) fails cleanly.
+    await pool.query(
+      'UPDATE admins SET password_hash = $1, reset_token_hash = NULL, reset_token_expires = NULL WHERE id = $2',
+      [hash, admin.id]
+    );
+    res.json({ message: 'Your password has been reset. You can now log in with your new password.' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Something went wrong resetting your password.' });
   }
 });
 

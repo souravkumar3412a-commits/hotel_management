@@ -151,12 +151,22 @@ button{font-family:'Inter',sans-serif;cursor:pointer;}
 .mkt-plan-grid{display:grid;grid-template-columns:repeat(4, 1fr);gap:18px;align-items:stretch;}
 .mkt-badge{display:inline-block;font-size:9px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;background:linear-gradient(135deg,var(--premium-hover),var(--premium));color:#fff;padding:2px 7px;border-radius:99px;vertical-align:2px;margin-left:5px;}
 
+/* ---------- testimonials ---------- */
+.mkt-testimonial-grid{display:grid;grid-template-columns:repeat(3, 1fr);gap:22px;}
+.mkt-testimonial-card{background:#fff;border:1.5px dashed #d8d2c2;border-radius:16px;padding:24px 22px;}
+.mtc-quote-mark{color:rgba(15,157,118,.25);margin-bottom:8px;}
+.mtc-quote{font-size:13.5px;line-height:1.7;color:#5b6473;font-style:italic;margin:0 0 16px;}
+.mtc-person{display:flex;flex-direction:column;gap:2px;}
+.mtc-person b{font-size:13px;color:#1a2436;}
+.mtc-person span{font-size:11.5px;color:#928c7e;}
+
 /* ---------- scroll-reveal, used across Key Modules / Pricing / Support / final CTA ---------- */
 .reveal{opacity:0;transform:translateY(24px);transition:opacity .6s cubic-bezier(.2,.9,.25,1), transform .6s cubic-bezier(.2,.9,.25,1);}
 .reveal.in-view{opacity:1;transform:translateY(0);}
 .mkt-h2.reveal{transition-delay:.08s;}
 .mkt-sub.reveal{transition-delay:.16s;}
 .gi-cta.reveal{transition-delay:.1s;}
+.mkt-testimonial-card.reveal{transition-delay:calc(var(--ri, 0) * .1s);}
 .mkt-cta-btn.reveal{transition-delay:.24s;}
 .mkt-cta-trust.reveal{transition-delay:.32s;}
 @media (prefers-reduced-motion:reduce){
@@ -191,6 +201,21 @@ button{font-family:'Inter',sans-serif;cursor:pointer;}
 .gi-module:hover::before,.gi-plan-card:hover::before{opacity:1;}
 .gi-module > *,.gi-plan-card > *{position:relative;z-index:1;}
 .gi-plan-card > .gi-plan-badge{z-index:2;}
+/* The cursor-tracking glow only makes sense on a device with a real mouse —
+   gating it like this also means touch devices never carry the (harmless
+   but pointless) mousemove listener's visual effect. */
+@media not all and (hover:hover) and (pointer:fine){
+  .gi-module::before,.gi-plan-card::before{display:none;}
+}
+/* On narrower screens the 3D tilt-in reads as a wobble rather than depth —
+   fall back to a plain, fast fade-up there, same as the rest of the page. */
+@media (max-width:760px){
+  .gi-module.reveal,.gi-plan-card.reveal{
+    transform:translateY(20px);transition-duration:.5s;
+  }
+  .gi-module.reveal.in-view,.gi-plan-card.reveal.in-view{transform:translateY(0);}
+  .gi-module .gf-ico{transition-duration:.35s;}
+}
 .gi-plan-card-features li{opacity:0;transform:translateX(-8px);}
 .gi-plan-card.reveal.in-view .gi-plan-card-features li{animation:planFeatIn .45s ease forwards;}
 .gi-plan-card.reveal.in-view .gi-plan-card-features li:nth-child(1){animation-delay:calc(var(--ri,0)*.09s + .34s);}
@@ -226,12 +251,27 @@ button{font-family:'Inter',sans-serif;cursor:pointer;}
 .mkt-footer-brand{display:flex;align-items:center;gap:9px;}
 .mkt-footer-support{color:rgba(255,255,255,.7);text-decoration:none;}
 .mkt-footer-support:hover{color:var(--accent);text-decoration:underline;}
+.mkt-footer-legal{display:flex;gap:16px;}
+.mkt-footer-legal a{color:rgba(255,255,255,.55);text-decoration:none;}
+.mkt-footer-legal a:hover{color:var(--accent);text-decoration:underline;}
 .mkt-support-card{display:flex;align-items:center;gap:16px;max-width:420px;margin:0 auto;background:#fff;border:1.5px solid #eae5d9;border-radius:16px;padding:22px 26px;transition:border-color .18s ease, box-shadow .18s ease, transform .18s ease;}
 .mkt-support-card:hover{border-color:var(--accent);box-shadow:0 10px 26px rgba(20,16,10,.08);transform:translateY(-2px);}
 .mkt-support-icon{width:48px;height:48px;flex-shrink:0;border-radius:50%;background:rgba(15,157,118,.12);color:var(--accent);display:flex;align-items:center;justify-content:center;}
 .mkt-support-card b{display:block;font-size:13px;color:#1a2436;margin-bottom:3px;}
 .mkt-support-card a{font-size:15px;font-weight:600;color:var(--accent);text-decoration:none;}
 .mkt-support-card a:hover{text-decoration:underline;}
+
+/* ---------- FAQ accordion ---------- */
+.faq-list{border-top:1px solid #eae5d9;}
+.faq-item{border-bottom:1px solid #eae5d9;}
+.faq-item.reveal{transition-delay:calc(var(--ri, 0) * .06s);}
+.faq-q{width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 4px;background:none;border:none;text-align:left;font-size:14.5px;font-weight:600;color:#1a2436;cursor:pointer;font-family:inherit;}
+.faq-q:hover{color:var(--accent);}
+.faq-caret{flex-shrink:0;transition:transform .3s ease;color:var(--accent);}
+.faq-item.open .faq-caret{transform:rotate(180deg);}
+.faq-a{display:grid;grid-template-rows:0fr;transition:grid-template-rows .35s cubic-bezier(.2,.9,.25,1);}
+.faq-a > p{overflow:hidden;min-height:0;margin:0;padding:0 4px 16px;font-size:13.5px;line-height:1.7;color:#5b6473;}
+.faq-item.open .faq-a{grid-template-rows:1fr;}
 .gi-title{font-family:'Playfair Display',serif;font-size:20px;font-weight:700;margin:0 0 6px;}
 .gi-sub{font-size:13px;color:#5b6473;margin:0 0 22px;line-height:1.6;}
 .gi-module-list{display:flex;flex-direction:column;gap:14px;}
@@ -262,6 +302,7 @@ button{font-family:'Inter',sans-serif;cursor:pointer;}
 @media (max-width:900px){
   .mkt-module-grid{grid-template-columns:repeat(2, 1fr);}
   .mkt-plan-grid{grid-template-columns:repeat(2, 1fr);}
+  .mkt-testimonial-grid{grid-template-columns:1fr;}
 }
 @media (max-width:600px){
   .mkt-section{padding:56px 20px;}
@@ -281,7 +322,7 @@ button{font-family:'Inter',sans-serif;cursor:pointer;}
   background-image:
     linear-gradient(180deg, rgba(4,10,20,.62) 0%, rgba(5,12,24,.58) 40%, rgba(4,10,20,.88) 100%),
     linear-gradient(155deg, rgba(16,35,61,.7) 0%, rgba(10,25,45,.45) 60%),
-    url('https://images.unsplash.com/photo-1698653223783-d6cce8281606?q=80&w=1400&auto=format&fit=crop');
+    url('assets/login-bg.jpg');
   background-repeat:no-repeat;
   background-position:left top, left top, 50% 45%;
   background-size:auto, auto, 114%;

@@ -75,3 +75,20 @@ Confirm each step above worked, and tell me the result of step 7. Then we move t
 - **Phase 9:** deploying this backend (Render/Railway) and your frontend (Vercel/Netlify) so it works over the real internet, not just `localhost`.
 
 Do not skip ahead to wiring the frontend before steps 1–7 above are confirmed working — if the foundation isn't solid, every problem after this gets harder to diagnose.
+
+---
+
+## Setting up admin password reset (added later)
+
+This adds a real "Forgot Password?" flow for Admin accounts. Staff accounts are unaffected — staff still get their password reset by their Admin from Staff Management.
+
+1. **Run the database migration.** In Supabase → SQL Editor, run the contents of `migrations/001_add_admin_password_reset.sql`. It's safe to run even if you're unsure whether it already ran.
+2. **Install the new dependency:**
+   ```
+   npm install
+   ```
+   (this pulls in `nodemailer`, now listed in `package.json`).
+3. **Add SMTP settings to your `.env`.** See the new block in `.env.example` — the easiest option is a Gmail **App Password** (not your normal Gmail password): Google Account → Security → 2-Step Verification → App passwords.
+4. **Make sure `FRONTEND_ORIGIN` in `.env` points at wherever your frontend is actually hosted** (e.g. your Vercel/Netlify URL, or `http://127.0.0.1:5500` for local testing) — the reset email links to `<FRONTEND_ORIGIN>/reset-password.html?token=...`, so this has to be correct for the link to work.
+5. **Upload `reset-password.html` to your frontend**, next to `index.html` — it isn't wired into the single-page app on purpose, it's a small standalone page so a reset link works even without loading the whole dashboard first.
+6. **Test it end to end:** on the login page, click "Forgot Password?", enter a real admin email you control, and confirm the email arrives and the link on it resets your password.

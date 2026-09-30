@@ -3,7 +3,27 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Hotel Management System — Rooms, Banquets &amp; Restaurant</title>
+<title>Eazzio — Hotel Management System for Rooms, Banquets &amp; Restaurant</title>
+<meta name="description" content="Eazzio is an all-in-one hotel management system for room booking, banquet hall management, restaurant billing, staff accounts, GST-ready invoicing, and real-time reports — all in one dashboard.">
+<meta name="keywords" content="hotel management system, hotel software, room booking software, banquet booking software, restaurant billing software, hotel PMS India">
+<link rel="canonical" href="https://eazzio.com/">
+
+<!-- Open Graph / social link previews (WhatsApp, LinkedIn, Facebook, etc.) -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="Eazzio — Hotel Management System for Rooms, Banquets & Restaurant">
+<meta property="og:description" content="All-in-one solution for room booking, banquet hall management, restaurant sales and every invoice you print — built for the pace of real service.">
+<meta property="og:image" content="https://eazzio.com/assets/eazzio-wordmark.png">
+<meta property="og:url" content="https://eazzio.com/">
+
+<!-- Twitter/X card -->
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Eazzio — Hotel Management System">
+<meta name="twitter:description" content="Room booking, banquet management, restaurant billing and GST-ready invoicing — in one dashboard.">
+<meta name="twitter:image" content="https://eazzio.com/assets/eazzio-wordmark.png">
+
+<link rel="icon" type="image/png" href="assets/eazzio-wordmark.png">
+<link rel="apple-touch-icon" href="assets/eazzio-wordmark.png">
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="assets/jspdf.umd.min.js"></script>
@@ -167,6 +187,20 @@
             </button>
             <p class="auth-toggle">Already have an account? <a id="showAdminLogin">Log in</a></p>
           </div>
+          <div id="adminAuthForgot" style="display:none;">
+            <h3>Reset your password</h3>
+            <p class="auth-sub" id="adminForgotSub">Enter your admin email and we'll send you a reset link.</p>
+            <div class="field" id="adminForgotEmailField">
+              <label for="forgotEmail">Email</label>
+              <div class="if-row">
+                <span class="if-ico"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg></span>
+                <input type="email" id="forgotEmail" placeholder="owner@restaurant.com">
+              </div>
+            </div>
+            <p class="error-text" id="forgotError"></p>
+            <button class="btn accent full" id="forgotSubmitBtn" type="button">Send reset link</button>
+            <p class="auth-toggle">Remembered it? <a id="showAdminLoginFromForgot">Back to login</a></p>
+          </div>
         </div>
 
         <!-- Staff auth -->
@@ -213,14 +247,38 @@
     </div>
   </section>
 
+  <!-- ============== TESTIMONIALS ==============
+       PLACEHOLDER CONTENT — replace these 3 quotes with real feedback from
+       your own hotel partners before this goes live. Fabricated reviews are
+       deceptive; these are intentionally written as obvious template text
+       so nobody mistakes them for real ones in the meantime. -->
+  <section class="mkt-section mkt-section-alt" id="testimonialsSection">
+    <div class="mkt-container">
+      <p class="mkt-eyebrow reveal">What Hotels Say</p>
+      <h2 class="mkt-h2 reveal">Real feedback, coming soon</h2>
+      <p class="mkt-sub reveal">We'd rather show you nothing than something fake — this section is ready and waiting for quotes from real Eazzio hotels.</p>
+      <div class="mkt-testimonial-grid" id="mktTestimonialGrid"></div>
+    </div>
+  </section>
+
   <!-- ============== PRICING (scrollable section, was a popup) ============== -->
-  <section class="mkt-section mkt-section-alt" id="pricingSection">
+  <section class="mkt-section" id="pricingSection">
     <div class="mkt-container">
       <p class="mkt-eyebrow reveal">Pricing</p>
       <h2 class="mkt-h2 reveal">Simple, transparent pricing</h2>
       <p class="mkt-sub reveal">Pick only the departments you need. Upgrade to Premium — every department plus Voice Commands and the AI Assistant — any time from your dashboard.</p>
       <div class="mkt-plan-grid" id="mktPlanGrid"></div>
       <p class="gi-cta reveal">Every plan is free to create — you only pay when you choose one from your dashboard. No card required to sign up.</p>
+    </div>
+  </section>
+
+  <!-- ============== FAQ ============== -->
+  <section class="mkt-section mkt-section-alt" id="faqSection">
+    <div class="mkt-container" style="max-width:760px;">
+      <p class="mkt-eyebrow reveal">FAQ</p>
+      <h2 class="mkt-h2 reveal">Questions hotel owners actually ask</h2>
+      <p class="mkt-sub reveal">If yours isn't answered here, the Support section below has a direct line to us.</p>
+      <div class="faq-list" id="faqList"></div>
     </div>
   </section>
 
@@ -262,6 +320,7 @@
   <footer class="mkt-footer">
     <div class="mkt-container mkt-footer-inner">
       <span class="mkt-footer-brand"><img src="assets/eazzio-wordmark.png" alt="Eazzio" style="height:20px;width:auto;display:block;"><span>© <span id="mktFooterYear"></span> Eazzio Hotel Management System</span></span>
+      <span class="mkt-footer-legal"><a href="privacy.html">Privacy</a><a href="terms.html">Terms</a><a href="refund-policy.html">Refunds</a></span>
       <a href="mailto:eazziohotel@gmail.com" class="mkt-footer-support">eazziohotel@gmail.com</a>
       <span>Secure &amp; Encrypted Access</span>
     </div>

@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Terms of Service — Eazzio Hotel Management System</title>
+<meta name="description" content="The terms that apply when you create an Eazzio account and subscribe to a plan.">
+<link rel="icon" type="image/png" href="assets/eazzio-wordmark.png">
+<link rel="stylesheet" href="assets/css/styles.css">
+<style>
+  body{background:#fff;}
+  .legal-wrap{max-width:760px;margin:0 auto;padding:56px 24px 80px;}
+  .legal-wrap h1{font-family:'Playfair Display',serif;font-size:32px;margin:0 0 6px;color:#1a2436;}
+  .legal-updated{font-size:12.5px;color:#8a8f99;margin:0 0 40px;}
+  .legal-wrap h2{font-size:18px;color:#1a2436;margin:36px 0 10px;}
+  .legal-wrap p,.legal-wrap li{font-size:14px;line-height:1.75;color:#454e5c;}
+  .legal-wrap ul{padding-left:20px;margin:10px 0;}
+  .legal-wrap a{color:var(--accent);}
+</style>
+</head>
+<body>
+  <nav class="gate-topnav">
+    <div class="gtn-brand">
+      <span class="gtn-emblem"><img src="assets/eazzio-wordmark.png" alt="Eazzio" style="height:34px;width:auto;display:block;"></span>
+      <span class="gtn-brand-divider"></span>
+      <span class="gtn-brand-sub">Hotel Management System</span>
+    </div>
+    <div class="gtn-links gtn-links-end">
+      <a class="gtn-link" href="index.html" style="text-decoration:none;">← Back to home</a>
+    </div>
+  </nav>
+
+  <div class="legal-wrap">
+    <h1>Terms of Service</h1>
+    <p class="legal-updated">Last updated: September 27, 2026</p>
+
+    <p>These terms apply when you create an account on the Eazzio Hotel Management System (the "Service"). By creating an account, you agree to them.</p>
+
+    <h2>1. Accounts</h2>
+    <p>Creating an Admin account is free. An Admin account represents one hotel/business ("tenant"). Admins can create one Staff account per department (Room, Banquet, Restaurant), up to the number of departments included in their current plan. You're responsible for keeping your login credentials confidential and for all activity under your account.</p>
+
+    <h2>2. Plans and subscriptions</h2>
+    <p>New accounts start unsubscribed. You choose and pay for a plan (Room + Banquet, Restaurant Only, All Departments, or Premium) from your dashboard when you're ready. Subscriptions are billed for a <b>12-month term</b> and do <b>not auto-renew</b> — your access simply reflects your plan until it expires, at which point you can renew or change plans manually from your dashboard. Prices shown include GST.</p>
+
+    <h2>3. Payments</h2>
+    <p>Payments are processed by Razorpay. We never see or store your card, UPI, or bank details. A payment is only treated as successful after Razorpay's signature on it is verified by our server — if that verification fails, your plan will not activate, and you should contact us.</p>
+
+    <h2>4. Promotional codes</h2>
+    <p>From time to time we may issue promo codes that discount or waive the subscription price. Promo codes are single- or limited-use, may expire, and may be withdrawn at our discretion; they have no cash value.</p>
+
+    <h2>5. Acceptable use</h2>
+    <ul>
+      <li>You'll only enter guest and business data you're authorized to hold, and you're responsible for how your Staff accounts use the Service.</li>
+      <li>You won't attempt to access another tenant's data, bypass the Service's access controls, or use the Service to send spam or unlawful content.</li>
+      <li>You won't attempt to reverse-engineer, scrape, or overload the Service's infrastructure.</li>
+    </ul>
+
+    <h2>6. The AI Assistant and Voice Commands (Premium)</h2>
+    <p>These features are provided "as is." The AI Assistant's answers are generated from your own business data and general knowledge — always double-check anything you plan to rely on for a real business decision, the same way you would with any automated tool.</p>
+
+    <h2>7. Service availability</h2>
+    <p>We aim to keep the Service available and reliable, but we don't guarantee uninterrupted uptime. We're not liable for losses caused by outages, scheduled maintenance, or issues with third-party services we depend on (Supabase, Razorpay, Google).</p>
+
+    <h2>8. Suspension and termination</h2>
+    <p>We may suspend or terminate an account that violates these terms, is used fraudulently, or where required by law. You can stop using the Service, or ask us to delete your account, at any time by emailing us — see our <a href="privacy.html">Privacy Policy</a> for how account-deletion requests are handled.</p>
+
+    <h2>9. Changes to these terms</h2>
+    <p>We may update these terms from time to time; the date at the top of this page will reflect the latest revision. Continuing to use the Service after a change means you accept the updated terms.</p>
+
+    <h2>10. Contact us</h2>
+    <p>Questions about these terms can be sent to <a href="mailto:eazziohotel@gmail.com">eazziohotel@gmail.com</a>.</p>
+  </div>
+
+  <footer class="mkt-footer">
+    <div class="mkt-container mkt-footer-inner">
+      <span class="mkt-footer-brand"><img src="assets/eazzio-wordmark.png" alt="Eazzio" style="height:20px;width:auto;display:block;"><span>© <span id="legalFooterYear"></span> Eazzio Hotel Management System</span></span>
+      <a href="mailto:eazziohotel@gmail.com" class="mkt-footer-support">eazziohotel@gmail.com</a>
+      <span><a href="privacy.html" style="color:rgba(255,255,255,.6);">Privacy</a> · <a href="refund-policy.html" style="color:rgba(255,255,255,.6);">Refunds</a></span>
+    </div>
+  </footer>
+
+  <script>
+    document.getElementById('legalFooterYear').textContent = new Date().getFullYear();
+  </script>
+</body>
+</html>

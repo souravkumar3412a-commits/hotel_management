@@ -401,6 +401,8 @@
       request('POST', '/auth/staff/login', { staffId, password })
         .then(r => { setToken(r.token, remember); return r.user; }),
 
+    forgotAdminPassword: (email) => request('POST', '/auth/admin/forgot-password', { email }),
+
     me: () => request('GET', '/auth/me'),
     updateAdminProfile: (firstName, lastName, photo) => request('PUT', '/auth/admin/profile', { firstName, lastName, photo }),
     updateStaffProfile: (name, photo) => request('PUT', '/auth/staff/profile', { name, photo }),

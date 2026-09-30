@@ -687,15 +687,38 @@
     document.getElementById('loginError').classList.remove('show');
     document.getElementById('adminAuthSignup').style.display = 'block';
     document.getElementById('adminAuthLogin').style.display = 'none';
+    document.getElementById('adminAuthForgot').style.display = 'none';
   }
   function showAdminLoginPanel(){
     document.getElementById('signupError').classList.remove('show');
     document.getElementById('loginError').classList.remove('show');
     document.getElementById('adminAuthSignup').style.display = 'none';
     document.getElementById('adminAuthLogin').style.display = 'block';
+    document.getElementById('adminAuthForgot').style.display = 'none';
+  }
+  // Resets the forgot-password mini-form back to its initial "enter your
+  // email" state — otherwise re-opening it after a previous successful
+  // send would still show the "check your inbox" message from last time.
+  function resetAdminForgotView(){
+    document.getElementById('adminForgotSub').textContent = 'Enter your admin email and we\'ll send you a reset link.';
+    document.getElementById('adminForgotEmailField').style.display = 'block';
+    document.getElementById('forgotEmail').value = '';
+    document.getElementById('forgotError').classList.remove('show');
+    var btn = document.getElementById('forgotSubmitBtn');
+    btn.style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = 'Send reset link';
+  }
+  function showAdminForgotPanel(){
+    document.getElementById('adminAuthSignup').style.display = 'none';
+    document.getElementById('adminAuthLogin').style.display = 'none';
+    document.getElementById('adminAuthForgot').style.display = 'block';
+    resetAdminForgotView();
+    document.getElementById('forgotEmail').focus();
   }
   document.getElementById('showAdminLogin').addEventListener('click', showAdminLoginPanel);
   document.getElementById('showAdminSignup').addEventListener('click', showAdminSignupPanel);
+  document.getElementById('showAdminLoginFromForgot').addEventListener('click', showAdminLoginPanel);
 
   // Admin Login / Staff Login tabs — sit at the top of the single gate card
   // and swap which role's fields are shown, instead of the old separate
@@ -741,8 +764,38 @@
   function gateForgotNotice(){
     showToast('Self-service password reset isn\'t available yet — please contact support to reset your password.', 'info');
   }
-  document.getElementById('adminForgotBtn').addEventListener('click', gateForgotNotice);
-  document.getElementById('staffForgotBtn').addEventListener('click', gateForgotNotice);
+  document.getElementById('adminForgotBtn').addEventListener('click', showAdminForgotPanel);
+  // Staff accounts are created and managed by their admin (Staff Management
+  // already has a "reset password" control there), so staff don't get a
+  // separate self-service email flow — they're pointed at the person who
+  // actually can reset it.
+  document.getElementById('staffForgotBtn').addEventListener('click', function(){
+    showToast('Please ask your hotel admin to reset your password from Staff Management in their dashboard.', 'info');
+  });
+
+  document.getElementById('forgotSubmitBtn').addEventListener('click', function(){
+    var btn = this;
+    var email = document.getElementById('forgotEmail').value.trim();
+    var err = document.getElementById('forgotError');
+    err.classList.remove('show');
+    if(!isValidEmail(email)){
+      err.textContent = 'Enter a valid email address.';
+      err.classList.add('show');
+      return;
+    }
+    setBtnLoading(btn, true, 'Sending…');
+    api.forgotAdminPassword(email)
+      .then(function(){
+        document.getElementById('adminForgotSub').textContent = 'If an account exists for ' + email + ', we\'ve sent a password reset link — check your inbox (and spam folder).';
+        document.getElementById('adminForgotEmailField').style.display = 'none';
+        btn.style.display = 'none';
+      })
+      .catch(function(e){
+        err.textContent = e.message || 'Something went wrong. Please try again.';
+        err.classList.add('show');
+        setBtnLoading(btn, false, null, 'Send reset link');
+      });
+  });
 
   // Security reassurance banner above the gate screen — dismissible, and
   // stays dismissed on this browser once closed.
@@ -781,6 +834,25 @@
       features:['Every department included', '3 staff accounts', 'Voice Commands — hands-free navigation & search', 'AI Assistant — ask about revenue, occupancy & top performers', 'Returning-guest lookup & Excel export everywhere', 'Live admin notifications & desktop alerts'] }
   ];
   function mktPlanCopy(planType){ return MKT_PLANS.find(function(p){ return p.planType === planType; }); }
+  var MKT_FAQS = [
+    { q:'Is my data safe?', a:'Yes. Your data is stored in a hosted, encrypted Postgres database (Supabase), and passwords are never stored in plain text — they\'re hashed with bcrypt before saving. Only your own tenant\'s data is ever returned to your account or your staff.' },
+    { q:'Do I need a credit card to sign up?', a:'No. Creating an admin account is completely free and doesn\'t ask for payment details. You only enter payment information when you choose a plan and subscribe from your dashboard.' },
+    { q:'Can I cancel anytime?', a:'Subscriptions run for a 12-month term and don\'t auto-renew, so there\'s no recurring charge to cancel. If you\'d like your account deactivated sooner, just email us.' },
+    { q:'What happens if I don\'t renew my plan?', a:'Your data stays exactly as it is — nothing is deleted. You\'ll just lose access to the paid departments and features until you renew or choose a new plan.' },
+    { q:'Can staff members see other departments\' data?', a:'No. Every Staff account is locked to one department (Room, Banquet, or Restaurant), and that restriction is enforced on the server for every request — not just hidden in the interface.' },
+    { q:'Is there a free trial?', a:'There\'s no separate trial period, but since account creation is free and no card is required, you can explore the interface before deciding to subscribe.' },
+    { q:'Can I upgrade my plan later?', a:'Yes, any time from your dashboard. You\'re only charged the price difference between your current plan and the new one, and your existing subscription\'s expiry date carries over.' },
+    { q:'What if I need help?', a:'Email us any time at eazziohotel@gmail.com — see the Support section below.' }
+  ];
+  // PLACEHOLDER testimonials — obviously template text on purpose (see the
+  // HTML comment above #testimonialsSection). Replace with real quotes,
+  // real names/roles, and real cities once you have actual hotel partners
+  // using Eazzio. Do not present these as real reviews.
+  var MKT_TESTIMONIALS = [
+    { quote:'Add a real quote from one of your hotel partners here — even one is more convincing than none.', name:'— Replace with a real name', role:'Hotel owner, replace with city' },
+    { quote:'A second quote works well if it comes from a different department (e.g. a banquet or restaurant manager) to show the whole system in use.', name:'— Replace with a real name', role:'Manager, replace with city' },
+    { quote:'A short, specific result (e.g. "cut our invoicing time in half") is far more convincing than a general compliment.', name:'— Replace with a real name', role:'Hotel owner, replace with city' }
+  ];
   function renderMarketingSections(){
     var moduleGrid = document.getElementById('mktModuleGrid');
     if(moduleGrid) moduleGrid.innerHTML = MKT_MODULES.map(function(m, i){
@@ -791,6 +863,38 @@
     planGrid.querySelectorAll('[data-plan-cta]').forEach(function(btn){
       btn.addEventListener('click', goToSignup);
     });
+    var testimonialGrid = document.getElementById('mktTestimonialGrid');
+    if(testimonialGrid) testimonialGrid.innerHTML = MKT_TESTIMONIALS.map(function(t, i){
+      return '<div class="mkt-testimonial-card reveal" style="--ri:' + i + '">'
+        + '<svg class="mtc-quote-mark" width="26" height="26" viewBox="0 0 24 24" fill="currentColor"><path d="M9.5 8C6.5 8 4 10.5 4 13.5S6.5 19 9.5 19c.3 0 .6 0 .9-.1-.6 1.4-1.8 2.5-3.4 3l.6 1.4c3-1 5.4-3.7 5.4-7.3V13c0-2.8-1.6-5-3.5-5zm10 0c-3 0-5.5 2.5-5.5 5.5s2.5 5.5 5.5 5.5c.3 0 .6 0 .9-.1-.6 1.4-1.8 2.5-3.4 3l.6 1.4c3-1 5.4-3.7 5.4-7.3V13c0-2.8-1.6-5-3.5-5z"/></svg>'
+        + '<p class="mtc-quote">' + escapeHtml(t.quote) + '</p>'
+        + '<div class="mtc-person"><b>' + escapeHtml(t.name) + '</b><span>' + escapeHtml(t.role) + '</span></div>'
+        + '</div>';
+    }).join('');
+    var faqList = document.getElementById('faqList');
+    if(faqList){
+      faqList.innerHTML = MKT_FAQS.map(function(f, i){
+        return '<div class="faq-item reveal" style="--ri:' + i + '">'
+          + '<button type="button" class="faq-q" aria-expanded="false">' + escapeHtml(f.q)
+          + '<svg class="faq-caret" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button>'
+          + '<div class="faq-a"><p>' + escapeHtml(f.a) + '</p></div>'
+          + '</div>';
+      }).join('');
+      faqList.querySelectorAll('.faq-q').forEach(function(btn){
+        btn.addEventListener('click', function(){
+          var item = btn.closest('.faq-item');
+          var wasOpen = item.classList.contains('open');
+          faqList.querySelectorAll('.faq-item.open').forEach(function(openItem){
+            openItem.classList.remove('open');
+            openItem.querySelector('.faq-q').setAttribute('aria-expanded', 'false');
+          });
+          if(!wasOpen){
+            item.classList.add('open');
+            btn.setAttribute('aria-expanded', 'true');
+          }
+        });
+      });
+    }
     var yearEl = document.getElementById('mktFooterYear');
     if(yearEl) yearEl.textContent = String(new Date().getFullYear());
   }
