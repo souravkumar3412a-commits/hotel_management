@@ -28,14 +28,11 @@ CREATE TABLE staff (
   phone         TEXT,
   photo_url     TEXT,
   department    TEXT NOT NULL CHECK (department IN ('room','banquet','restaurant')),
-  password_hash TEXT,                    -- NULL until the staff member accepts their invite and sets their own password
-  invite_token_hash    TEXT,             -- sha256 of the one-time invite token (never store the raw token)
-  invite_token_expires TIMESTAMPTZ,
+  password_hash TEXT NOT NULL,
   created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE (admin_id, staff_id),          -- staff_id only needs to be unique per tenant
   UNIQUE (admin_id, department)         -- mirrors existing rule: one staff account per department
 );
-CREATE INDEX idx_staff_invite_token ON staff(invite_token_hash) WHERE invite_token_hash IS NOT NULL;
 
 CREATE TABLE hotel_settings (
   admin_id      UUID PRIMARY KEY REFERENCES admins(id) ON DELETE CASCADE,
@@ -244,7 +241,6 @@ CREATE TABLE subscriptions (
   payment_id         TEXT,
   razorpay_order_id  TEXT,
   promo_code_used    TEXT,
-  renewal_reminder_sent_at TIMESTAMPTZ, -- set once we've emailed "your plan expires soon" for the current expiry_date, so we never send it twice
   created_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at         TIMESTAMPTZ NOT NULL DEFAULT now()
 );

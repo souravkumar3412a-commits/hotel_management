@@ -411,13 +411,12 @@
 
     // ---------- staff management ----------
     getStaff: () => request('GET', '/staff'),
-    createStaff: (staffId, name, email, phone, department) =>
-      request('POST', '/staff', { staffId, name, email, phone, department }),
+    createStaff: (staffId, name, email, phone, department, password) =>
+      request('POST', '/staff', { staffId, name, email, phone, department, password }),
     updateStaff: (id, name, email, phone, department) =>
       request('PUT', '/staff/' + id, { name, email, phone, department }),
     deleteStaff: (id) => request('DELETE', '/staff/' + id),
     resetStaffPassword: (id, password) => request('PUT', '/staff/' + id + '/reset-password', { password }),
-    resendStaffInvite: (id) => request('POST', '/staff/' + id + '/resend-invite'),
 
     // ---------- rooms ----------
     getRoomFloors: () => request('GET', '/rooms/floors'),

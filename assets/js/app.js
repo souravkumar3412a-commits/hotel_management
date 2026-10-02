@@ -784,7 +784,7 @@
       return;
     }
     setBtnLoading(btn, true, 'Sending…');
-    withSlowServerNotice(btn, api.forgotAdminPassword(email))
+    api.forgotAdminPassword(email)
       .then(function(){
         document.getElementById('adminForgotSub').textContent = 'If an account exists for ' + email + ', we\'ve sent a password reset link — check your inbox (and spam folder).';
         document.getElementById('adminForgotEmailField').style.display = 'none';
@@ -957,17 +957,6 @@
       btn.textContent = normalLabel || btn.dataset.label || btn.textContent;
     }
   }
-  // Render's free tier (and similar free hosts) puts the backend to sleep
-  // after a period of no traffic, so the very first request after a quiet
-  // spell can take 30-50 seconds instead of the usual instant response.
-  // Rather than leaving a frozen spinner with no explanation, this swaps in
-  // an honest status message if a request is still pending after 4 seconds.
-  function withSlowServerNotice(btn, promise){
-    var timer = setTimeout(function(){
-      setBtnLoading(btn, true, 'Still working — the server may be waking up (~30s)…');
-    }, 4000);
-    return promise.finally(function(){ clearTimeout(timer); });
-  }
 
   document.getElementById('signupBtn').addEventListener('click', function(){
     var btn = this;
@@ -986,7 +975,7 @@
     err.classList.remove('show');
 
     setBtnLoading(btn, true, 'Creating account…');
-    withSlowServerNotice(btn, api.adminSignup(firstName, lastName, email, pw)).then(function(user){
+    api.adminSignup(firstName, lastName, email, pw).then(function(user){
       state.session = { role:'admin', adminId: user.adminId, email: user.email, firstName: user.firstName, lastName: user.lastName, photo: user.photo || null };
       resetTenantState(); // brand-new admin — starts with a completely fresh restaurant, not anyone else's data
       setBtnLoading(btn, false, null, 'Create account & continue');
@@ -1011,7 +1000,7 @@
 
     var remember = document.getElementById('loginRemember').checked;
     setBtnLoading(btn, true, 'Signing in…');
-    withSlowServerNotice(btn, api.adminLogin(email, pw, remember)).then(function(user){
+    api.adminLogin(email, pw, remember).then(function(user){
       err.classList.remove('show');
       state.session = { role:'admin', adminId: user.adminId, email: user.email, firstName: user.firstName, lastName: user.lastName, photo: user.photo || null };
       return loadTenantData(user.adminId);
@@ -1057,8 +1046,7 @@
       }
       return;
     }
-    var loginPromise = googleAuthBtn ? withSlowServerNotice(googleAuthBtn, api.adminGoogleLogin(tokenResponse.access_token)) : api.adminGoogleLogin(tokenResponse.access_token);
-    loginPromise.then(function(user){
+    api.adminGoogleLogin(tokenResponse.access_token).then(function(user){
       state.session = { role:'admin', adminId: user.adminId, email: user.email, firstName: user.firstName, lastName: user.lastName, photo: user.photo || null };
       return loadTenantData(user.adminId);
     }).then(function(){
@@ -1087,7 +1075,7 @@
 
     var remember = document.getElementById('staffLoginRemember').checked;
     setBtnLoading(btn, true, 'Signing in…');
-    withSlowServerNotice(btn, api.staffLogin(staffId, pw, remember)).then(function(user){
+    api.staffLogin(staffId, pw, remember).then(function(user){
       err.classList.remove('show');
       state.session = { role:'staff', staffId: user.staffId, name: user.name, department: user.department, adminId: user.adminId, photo: user.photo || null };
       return loadTenantData(user.adminId);
@@ -6852,7 +6840,7 @@
     return api.getStaff().then(function(list){
       // server returns snake_case columns — map to the field names the UI already uses
       state.staff = list.map(function(s){
-        return { id: s.id, staffId: s.staff_id, name: s.name, email: s.email, phone: s.phone, department: s.department, createdAt: s.created_at, adminId: tenantId(), invitePending: !!s.invite_pending };
+        return { id: s.id, staffId: s.staff_id, name: s.name, email: s.email, phone: s.phone, department: s.department, createdAt: s.created_at, adminId: tenantId() };
       });
       renderStaffListFromCache();
     }).catch(function(e){
@@ -6873,21 +6861,15 @@
     }
     var rows = tenantStaff.map(function(s){
       var d = new Date(s.createdAt).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' });
-      var statusCell = s.invitePending
-        ? '<span class="badge warning">'+ICONS.history+' Invite pending</span>'
-        : '<span class="badge success">'+ICONS.check+' Active</span>';
-      var actionButtons = s.invitePending
-        ? '<button class="btn ghost small" data-resend-invite="'+s.id+'">Resend invite</button> '
-        : '<button class="btn ghost small" data-reset="'+s.id+'">Reset password</button> ';
       var row = '<tr>'
         + '<td data-label="Staff ID" class="code">'+escapeHtml(s.staffId)+'</td>'
         + '<td data-label="Name">'+escapeHtml(s.name || '—')+'</td>'
         + '<td data-label="Department">'+escapeHtml(departmentLabel(s.department))+'</td>'
-        + '<td data-label="Status">'+statusCell+'</td>'
+        + '<td data-label="Status"><span class="badge success">'+ICONS.check+' Active</span></td>'
         + '<td data-label="Created">'+d+'</td>'
         + '<td data-label="Actions" style="white-space:nowrap;">'
         + '<button class="btn ghost small" data-view-staff="'+s.id+'">View</button> '
-        + actionButtons
+        + '<button class="btn ghost small" data-reset="'+s.id+'">Reset password</button> '
         + '<button class="btn danger-ghost small" data-remove="'+s.id+'">Remove</button>'
         + '</td></tr>';
       if(staffResetOpenId === s.id){
@@ -6936,20 +6918,6 @@
           renderStaffListFromCache();
         }).catch(function(e){
           err.textContent = e.message; err.classList.add('show');
-        });
-      });
-    });
-    wrap.querySelectorAll('[data-resend-invite]').forEach(function(btn){
-      btn.addEventListener('click', function(){
-        var s = state.staff.find(function(x){ return x.id === btn.dataset.resendInvite; });
-        if(!s) return;
-        setBtnLoading(btn, true, 'Sending…');
-        api.resendStaffInvite(s.id).then(function(){
-          setBtnLoading(btn, false, null, 'Resend invite');
-          showToast('Invite email resent to ' + (s.email || s.staffId));
-        }).catch(function(e){
-          setBtnLoading(btn, false, null, 'Resend invite');
-          showToast(e.message);
         });
       });
     });
@@ -7059,6 +7027,8 @@
     var email = document.getElementById('staffEmail').value.trim();
     var phone = document.getElementById('staffPhone').value.trim();
     var department = document.getElementById('staffDepartment').value;
+    var pw = document.getElementById('staffPassword').value;
+    var pw2 = document.getElementById('staffPasswordConfirm').value;
     var err = document.getElementById('staffError');
 
     var tenantStaff = currentTenantStaff();
@@ -7073,34 +7043,29 @@
     if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ err.textContent = 'Enter a valid email address.'; err.classList.add('show'); return; }
     var phoneDigits = phone.replace(/\D/g, '');
     if(phoneDigits.length < 7 || phoneDigits.length > 15){ err.textContent = 'Enter a valid phone number.'; err.classList.add('show'); return; }
+    if(pw.length < 6){ err.textContent = 'Password must be at least 6 characters.'; err.classList.add('show'); return; }
+    if(pw !== pw2){ err.textContent = 'Passwords do not match.'; err.classList.add('show'); return; }
     err.classList.remove('show');
 
-    setBtnLoading(btn, true, 'Sending invite…');
-    api.createStaff(staffId, name, email, phone, department).then(function(result){
-      setBtnLoading(btn, false, null, 'Add staff & send invite');
-      showToast(result && result.inviteEmailSent === false
-        ? 'Staff account created, but the invite email could not be sent — use "Resend invite" once SMTP is configured.'
-        : 'Staff account created — an invite email is on its way to ' + email + '.');
+    setBtnLoading(btn, true, 'Adding…');
+    api.createStaff(staffId, name, email, phone, department, pw).then(function(){
+      setBtnLoading(btn, false, null, 'Add staff');
+      showToast('Staff account created');
       document.getElementById('staffName').value = '';
       document.getElementById('staffId').value = '';
       document.getElementById('staffEmail').value = '';
       document.getElementById('staffPhone').value = '';
+      document.getElementById('staffPassword').value = '';
+      document.getElementById('staffPasswordConfirm').value = '';
       staffModalScrim.classList.remove('show');
       renderStaffList();
       renderDashboard();
     }).catch(function(e){
-      setBtnLoading(btn, false, null, 'Add staff & send invite');
+      setBtnLoading(btn, false, null, 'Add staff');
       err.textContent = e.message; err.classList.add('show');
     });
   });
-  bindEnterToSubmit(['staffName','staffId','staffEmail','staffPhone'], 'addStaffBtn');
-  var staffEmailPreviewInput = document.getElementById('staffEmail');
-  var staffEmailPreviewEl = document.getElementById('staffInviteEmailPreview');
-  if(staffEmailPreviewInput && staffEmailPreviewEl){
-    staffEmailPreviewInput.addEventListener('input', function(){
-      staffEmailPreviewEl.textContent = staffEmailPreviewInput.value.trim() || 'them';
-    });
-  }
+  bindEnterToSubmit(['staffName','staffId','staffEmail','staffPhone','staffPassword','staffPasswordConfirm'], 'addStaffBtn');
 
   // ---------- promo codes ----------
   function promoStatus(promo){

@@ -281,44 +281,4 @@ router.post('/admin/reset-password', async (req, res) => {
   }
 });
 
-// ============================================================
-// Staff invite acceptance
-// ============================================================
-// POST /api/auth/staff/accept-invite — body: { token, password }
-// The counterpart to routes/staff.js's issueStaffInvite(): sets a first
-// password for a staff account created without one, and — like the admin
-// reset-password route above — clears the token so the link is single-use.
-router.post('/staff/accept-invite', async (req, res) => {
-  const { token, password } = req.body;
-  if (!token || !password) return res.status(400).json({ error: 'Invite token and password are required.' });
-  if (password.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters.' });
-  try {
-    const tokenHash = crypto.createHash('sha256').update(String(token)).digest('hex');
-    const result = await pool.query(
-      'SELECT id, staff_id, name, department, admin_id FROM staff WHERE invite_token_hash = $1 AND invite_token_expires > now()',
-      [tokenHash]
-    );
-    const staffRow = result.rows[0];
-    if (!staffRow) {
-      return res.status(400).json({ error: 'This invite link is invalid or has expired. Ask your admin to resend it.' });
-    }
-    const hash = await bcrypt.hash(password, SALT_ROUNDS);
-    await pool.query(
-      'UPDATE staff SET password_hash = $1, invite_token_hash = NULL, invite_token_expires = NULL WHERE id = $2',
-      [hash, staffRow.id]
-    );
-    // Log them straight in — they just proved control of their own invite
-    // link, which is the same trust level as a normal login.
-    const token2 = sign({ role: 'staff', staffId: staffRow.staff_id, name: staffRow.name, department: staffRow.department, adminId: staffRow.admin_id });
-    res.json({
-      message: 'Your account is ready.',
-      token: token2,
-      user: { role: 'staff', staffId: staffRow.staff_id, name: staffRow.name, department: staffRow.department, adminId: staffRow.admin_id, photo: null }
-    });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Something went wrong setting up your account.' });
-  }
-});
-
 module.exports = router;

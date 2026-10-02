@@ -2,10 +2,42 @@ const express = require('express');
 const crypto = require('crypto');
 const { pool } = require('../db');
 const { requireAuth } = require('../middleware/auth');
-const { PLANS, GST_RATE, isValidPlan, isUpgrade, applyDiscount, withGst } = require('../utils/planPricing');
+const { PLAN_DEPARTMENTS, PLAN_FEATURES } = require('../middleware/rbac');
 
 const router = express.Router();
 router.use(requireAuth);
+
+const GST_RATE = 0.18; // 18% GST on top of the base plan price
+
+// Single source of truth for plan pricing. departments/features come from
+// rbac.js so access checks and pricing can never drift out of sync.
+const PLANS = {
+  room_banquet: { name: 'Room + Banquet Management', amount: 8000, departments: PLAN_DEPARTMENTS.room_banquet, features: PLAN_FEATURES.room_banquet },
+  restaurant: { name: 'Restaurant Only', amount: 6000, departments: PLAN_DEPARTMENTS.restaurant, features: PLAN_FEATURES.restaurant },
+  all: { name: 'All Departments (Room + Banquet + Restaurant)', amount: 12000, departments: PLAN_DEPARTMENTS.all, features: PLAN_FEATURES.all },
+  premium: { name: 'Premium', amount: 18000, departments: PLAN_DEPARTMENTS.premium, features: PLAN_FEATURES.premium }
+};
+
+function isValidPlan(planType) {
+  return Object.prototype.hasOwnProperty.call(PLANS, planType);
+}
+
+// True only when targetPlan covers every department AND every feature the
+// currentPlan already has, PLUS adds at least one more of either — i.e. a
+// genuine upgrade, never sideways or down. This is what makes 'all' ->
+// 'premium' count as a valid upgrade even though both cover the same 3
+// departments: premium adds the 'voice' and 'ai' features, which is enough
+// on its own to qualify.
+function isUpgrade(currentPlanType, targetPlanType) {
+  const cur = PLANS[currentPlanType], tgt = PLANS[targetPlanType];
+  const curDepts = new Set(cur.departments), tgtDepts = new Set(tgt.departments);
+  const curFeats = new Set(cur.features), tgtFeats = new Set(tgt.features);
+  const deptsCovered = [...curDepts].every((d) => tgtDepts.has(d));
+  const featsCovered = [...curFeats].every((f) => tgtFeats.has(f));
+  const addsDept = [...tgtDepts].some((d) => !curDepts.has(d));
+  const addsFeat = [...tgtFeats].some((f) => !curFeats.has(f));
+  return deptsCovered && featsCovered && (addsDept || addsFeat);
+}
 
 // Only the Admin who owns a tenant has a subscription — Staff access is
 // governed by their Admin's subscription, not a subscription of their own.
@@ -36,6 +68,26 @@ async function getOrCreateSubscription(adminId) {
   return sub;
 }
 
+// Adds GST + the resolved plan's departments/name to a subscription row for
+// the frontend. baseAmount is ALWAYS derived from PLANS[plan_type], never
+// trusted from the stored amount column, so it can't drift or be tampered.
+function withGst(sub) {
+  const plan = PLANS[sub.plan_type] || PLANS.all;
+  const base = plan.amount;
+  const gstAmount = Math.round(base * GST_RATE * 100) / 100;
+  const totalAmount = Math.round((base + gstAmount) * 100) / 100;
+  return Object.assign({}, sub, {
+    planType: sub.plan_type,
+    planLabel: plan.name,
+    departments: plan.departments,
+    features: plan.features,
+    baseAmount: base,
+    gstRate: GST_RATE,
+    gstAmount,
+    totalAmount
+  });
+}
+
 // Looks up a promo code and returns it only if it's actually usable right now
 // (active, not expired, under its use limit). Case-insensitive.
 async function findValidPromo(code) {
@@ -48,6 +100,11 @@ async function findValidPromo(code) {
     [code]
   );
   return r.rows[0] || null;
+}
+function applyDiscount(totalAmount, promo) {
+  if (!promo) return totalAmount;
+  const discounted = totalAmount * (1 - Number(promo.discount_percent) / 100);
+  return Math.max(0, Math.round(discounted * 100) / 100);
 }
 
 // GET /api/subscription/plans — the 3 tiers with GST-inclusive pricing, for
@@ -147,14 +204,10 @@ router.post('/subscribe', requireAdminSelf, async (req, res) => {
       const setExpiry = isUpgradeFlow
         ? 'expiry_date = expiry_date' // keep existing expiry on upgrade
         : "expiry_date = now() + interval '1 year'";
-      // Only clear the "already reminded" flag when expiry_date actually
-      // moves (a fresh term) — on an upgrade the expiry is unchanged, so a
-      // reminder already sent for it is still correctly "already sent".
-      const setReminder = isUpgradeFlow ? '' : ', renewal_reminder_sent_at = NULL';
       const upd = await pool.query(
         `UPDATE subscriptions
          SET status = 'active', plan_type = $1,
-             start_date = COALESCE(start_date, now()), ${setExpiry}${setReminder},
+             start_date = COALESCE(start_date, now()), ${setExpiry},
              payment_provider = 'promo', payment_id = NULL, razorpay_order_id = NULL,
              promo_code_used = $2, updated_at = now()
          WHERE id = $3 RETURNING *`,
@@ -247,14 +300,11 @@ router.post('/verify', requireAdminSelf, async (req, res) => {
     const setExpiry = wasAlreadyActive
       ? 'expiry_date = expiry_date' // upgrade: keep existing expiry, don't reset the term
       : "expiry_date = now() + interval '1 year'";
-    // Same reminder-flag logic as the free-activation path above: only
-    // clear it when expiry_date actually moves.
-    const setReminder = wasAlreadyActive ? '' : ', renewal_reminder_sent_at = NULL';
 
     const upd = await pool.query(
       `UPDATE subscriptions
        SET status = 'active', plan_type = $1, pending_plan_type = NULL,
-           start_date = COALESCE(start_date, now()), ${setExpiry}${setReminder},
+           start_date = COALESCE(start_date, now()), ${setExpiry},
            payment_id = $2, payment_provider = 'razorpay', updated_at = now()
        WHERE id = $3 RETURNING *`,
       [finalPlanType, razorpay_payment_id, sub.id]
