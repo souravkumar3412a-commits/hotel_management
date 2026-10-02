@@ -26,6 +26,20 @@
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<!-- Google Analytics (GA4) — completely free regardless of traffic volume.
+     Replace G-XXXXXXXXXX below with your own Measurement ID: analytics.google.com
+     -> Admin -> Create Property -> Data Streams -> Web -> copy the ID shown
+     there (starts with "G-"). Until you do, this script loads but sends no
+     data anywhere useful, so it's safe to leave as a placeholder. -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){ dataLayer.push(arguments); }
+  gtag('js', new Date());
+  gtag('config', 'G-XXXXXXXXXX');
+</script>
+
 <script src="assets/jspdf.umd.min.js"></script>
 <script src="assets/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -1682,7 +1696,7 @@
 <div class="modal-scrim" id="staffModalScrim">
   <div class="modal-box">
     <div class="modal-head">
-      <div><h3>Add staff account</h3><p>Give them a Staff ID and password to log in and bill.</p></div>
+      <div><h3>Add staff account</h3><p>They'll get an email to set their own password and activate their account.</p></div>
       <button class="modal-close" id="staffModalClose" aria-label="Close"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
     </div>
     <div class="modal-body">
@@ -1704,23 +1718,19 @@
           <input type="tel" id="staffPhone" placeholder="98765 43210">
         </div>
       </div>
-      <div class="field">
+      <div class="field" style="margin-bottom:0;">
         <label for="staffDepartment">Department</label>
         <select id="staffDepartment"></select>
       </div>
-      <div class="field">
-        <label for="staffPassword">Password</label>
-        <div class="pw-field-wrap"><input type="password" id="staffPassword" placeholder="At least 6 characters"><button type="button" class="pw-toggle" data-toggle-pw="staffPassword">👁</button></div>
-      </div>
-      <div class="field" style="margin-bottom:0;">
-        <label for="staffPasswordConfirm">Confirm password</label>
-        <div class="pw-field-wrap"><input type="password" id="staffPasswordConfirm" placeholder="Re-enter"><button type="button" class="pw-toggle" data-toggle-pw="staffPasswordConfirm">👁</button></div>
-      </div>
+      <p class="hint" style="margin:10px 0 0;">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:3px;"><path d="M4 4h16v16H4z"/><path d="m4 6 8 7 8-7"/></svg>
+        We'll email <span id="staffInviteEmailPreview">them</span> a link to set their own password — you never need to share one yourself.
+      </p>
       <p class="error-text" id="staffError"></p>
     </div>
     <div class="modal-foot">
       <button class="btn ghost" id="staffModalCancel">Cancel</button>
-      <button class="btn accent" id="addStaffBtn">Add staff</button>
+      <button class="btn accent" id="addStaffBtn">Add staff &amp; send invite</button>
     </div>
   </div>
 </div>

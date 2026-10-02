@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /reset-password.html
+Disallow: /staff-invite.html
+
+Sitemap: https://eazzio.com/sitemap.xml
