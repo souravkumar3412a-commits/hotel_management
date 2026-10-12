@@ -1284,3 +1284,11 @@ tr.top-row td{background:var(--accent-tint);}
   .gate-brand-panel{display:none;}
   .gate-form-panel{flex:1 1 100%;}
 }
+
+/* ---------- loyalty reward banner (shown under a freshly generated restaurant invoice) ---------- */
+.reward-banner{width:100%;max-width:420px;background:var(--success-bg);border:1px solid var(--success);border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:6px;text-align:left;}
+.reward-banner b.rb-title{font-size:13.5px;color:var(--text-primary);}
+.reward-banner .rb-code{font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:700;letter-spacing:.06em;color:var(--success);}
+.reward-banner .rb-meta{font-size:12px;color:var(--text-muted);line-height:1.5;}
+.reward-banner .btn{align-self:flex-start;margin-top:4px;color:var(--success);border-color:var(--success);}
+@media print{ .reward-banner{ display:none !important; } }

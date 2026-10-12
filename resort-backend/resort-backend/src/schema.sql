@@ -72,8 +72,21 @@ CREATE TABLE promo_codes (
   expiry_date    DATE,
   max_uses       INTEGER,
   used_count     INTEGER NOT NULL DEFAULT 0,
+  customer_phone TEXT,                   -- last 10 digits; set on auto-generated loyalty codes so only that customer can use them (NULL = anyone)
+  customer_name  TEXT,
+  auto_generated BOOLEAN NOT NULL DEFAULT false,
   created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE (admin_id, code)
+);
+
+-- How many loyalty reward milestones each customer (by phone) has already been paid out for.
+CREATE TABLE loyalty_progress (
+  admin_id        UUID NOT NULL REFERENCES admins(id) ON DELETE CASCADE,
+  phone_key       TEXT NOT NULL,
+  period_start    TIMESTAMPTZ,
+  rewards_issued  INTEGER NOT NULL DEFAULT 0,
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (admin_id, phone_key)
 );
 
 CREATE TABLE restaurant_tables (
