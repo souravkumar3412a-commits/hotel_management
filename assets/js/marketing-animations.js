@@ -31,10 +31,32 @@
     return;
   }
 
+  // Count-up for the "Why Eazzio" figures ([data-countup="12"], optional
+  // data-prefix / data-suffix). Runs once, when the card scrolls into view.
+  function runCountUp(root){
+    root.querySelectorAll('[data-countup]').forEach(function(el){
+      var to = parseFloat(el.getAttribute('data-countup'));
+      var prefix = el.getAttribute('data-prefix') || '';
+      var suffix = el.getAttribute('data-suffix') || '';
+      if(isNaN(to) || to === 0){ return; } // "0" has nothing to count up to
+      var t0 = null;
+      function step(ts){
+        if(!t0) t0 = ts;
+        var p = Math.min((ts - t0) / 1100, 1);
+        var eased = 1 - Math.pow(1 - p, 3);
+        el.textContent = prefix + Math.round(to * eased) + suffix;
+        if(p < 1) window.requestAnimationFrame(step);
+      }
+      el.textContent = prefix + '0' + suffix;
+      window.requestAnimationFrame(step);
+    });
+  }
+
   var io = new IntersectionObserver(function(entries){
     entries.forEach(function(entry){
       if(entry.isIntersecting){
         entry.target.classList.add('in-view');
+        runCountUp(entry.target);
         io.unobserve(entry.target);
       }
     });
