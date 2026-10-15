@@ -21,11 +21,18 @@
 <meta name="twitter:description" content="Room booking, banquet management, restaurant billing and GST-ready invoicing — in one dashboard.">
 <meta name="twitter:image" content="https://eazzio.com/assets/eazzio-wordmark.png">
 
+<script>
+/* Hold the login page's entrance animations until the splash screen has gone
+   (gate-animations.js releases this). The timer is a safety net so the page can
+   never be left waiting if that script fails to load. */
+document.documentElement.classList.add('gate-wait');
+setTimeout(function(){ document.documentElement.classList.remove('gate-wait'); }, 6000);
+</script>
 <link rel="icon" type="image/png" href="assets/eazzio-wordmark.png">
 <link rel="apple-touch-icon" href="assets/eazzio-wordmark.png">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Playfair+Display:wght@600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="assets/jspdf.umd.min.js"></script>
 <script src="assets/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -80,27 +87,51 @@
 
 
   <div class="gate-panels">
-  <div class="gate-brand-panel">
+  <div class="gate-brand-panel" id="gateBrandPanel">
+    <div class="gbp-photo" aria-hidden="true"><i></i></div>
+    <div class="gbp-glow" aria-hidden="true"></div>
+    <div class="gbp-particles" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+
     <div class="gbp-mid">
-      <p class="eyebrow">Hotel Management System</p>
-      <h1>Manage your hotel business <span class="hl">smarter</span>.</h1>
-      <p>All-in-one solution for room booking, banquet hall management, restaurant sales and every invoice you print — built for the pace of real service.</p>
+      <p class="eyebrow"><span class="eb-line"></span>Hotel Management System</p>
+      <h1><span class="h1-line"><span>Manage your hotel</span></span><span class="h1-line"><span>business <em class="hl">smarter.</em></span></span></h1>
+      <p class="gbp-lead">All-in-one solution for room booking, banquet hall management, restaurant sales and every invoice you print &mdash; built for the pace of real service.</p>
       <div class="gbp-feats">
-        <div class="gbp-feat"><span class="gf-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21V8l9-5 9 5v13"/><path d="M9 21v-7h6v7"/></svg></span> Room booking — seamless &amp; hassle-free</div>
-        <div class="gbp-feat"><span class="gf-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><line x1="9" y1="21" x2="9" y2="12"/><line x1="15" y1="21" x2="15" y2="12"/></svg></span> Banquet hall booking — perfect for every occasion</div>
-        <div class="gbp-feat"><span class="gf-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h2a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M17 2v9c-2 0-3 1-3 3v8"/></svg></span> Restaurant management — digital order tracking</div>
-        <div class="gbp-feat"><span class="gf-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg></span> Reports &amp; analytics — real-time insight</div>
+        <div class="gbp-feat"><span class="gf-ico"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/><path d="M7 17v-3.5h10V17M7 17v1M17 17v1"/></svg></span><span class="gf-txt"><b>Room Booking</b><small>Seamless &amp; hassle-free</small></span></div>
+        <div class="gbp-feat"><span class="gf-ico"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M2 20h20"/><path d="M4.5 17a7.5 7.5 0 0 1 15 0Z"/><path d="M12 9.5V7"/><circle cx="12" cy="5.8" r="1.1"/></svg></span><span class="gf-txt"><b>Banquet Hall Booking</b><small>Perfect for every occasion</small></span></div>
+        <div class="gbp-feat"><span class="gf-ico"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3v7a2 2 0 0 0 4 0V3"/><path d="M7 3v18"/><path d="M17.5 3C15.5 4.4 14.5 6.8 14.5 9.5c0 1.6 1 2.6 3 2.6V21"/></svg></span><span class="gf-txt"><b>Restaurant Management</b><small>Digital order tracking</small></span></div>
+        <div class="gbp-feat"><span class="gf-ico"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="12" width="3.6" height="8" rx="1"/><rect x="10.2" y="5" width="3.6" height="15" rx="1"/><rect x="16.4" y="9" width="3.6" height="11" rx="1"/></svg></span><span class="gf-txt"><b>Reports &amp; Analytics</b><small>Real-time insights</small></span></div>
       </div>
       <div class="gbp-stats">
-        <div class="gbp-stat"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="9 12 11 14 15 10"/></svg><span><b>100%</b><span>Business organized</span></span></div>
-        <div class="gbp-stat"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><span><b>24/7</b><span>Secure access</span></span></div>
-        <div class="gbp-stat"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg><span><b>Smart</b><span>Growth</span></span></div>
+        <div class="gbp-stat"><svg class="gs-shield" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 5v6c0 5 3.4 8.7 8 11 4.6-2.3 8-6 8-11V5l-8-3Z"/><polyline class="gs-check" points="8.5 12 11 14.5 15.5 9.5"/></svg><span><b><span data-count-to="100" data-suffix="%">100%</span></b><span>Business Organized</span></span></div>
+        <div class="gbp-stat"><svg class="gs-clock" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line class="gs-hand-min" x1="12" y1="12" x2="12" y2="5.5"/><line class="gs-hand-hr" x1="12" y1="12" x2="16" y2="12"/></svg><span><b>24/7</b><span>Secure Access</span></span></div>
+        <div class="gbp-stat"><svg class="gs-trend" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline class="gs-trend-line" points="3 17 9 11 13 15 21 7"/><polyline points="15 7 21 7 21 13"/></svg><span><b>Smart</b><span>Growth</span></span></div>
       </div>
+      <div class="gbp-tagline"><span>Your Hotel. Our Technology.</span><svg viewBox="0 0 260 14" preserveAspectRatio="none" aria-hidden="true"><path d="M2 9 C 52 2, 128 14, 258 3"/></svg></div>
     </div>
+
+    <!-- Decorative SAMPLE preview cards (not real data) -->
+    <div class="gbp-float gbp-float-rev" aria-hidden="true" data-depth="14">
+      <div class="gfr-head"><span class="gfr-dot"></span>Sample &middot; Today's revenue</div>
+      <div class="gfr-amount" id="gatePreviewRevenue">&#8377;48,200</div>
+      <div class="gfr-delta"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>12.4% vs yesterday</div>
+      <svg class="gfr-spark" viewBox="0 0 170 46" preserveAspectRatio="none"><path class="gfr-spark-area" d="M0 38 C 16 32, 26 36, 40 28 S 66 32, 80 21 S 108 26, 124 13 S 156 15, 170 4 L170 46 L0 46Z"/><path class="gfr-spark-line" d="M0 38 C 16 32, 26 36, 40 28 S 66 32, 80 21 S 108 26, 124 13 S 156 15, 170 4"/></svg>
+    </div>
+    <div class="gbp-float gbp-float-feed" aria-hidden="true" data-depth="22">
+      <div class="gff-head"><span class="gfr-dot"></span>Sample activity</div>
+      <div class="gff-item" id="gateFeedItem"></div>
+    </div>
+
+    <button type="button" class="gbp-scroll" id="gbpScrollCue"><span>Explore features</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button>
     <p class="gbp-bottom">DATA SAVED SECURELY IN THE CLOUD</p>
   </div>
 
   <div class="gate-form-panel">
+    <div class="gfp-deco" aria-hidden="true">
+      <i class="gfp-orb gfp-orb-1"></i><i class="gfp-orb gfp-orb-2"></i>
+      <svg class="gfp-leaves gfp-leaves-br" viewBox="0 0 340 440" fill="none"><g transform="translate(318 430) rotate(-18) scale(1.55)"><g class="lf" style="animation-delay:0.0s"><path d="M0 0 C -26 -30, -23 -80, 0 -112 C 23 -80, 26 -30, 0 0Z"/><path class="lf-rib" d="M0 -2 L0 -100"/></g></g><g transform="translate(318 430) rotate(-42) scale(1.9)"><g class="lf" style="animation-delay:0.8s"><path d="M0 0 C -26 -30, -23 -80, 0 -112 C 23 -80, 26 -30, 0 0Z"/><path class="lf-rib" d="M0 -2 L0 -100"/></g></g><g transform="translate(318 430) rotate(-68) scale(1.35)"><g class="lf" style="animation-delay:1.6s"><path d="M0 0 C -26 -30, -23 -80, 0 -112 C 23 -80, 26 -30, 0 0Z"/><path class="lf-rib" d="M0 -2 L0 -100"/></g></g><g transform="translate(318 430) rotate(-92) scale(1.1)"><g class="lf" style="animation-delay:2.4s"><path d="M0 0 C -26 -30, -23 -80, 0 -112 C 23 -80, 26 -30, 0 0Z"/><path class="lf-rib" d="M0 -2 L0 -100"/></g></g><g transform="translate(300 430) rotate(-5) scale(1.2)"><g class="lf" style="animation-delay:1.2s"><path d="M0 0 C -26 -30, -23 -80, 0 -112 C 23 -80, 26 -30, 0 0Z"/><path class="lf-rib" d="M0 -2 L0 -100"/></g></g><g transform="translate(330 430) rotate(-120) scale(1.0)"><g class="lf" style="animation-delay:0.4s"><path d="M0 0 C -26 -30, -23 -80, 0 -112 C 23 -80, 26 -30, 0 0Z"/><path class="lf-rib" d="M0 -2 L0 -100"/></g></g></svg>
+      <svg class="gfp-leaves gfp-leaves-tr" viewBox="0 0 120 160" fill="none"><g transform="translate(40 0) rotate(150) scale(1.0)"><g class="lf" style="animation-delay:0.6s"><path d="M0 0 C -26 -30, -23 -80, 0 -112 C 23 -80, 26 -30, 0 0Z"/><path class="lf-rib" d="M0 -2 L0 -100"/></g></g><g transform="translate(40 0) rotate(122) scale(1.3)"><g class="lf" style="animation-delay:1.4s"><path d="M0 0 C -26 -30, -23 -80, 0 -112 C 23 -80, 26 -30, 0 0Z"/><path class="lf-rib" d="M0 -2 L0 -100"/></g></g><g transform="translate(40 0) rotate(178) scale(0.8)"><g class="lf" style="animation-delay:2.0s"><path d="M0 0 C -26 -30, -23 -80, 0 -112 C 23 -80, 26 -30, 0 0Z"/><path class="lf-rib" d="M0 -2 L0 -100"/></g></g></svg>
+    </div>
     <div class="gate-box">
       <div class="gate-card-logo">
         <img src="assets/eazzio-wordmark.png" alt="Eazzio" style="width:180px;height:auto;margin:0 auto 6px;display:block;">
@@ -123,12 +154,12 @@
       <div class="gate-panel active" data-gate="adminAuth">
         <div class="gate-role-panel active" data-role-panel="admin">
           <div id="adminAuthLogin">
-            <h3>Admin login</h3>
-            <p class="auth-sub">Sign in with your admin email and password.</p>
+            <h3>Welcome Back!</h3>
+            <p class="auth-sub">Sign in to your admin account to continue.</p>
             <div class="field">
-              <label for="loginEmail">Email</label>
+              <label for="loginEmail">Email Address</label>
               <div class="if-row">
-                <span class="if-ico"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z" opacity="0"/><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg></span>
+                <span class="if-ico"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg></span>
                 <input type="email" id="loginEmail" placeholder="owner@restaurant.com">
               </div>
             </div>
@@ -247,17 +278,24 @@
     </div>
   </section>
 
-  <!-- ============== TESTIMONIALS ==============
-       PLACEHOLDER CONTENT — replace these 3 quotes with real feedback from
-       your own hotel partners before this goes live. Fabricated reviews are
-       deceptive; these are intentionally written as obvious template text
-       so nobody mistakes them for real ones in the meantime. -->
+  <!-- ============== TESTIMONIALS / WHY EAZZIO ==============
+       Only REAL quotes belong in the carousel: add them to MKT_TESTIMONIALS
+       in assets/js/app.js (name, role, city, quote — and a rating only if
+       the customer actually gave one). While that list is empty, visitors
+       see the factual "Why Eazzio" cards plus an invitation to be featured,
+       never invented reviews. -->
   <section class="mkt-section mkt-section-alt" id="testimonialsSection">
     <div class="mkt-container">
-      <p class="mkt-eyebrow reveal">What Hotels Say</p>
-      <h2 class="mkt-h2 reveal">Real feedback, coming soon</h2>
-      <p class="mkt-sub reveal">We'd rather show you nothing than something fake — this section is ready and waiting for quotes from real Eazzio hotels.</p>
-      <div class="mkt-testimonial-grid" id="mktTestimonialGrid"></div>
+      <p class="mkt-eyebrow reveal" id="mktTestiEyebrow">Why Eazzio</p>
+      <h2 class="mkt-h2 reveal" id="mktTestiTitle">Built for the pace of real service</h2>
+      <p class="mkt-sub reveal" id="mktTestiSub">Everything here is how Eazzio works today &mdash; no inflated numbers, no invented quotes.</p>
+      <div class="mkt-proof-grid">
+        <div class="mkt-proof reveal" style="--ri:0"><span class="mp-ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></span><b class="mp-num"><span data-countup="3">3</span></b><span class="mp-label">Departments, one login</span><p>Room, Banquet and Restaurant &mdash; each with its own locked-down staff account.</p></div>
+        <div class="mkt-proof reveal" style="--ri:1"><span class="mp-ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h12M6 9h12M9 4c4 0 6 2 6 5s-2 5-6 5l6 6"/></svg></span><b class="mp-num"><span data-countup="0" data-prefix="&#8377;">&#8377;0</span></b><span class="mp-label">To create an account</span><p>Pay only when you pick a plan. No card needed to sign up.</p></div>
+        <div class="mkt-proof reveal" style="--ri:2"><span class="mp-ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg></span><b class="mp-num"><span data-countup="12">12</span><small>months</small></b><span class="mp-label">Per plan, no auto-renew</span><p>Your plan simply expires &mdash; nothing is ever charged behind your back.</p></div>
+        <div class="mkt-proof reveal" style="--ri:3"><span class="mp-ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 13h6M9 17h6"/></svg></span><b class="mp-num">GST</b><span class="mp-label">Ready invoices</span><p>Sequential numbering, PDF download and WhatsApp sharing built in.</p></div>
+      </div>
+      <div class="mkt-testi-wrap reveal" id="mktTestimonialGrid"></div>
     </div>
   </section>
 
@@ -2051,6 +2089,7 @@
 <div id="toastWrap"></div>
 
 <script src="assets/js/splash.js" defer></script>
+<script src="assets/js/gate-animations.js" defer></script>
 <script src="assets/js/app.js" defer></script>
 <script src="assets/js/marketing-animations.js" defer></script>
 <script src="assets/js/voice-commands.js" defer></script>

@@ -844,15 +844,125 @@
     { q:'Can I upgrade my plan later?', a:'Yes, any time from your dashboard. You\'re only charged the price difference between your current plan and the new one, and your existing subscription\'s expiry date carries over.' },
     { q:'What if I need help?', a:'Email us any time at eazziohotel@gmail.com — see the Support section below.' }
   ];
-  // PLACEHOLDER testimonials — obviously template text on purpose (see the
-  // HTML comment above #testimonialsSection). Replace with real quotes,
-  // real names/roles, and real cities once you have actual hotel partners
-  // using Eazzio. Do not present these as real reviews.
+  // ---------- testimonials ----------
+  // REAL feedback only. Add one object per genuine customer quote, with their
+  // permission, e.g.
+  //   { quote:'What they actually told you.', name:'Full Name', role:'Owner, Hotel Name', city:'City', rating:5 }
+  // `rating` (1-5) is optional — include it only if the customer really gave one.
+  // While this list is empty, the page shows the factual "Why Eazzio" cards plus
+  // an invitation to be featured, never invented reviews. Once it has entries,
+  // they appear in an auto-rotating carousel and the section heading switches to
+  // "What hotels say".
   var MKT_TESTIMONIALS = [
-    { quote:'Add a real quote from one of your hotel partners here — even one is more convincing than none.', name:'— Replace with a real name', role:'Hotel owner, replace with city' },
-    { quote:'A second quote works well if it comes from a different department (e.g. a banquet or restaurant manager) to show the whole system in use.', name:'— Replace with a real name', role:'Manager, replace with city' },
-    { quote:'A short, specific result (e.g. "cut our invoicing time in half") is far more convincing than a general compliment.', name:'— Replace with a real name', role:'Hotel owner, replace with city' }
   ];
+  var TESTI_QUOTE_SVG = '<svg class="mt-quote-mark" width="34" height="34" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 7h4v4c0 3-2 5-4 5v-2c1-.6 1.6-1.5 1.7-3H7V7zm8 0h4v4c0 3-2 5-4 5v-2c1-.6 1.6-1.5 1.7-3H15V7z"/></svg>';
+  function testiInitials(name){
+    var parts = String(name || '').trim().split(/\s+/).filter(Boolean);
+    if(!parts.length) return '?';
+    return (parts[0].charAt(0) + (parts.length > 1 ? parts[parts.length - 1].charAt(0) : '')).toUpperCase();
+  }
+  function testiInviteHtml(){
+    var body = 'Hi Eazzio team,\n\nHotel name:\nCity:\nMy role:\n\nHow Eazzio has helped us:\n\nMay we feature this on your website? (Yes / No)\n';
+    var href = 'mailto:eazziohotel@gmail.com?subject=' + encodeURIComponent('My Eazzio experience') + '&body=' + encodeURIComponent(body);
+    return '<div class="mkt-invite">'
+      + '<span class="mi-badge">\u2605 Founding hotels</span>'
+      + '<h3>Be one of the first hotels we feature</h3>'
+      + '<p>Eazzio is new, and we\'d rather earn your review than invent one. If you\'re running your hotel on Eazzio, tell us how it\'s going \u2014 with your permission, your story will appear right here.</p>'
+      + '<a class="btn accent" href="' + href + '" style="padding:0 26px;height:46px;text-decoration:none;">Share your experience</a>'
+      + '<ul class="mi-points"><li>Takes two minutes</li><li>Published only with your OK</li><li>Your words, not ours</li></ul>'
+      + '</div>';
+  }
+  function testiCarouselHtml(){
+    var slides = MKT_TESTIMONIALS.map(function(t, i){
+      var rating = parseInt(t.rating, 10);
+      var stars = (rating >= 1 && rating <= 5) ? '<div class="mt-stars" aria-label="' + rating + ' out of 5 stars">' + new Array(rating + 1).join('\u2605') + '</div>' : '';
+      var meta = [t.role, t.city].filter(Boolean).join(' \u00B7 ');
+      return '<figure class="mt-slide' + (i === 0 ? ' active' : '') + '" aria-hidden="' + (i === 0 ? 'false' : 'true') + '">'
+        + TESTI_QUOTE_SVG + stars
+        + '<blockquote>' + escapeHtml(t.quote) + '</blockquote>'
+        + '<figcaption><span class="mt-avatar" aria-hidden="true">' + escapeHtml(testiInitials(t.name)) + '</span>'
+        + '<span><b>' + escapeHtml(t.name) + '</b><small>' + escapeHtml(meta) + '</small></span></figcaption>'
+        + '</figure>';
+    }).join('');
+    var many = MKT_TESTIMONIALS.length > 1;
+    var dots = many ? MKT_TESTIMONIALS.map(function(_, i){
+      return '<button type="button" class="mt-dot' + (i === 0 ? ' active' : '') + '" aria-label="Show testimonial ' + (i + 1) + '"></button>';
+    }).join('') : '';
+    var arrows = many
+      ? '<div class="mt-arrows"><button type="button" class="mt-arrow" data-dir="-1" aria-label="Previous testimonial"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></button>'
+        + '<button type="button" class="mt-arrow" data-dir="1" aria-label="Next testimonial"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></button></div>'
+      : '';
+    return '<div class="mkt-testi" role="region" aria-roledescription="carousel" aria-label="Customer testimonials">'
+      + '<div class="mt-slides">' + slides + '</div>'
+      + (many ? '<div class="mt-ctrl"><div class="mt-dots">' + dots + '</div>' + arrows + '</div><span class="mt-progress"></span>' : '')
+      + '</div>';
+  }
+  function initTestimonialCarousel(root){
+    var slides = Array.prototype.slice.call(root.querySelectorAll('.mt-slide'));
+    if(slides.length < 2) return;
+    var dots = Array.prototype.slice.call(root.querySelectorAll('.mt-dot'));
+    var progress = root.querySelector('.mt-progress');
+    var reduce = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    var DUR = 7000, idx = 0, timer = null, paused = false;
+    function restartProgress(){
+      if(!progress || reduce) return;
+      progress.classList.remove('run');
+      void progress.offsetWidth;
+      progress.style.setProperty('--mt-dur', DUR + 'ms');
+      if(!paused) progress.classList.add('run');
+    }
+    function schedule(){
+      clearTimeout(timer);
+      if(reduce || paused) return;
+      timer = setTimeout(function(){ show(idx + 1); }, DUR);
+    }
+    function show(n){
+      idx = (n + slides.length) % slides.length;
+      slides.forEach(function(sl, i){
+        sl.classList.toggle('active', i === idx);
+        sl.setAttribute('aria-hidden', i === idx ? 'false' : 'true');
+      });
+      dots.forEach(function(d, i){ d.classList.toggle('active', i === idx); });
+      restartProgress();
+      schedule();
+    }
+    function pause(){ paused = true; clearTimeout(timer); if(progress) progress.classList.remove('run'); }
+    function resume(){ paused = false; restartProgress(); schedule(); }
+    root.addEventListener('mouseenter', pause);
+    root.addEventListener('mouseleave', resume);
+    root.addEventListener('focusin', pause);
+    root.addEventListener('focusout', resume);
+    dots.forEach(function(d, i){ d.addEventListener('click', function(){ show(i); }); });
+    root.querySelectorAll('.mt-arrow').forEach(function(btn){
+      btn.addEventListener('click', function(){ show(idx + parseInt(btn.getAttribute('data-dir'), 10)); });
+    });
+    var x0 = null;
+    root.addEventListener('touchstart', function(e){ x0 = e.touches[0].clientX; }, { passive: true });
+    root.addEventListener('touchend', function(e){
+      if(x0 === null) return;
+      var dx = e.changedTouches[0].clientX - x0;
+      x0 = null;
+      if(Math.abs(dx) > 40) show(idx + (dx < 0 ? 1 : -1));
+    });
+    restartProgress();
+    schedule();
+  }
+  function renderTestimonials(){
+    var wrap = document.getElementById('mktTestimonialGrid');
+    if(!wrap) return;
+    if(!MKT_TESTIMONIALS.length){
+      wrap.innerHTML = testiInviteHtml();
+      return;
+    }
+    var eyebrow = document.getElementById('mktTestiEyebrow');
+    var title = document.getElementById('mktTestiTitle');
+    var sub = document.getElementById('mktTestiSub');
+    if(eyebrow) eyebrow.textContent = 'What Hotels Say';
+    if(title) title.textContent = 'Hear it from the hotels running on Eazzio';
+    if(sub) sub.textContent = 'Real feedback, shared with permission by the people who use Eazzio every day.';
+    wrap.innerHTML = testiCarouselHtml();
+    initTestimonialCarousel(wrap.querySelector('.mkt-testi'));
+  }
   function renderMarketingSections(){
     var moduleGrid = document.getElementById('mktModuleGrid');
     if(moduleGrid) moduleGrid.innerHTML = MKT_MODULES.map(function(m, i){
@@ -863,14 +973,7 @@
     planGrid.querySelectorAll('[data-plan-cta]').forEach(function(btn){
       btn.addEventListener('click', goToSignup);
     });
-    var testimonialGrid = document.getElementById('mktTestimonialGrid');
-    if(testimonialGrid) testimonialGrid.innerHTML = MKT_TESTIMONIALS.map(function(t, i){
-      return '<div class="mkt-testimonial-card reveal" style="--ri:' + i + '">'
-        + '<svg class="mtc-quote-mark" width="26" height="26" viewBox="0 0 24 24" fill="currentColor"><path d="M9.5 8C6.5 8 4 10.5 4 13.5S6.5 19 9.5 19c.3 0 .6 0 .9-.1-.6 1.4-1.8 2.5-3.4 3l.6 1.4c3-1 5.4-3.7 5.4-7.3V13c0-2.8-1.6-5-3.5-5zm10 0c-3 0-5.5 2.5-5.5 5.5s2.5 5.5 5.5 5.5c.3 0 .6 0 .9-.1-.6 1.4-1.8 2.5-3.4 3l.6 1.4c3-1 5.4-3.7 5.4-7.3V13c0-2.8-1.6-5-3.5-5z"/></svg>'
-        + '<p class="mtc-quote">' + escapeHtml(t.quote) + '</p>'
-        + '<div class="mtc-person"><b>' + escapeHtml(t.name) + '</b><span>' + escapeHtml(t.role) + '</span></div>'
-        + '</div>';
-    }).join('');
+    renderTestimonials();
     var faqList = document.getElementById('faqList');
     if(faqList){
       faqList.innerHTML = MKT_FAQS.map(function(f, i){
