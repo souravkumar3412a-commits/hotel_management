@@ -6321,6 +6321,167 @@
         + '</div>';
     }).join('');
   }
+  // ---------- onboarding checklist (new admins) ----------
+  // A short "get started" card at the top of the admin Dashboard: Add rooms →
+  // Add staff → Make your first booking → Generate your first invoice, with a
+  // progress bar. Every step is ticked off from REAL data (does the hotel have
+  // rooms / staff / a booking / an invoice yet?), never from "did they click it",
+  // so it can't drift out of sync. The steps adapt to the subscription plan, e.g.
+  // a Restaurant-only hotel gets "Add your menu" instead of rooms and bookings.
+  // Hidden for the demo, for staff, and for any admin who has already finished.
+  var onbSession = { initialAllDone: null, celebrating: false, lastPct: 0, busy: false, doneCache: {} };
+  function onbHiddenKey(){ return 'onboarding-hidden:' + tenantId(); }
+  function onbCompleteKey(){ return 'onboarding-complete:' + tenantId(); }
+  function onbBuildSteps(){
+    var depts = planDepartments();
+    var hasRoom = depts.indexOf('room') !== -1;
+    var hasBanquet = depts.indexOf('banquet') !== -1;
+    var hasRestaurant = depts.indexOf('restaurant') !== -1;
+    var steps = [];
+    if(hasRoom){
+      steps.push({ key:'rooms', title:'Add your rooms', desc:'Create your floors, room categories and rooms so you can start taking bookings.', cta:'Add rooms', tab:'room-setup' });
+    }
+    if(hasRestaurant){
+      steps.push({ key:'menu', title:'Add your menu', desc:'Add the dishes you serve so your staff can bill a table in a few taps.', cta:'Add menu items', tab:'menu' });
+    }
+    steps.push({ key:'staff', title:'Add your staff',
+      desc: depts.length > 1 ? 'Create a login for each department\'s team. They only ever see their own department.' : 'Create a login for your team. They only see what you give them access to.',
+      cta:'Add staff', tab:'staff' });
+    if(hasRoom || hasBanquet){
+      steps.push({ key:'booking', title:'Make your first booking',
+        desc: hasRoom ? ('Book a guest into a room' + (hasBanquet ? ' or schedule a banquet event' : '') + ' to see how a booking flows.') : 'Schedule your first banquet event.',
+        cta:'Make a booking', tab: hasRoom ? 'room-availability' : 'banquet-availability' });
+    }
+    steps.push({ key:'invoice', title:'Generate your first invoice',
+      desc: hasRoom ? 'Check a guest out' + (hasRestaurant ? ' (or bill a restaurant table)' : '') + ' to create your first invoice.' : 'Once your staff bills a table, the invoice appears in your history.',
+      cta: hasRoom ? 'Go to bookings' : 'View invoices', tab: hasRoom ? 'room-availability' : 'history' });
+    return steps;
+  }
+  // Real invoices only — the dashboard list also folds banquet BOOKINGS in as
+  // pseudo-invoices, which must not count as "generated an invoice".
+  function onbInvoiceCount(){
+    var banquetWithInvoice = (state.banquetBookings || []).filter(function(b){ return !!b.invoiceId; }).length;
+    return (state.roomInvoices || []).length + (state.restaurantInvoices || []).length + banquetWithInvoice;
+  }
+  function onbIsDone(key){
+    if(onbSession.doneCache[key]) return Promise.resolve(true);
+    var p;
+    if(key === 'rooms'){
+      p = (state.rooms || []).length ? Promise.resolve(true) : api.getRooms().then(function(r){ return r.length > 0; });
+    } else if(key === 'menu'){
+      p = (state.menu || []).length ? Promise.resolve(true) : api.getMenu().then(function(r){ return r.length > 0; });
+    } else if(key === 'staff'){
+      p = currentTenantStaff().length ? Promise.resolve(true) : api.getStaff().then(function(r){ return r.length > 0; });
+    } else if(key === 'booking'){
+      p = Promise.resolve((state.allRoomBookings || []).length > 0 || (state.banquetBookings || []).length > 0);
+    } else if(key === 'invoice'){
+      p = Promise.resolve(onbInvoiceCount() > 0);
+    } else {
+      p = Promise.resolve(false);
+    }
+    return p.catch(function(){ return false; }).then(function(done){
+      if(done) onbSession.doneCache[key] = true; // finished steps stay finished for this session
+      return done;
+    });
+  }
+  function onbCompute(){
+    var steps = onbBuildSteps();
+    return Promise.all(steps.map(function(st){ return onbIsDone(st.key); })).then(function(res){
+      steps.forEach(function(st, i){ st.done = !!res[i]; });
+      return steps;
+    });
+  }
+  var ONB_CHECK_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>';
+  function onbAnimateBar(wrap, pct){
+    var bar = wrap.querySelector('.onb-progress > span');
+    if(!bar) return;
+    bar.style.width = onbSession.lastPct + '%';          // start from where it was last time
+    window.requestAnimationFrame(function(){
+      window.requestAnimationFrame(function(){ bar.style.width = pct + '%'; });
+    });
+    onbSession.lastPct = pct;
+  }
+  function renderOnboarding(){
+    var wrap = document.getElementById('onboardingWrap');
+    if(!wrap || !state.session || state.session.role !== 'admin') return Promise.resolve();
+    if(api.isDemoMode()){ wrap.innerHTML = ''; return Promise.resolve(); }
+    if(onbSession.busy) return Promise.resolve();
+    onbSession.busy = true;
+    return Promise.all([onbCompute(), storageGet(onbHiddenKey()), storageGet(onbCompleteKey())]).then(function(r){
+      var steps = r[0], hidden = r[1] === '1', finishedBefore = r[2] === '1';
+      var total = steps.length;
+      var doneCount = steps.filter(function(st){ return st.done; }).length;
+      var allDone = doneCount === total;
+      var pct = Math.round((doneCount / total) * 100);
+      if(onbSession.initialAllDone === null) onbSession.initialAllDone = allDone; // what we found on first look
+
+      // Already finished in the past (or finished before they ever saw it): never show.
+      if(!onbSession.celebrating){
+        if(finishedBefore){ wrap.innerHTML = ''; return; }
+        if(allDone && onbSession.initialAllDone){ storageSet(onbCompleteKey(), '1'); wrap.innerHTML = ''; return; }
+      }
+      // Just finished the last step during this session: celebrate until dismissed.
+      if(allDone){
+        onbSession.celebrating = true;
+        storageSet(onbCompleteKey(), '1'); // so a reload doesn't celebrate twice
+        var dots = ''; for(var i = 0; i < 16; i++) dots += '<i></i>';
+        wrap.innerHTML = '<section class="onb-card onb-card-done" aria-labelledby="onbTitle">'
+          + '<div class="onb-confetti" aria-hidden="true">' + dots + '</div>'
+          + '<div class="onb-head"><div class="onb-head-main"><span class="onb-badge-done">' + ONB_CHECK_SVG + '</span><div>'
+          + '<p class="onb-eyebrow">All set</p><h3 class="onb-title" id="onbTitle">Your property is ready to go</h3>'
+          + '<p class="onb-sub">You\'ve added your setup, your team, a booking and your first invoice. From here, everything shows up on this dashboard.</p></div></div></div>'
+          + '<div class="onb-progress-row"><div class="onb-progress" role="progressbar" aria-label="Setup progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100"><span></span></div><span class="onb-pct">100%</span></div>'
+          + '<div class="onb-done-actions"><button type="button" class="btn accent" id="onbDismissBtn">Got it</button></div></section>';
+        onbAnimateBar(wrap, 100);
+        document.getElementById('onbDismissBtn').addEventListener('click', function(){
+          onbSession.celebrating = false;
+          wrap.innerHTML = '';
+        });
+        return;
+      }
+      // Collapsed bar after "Hide".
+      if(hidden){
+        wrap.innerHTML = '<div class="onb-collapsed"><span class="onb-collapsed-text"><b>Setup guide</b> &middot; ' + doneCount + ' of ' + total + ' steps done</span>'
+          + '<button type="button" class="btn ghost small" id="onbShowBtn">Show</button></div>';
+        document.getElementById('onbShowBtn').addEventListener('click', function(){
+          storageSet(onbHiddenKey(), '0').then(function(){ renderOnboarding(); });
+        });
+        return;
+      }
+      // Full checklist.
+      var currentIdx = -1;
+      steps.forEach(function(st, i){ if(!st.done && currentIdx === -1) currentIdx = i; });
+      var name = state.session.firstName ? ', ' + escapeHtml(state.session.firstName) : '';
+      var stepsHtml = steps.map(function(st, i){
+        var cls = st.done ? 'done' : (i === currentIdx ? 'current' : 'todo');
+        var mark = st.done ? ONB_CHECK_SVG : String(i + 1);
+        var action = st.done
+          ? '<span class="onb-done-tag">Done</span>'
+          : '<button type="button" class="btn ' + (i === currentIdx ? 'accent' : 'ghost') + ' small onb-go" data-onb-tab="' + st.tab + '">' + escapeHtml(st.cta) + '</button>';
+        return '<li class="onb-step ' + cls + '"' + (i === currentIdx ? ' aria-current="step"' : '') + '>'
+          + '<span class="onb-mark">' + mark + '</span>'
+          + '<span class="onb-body"><b>' + escapeHtml(st.title) + (st.done ? '<span class="onb-sr"> (completed)</span>' : '') + '</b><small>' + escapeHtml(st.desc) + '</small></span>'
+          + action + '</li>';
+      }).join('');
+      wrap.innerHTML = '<section class="onb-card" aria-labelledby="onbTitle">'
+        + '<div class="onb-head"><div>'
+        + '<p class="onb-eyebrow">Getting started</p>'
+        + '<h3 class="onb-title" id="onbTitle">Welcome' + name + ' \u2014 let\'s get your property ready</h3>'
+        + '<p class="onb-sub">' + doneCount + ' of ' + total + ' steps done. Finish these and your dashboard fills up with real numbers.</p></div>'
+        + '<button type="button" class="onb-hide" id="onbHideBtn" aria-label="Hide setup checklist" title="Hide for now">&times;</button></div>'
+        + '<div class="onb-progress-row"><div class="onb-progress" role="progressbar" aria-label="Setup progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + pct + '"><span></span></div><span class="onb-pct">' + pct + '%</span></div>'
+        + '<ol class="onb-steps">' + stepsHtml + '</ol></section>';
+      onbAnimateBar(wrap, pct);
+      wrap.querySelectorAll('[data-onb-tab]').forEach(function(btn){
+        btn.addEventListener('click', function(){ switchTab(btn.getAttribute('data-onb-tab')); });
+      });
+      document.getElementById('onbHideBtn').addEventListener('click', function(){
+        storageSet(onbHiddenKey(), '1').then(function(){ renderOnboarding(); });
+      });
+    }).catch(function(e){ console.error('Onboarding checklist failed:', e); })
+      .then(function(){ onbSession.busy = false; });
+  }
+
   function renderDashboard(){
     if(state.session.role !== 'admin') return;
     var grid = document.getElementById('todayKpiGrid');
@@ -6356,6 +6517,7 @@
     renderPendingPaymentsList();
     renderAnalyticsCharts(getDashboardRange(dashboardRangeKey));
     renderMonthlyRevenueChart();
+    renderOnboarding();
     });
   }
 
