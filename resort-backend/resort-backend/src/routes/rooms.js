@@ -3,6 +3,7 @@ const { pool } = require('../db');
 const { requireAuth } = require('../middleware/auth');
 const { requireAdminDepartment, requireDepartment } = require('../middleware/rbac');
 const { uploadImageToSupabase, deleteImageFromSupabase } = require('../utils/storage');
+const { validateRoomRow, MAX_IMPORT_ROWS } = require('../utils/importRows');
 
 const router = express.Router();
 router.use(requireAuth);
@@ -94,6 +95,88 @@ router.delete('/:id', requireAdminDepartment('room'), async (req, res) => {
   }
   await pool.query('DELETE FROM rooms WHERE id = $1 AND admin_id = $2', [req.params.id, req.user.adminId]);
   res.status(204).end();
+});
+
+// POST /api/rooms/import — body: { rooms: [{ rowNumber, roomNo, category, bedType, ac, maxAdults,
+// maxChildren, price, amenities, extraBed, extraBedPrice }] }. Bulk-creates rooms from a spreadsheet.
+// Every row is validated again here (the browser's preview is a convenience, not a guarantee).
+// Behaves exactly like adding the rooms by hand: floors are created/extended so they cover the
+// highest room number on them (otherwise editing a floor later would delete the "extra" rooms),
+// and new categories are created on the fly. Rooms that already exist are skipped, never overwritten.
+// With `dryRun: true` it does all the work and reports exactly what WOULD happen, then rolls back —
+// that's what the import preview screen uses, so there is one set of rules, not two.
+router.post('/import', requireAdminDepartment('room'), async (req, res) => {
+  const rows = req.body && req.body.rooms;
+  if (!Array.isArray(rows) || rows.length === 0) return res.status(400).json({ error: 'There are no rooms to import.' });
+  if (rows.length > MAX_IMPORT_ROWS) return res.status(400).json({ error: 'Please import at most ' + MAX_IMPORT_ROWS + ' rooms at a time.' });
+  const adminId = req.user.adminId;
+  const dryRun = req.body.dryRun === true;
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    // One import per hotel at a time, so two quick clicks can't create duplicates.
+    await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', ['import-rooms:' + adminId]);
+
+    const existingRooms = new Set((await client.query('SELECT room_no FROM rooms WHERE admin_id = $1', [adminId])).rows.map((r) => String(r.room_no)));
+    const catByName = new Map((await client.query('SELECT id, name FROM room_categories WHERE admin_id = $1', [adminId])).rows.map((c) => [c.name.trim().toLowerCase(), c.id]));
+    const floorRows = (await client.query('SELECT id, floor, room_count FROM room_floors WHERE admin_id = $1', [adminId])).rows;
+
+    const errors = [], skipped = [], warnings = [], valid = [];
+    const seen = new Set();
+    rows.forEach((raw, i) => {
+      const rowNumber = Number(raw && raw.rowNumber) || (i + 2);
+      const v = validateRoomRow(raw || {});
+      if (v.errors.length) { errors.push({ row: rowNumber, message: v.errors.join(' ') }); return; }
+      const no = String(v.value.roomNo);
+      if (seen.has(no)) { errors.push({ row: rowNumber, message: 'Room ' + no + ' appears more than once in your file.' }); return; }
+      seen.add(no);
+      if (existingRooms.has(no)) { skipped.push({ row: rowNumber, message: 'Room ' + no + ' already exists, so it was skipped.' }); return; }
+      v.warnings.forEach((w) => warnings.push({ row: rowNumber, message: w }));
+      valid.push(v.value);
+    });
+
+    const createdCategories = [];
+    for (const v of valid) {
+      const key = v.category.toLowerCase();
+      if (!catByName.has(key)) {
+        const ins = await client.query('INSERT INTO room_categories (admin_id, name) VALUES ($1,$2) RETURNING id', [adminId, v.category]);
+        catByName.set(key, ins.rows[0].id);
+        createdCategories.push(v.category);
+      }
+    }
+    for (const v of valid) {
+      await client.query(
+        `INSERT INTO rooms (admin_id, room_no, floor, category_id, bed_type, ac, max_adults, max_children,
+                             price, amenities, extra_bed_allowed, extra_bed_price, out_of_order)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,false)`,
+        [adminId, String(v.roomNo), String(v.floor), catByName.get(v.category.toLowerCase()), v.bedType, v.ac,
+         v.maxAdults, v.maxChildren, v.price, JSON.stringify(v.amenities), v.extraBedAllowed, v.extraBedPrice]
+      );
+    }
+
+    // Make every floor's "rooms configured" cover its highest room position.
+    const maxPosByFloor = new Map();
+    valid.forEach((v) => { maxPosByFloor.set(v.floor, Math.max(maxPosByFloor.get(v.floor) || 0, v.pos)); });
+    const createdFloors = [];
+    for (const [floor, maxPos] of maxPosByFloor) {
+      const existing = floorRows.find((f) => parseInt(f.floor, 10) === floor);
+      if (!existing) {
+        await client.query('INSERT INTO room_floors (admin_id, floor, room_count) VALUES ($1,$2,$3)', [adminId, String(floor), maxPos]);
+        createdFloors.push(floor);
+      } else if (existing.room_count < maxPos) {
+        await client.query('UPDATE room_floors SET room_count = $1 WHERE id = $2', [maxPos, existing.id]);
+      }
+    }
+    await client.query(dryRun ? 'ROLLBACK' : 'COMMIT');
+    const preview = valid.slice(0, 8).map((v) => ({ roomNo: v.roomNo, floor: v.floor, category: v.category, bedType: v.bedType, ac: v.ac, price: v.price }));
+    res.status(dryRun ? 200 : 201).json({ dryRun, imported: valid.length, skipped, errors, warnings, createdCategories, createdFloors, preview });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error(err);
+    res.status(500).json({ error: 'Something went wrong importing the rooms. Nothing was saved.' });
+  } finally {
+    client.release();
+  }
 });
 
 const ROOM_MAX_PHOTOS = 2;

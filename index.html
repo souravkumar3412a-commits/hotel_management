@@ -551,6 +551,7 @@ setTimeout(function(){ document.documentElement.classList.remove('gate-wait'); }
       </header>
 
       <main>
+        <div class="sample-banner" id="sampleBanner" role="status" style="display:none;"></div>
 
       <!-- DASHBOARD (admin only) -->
       <section class="section" data-section="dashboard">
@@ -851,6 +852,9 @@ setTimeout(function(){ document.documentElement.classList.remove('gate-wait'); }
             <h2>Menu management</h2>
             <p>Add every dish once with its price and category. During billing, staff only pick items and quantities — no typing prices.</p>
           </div>
+          <div class="page-head-actions">
+            <button type="button" class="btn ghost small" data-import="menu">Import from Excel</button>
+          </div>
         </div>
         <div class="card">
           <p class="section-block-label">Add new item</p>
@@ -903,6 +907,9 @@ setTimeout(function(){ document.documentElement.classList.remove('gate-wait'); }
             <p class="eyebrow" id="billingHeadEyebrow">Staff</p>
             <h2 id="billingHeadTitle">New bill</h2>
             <p>Take the customer's name and phone number, tap what they ordered, and generate the invoice.</p>
+          </div>
+          <div class="page-head-actions">
+            <button type="button" class="btn ghost small tour-replay" data-tour="billing">Take a tour</button>
           </div>
         </div>
         <div class="billing-grid">
@@ -973,6 +980,9 @@ setTimeout(function(){ document.documentElement.classList.remove('gate-wait'); }
             <p class="eyebrow">Admin / Room Management</p>
             <h2>Room setup</h2>
             <p>Configure floors, room categories and room-level details here. Staff use this configuration to book rooms — booking itself happens on the Staff Room Management screen, not here.</p>
+          </div>
+          <div class="page-head-actions">
+            <button type="button" class="btn ghost small" data-import="rooms">Import from Excel</button>
           </div>
         </div>
 
@@ -1057,6 +1067,9 @@ setTimeout(function(){ document.documentElement.classList.remove('gate-wait'); }
             <h2>Room availability</h2>
             <p>A live, read-only view of room status. Rooms become occupied when Staff book them, and available again once Staff checks the guest out.</p>
           </div>
+          <div class="page-head-actions">
+            <button type="button" class="btn ghost small tour-replay" data-tour="room-availability">Take a tour</button>
+          </div>
         </div>
 
         <div class="kpi-grid" id="roomAvailabilityStats" style="margin-bottom:20px;"></div>
@@ -1106,6 +1119,9 @@ setTimeout(function(){ document.documentElement.classList.remove('gate-wait'); }
             <p class="eyebrow">Room Management</p>
             <h2>Room details</h2>
             <p>Take the guest's details, add charges, and generate the invoice.</p>
+          </div>
+          <div class="page-head-actions">
+            <button type="button" class="btn ghost small tour-replay" data-tour="room-booking">Take a tour</button>
           </div>
         </div>
         <div class="billing-grid">
@@ -1651,6 +1667,9 @@ setTimeout(function(){ document.documentElement.classList.remove('gate-wait'); }
             <h2>Sales analysis</h2>
             <p>See how much business a month did, and which dish sold the most.</p>
           </div>
+          <div class="page-head-actions">
+            <button type="button" class="btn ghost small tour-replay" data-tour="analysis">Take a tour</button>
+          </div>
         </div>
         <div class="card" style="margin-bottom:20px;">
           <div class="filters-bar" style="margin-bottom:0;padding-bottom:0;border-bottom:none;">
@@ -2089,6 +2108,33 @@ setTimeout(function(){ document.documentElement.classList.remove('gate-wait'); }
 </div>
 
 <div id="toastWrap"></div>
+
+<div class="modal-scrim" id="importModalScrim">
+  <div class="modal-box imp-box" role="dialog" aria-modal="true" aria-labelledby="importTitle">
+    <div class="modal-head">
+      <div><h3 id="importTitle">Import from Excel</h3><p id="importSub"></p></div>
+      <button class="modal-close" id="importModalClose" aria-label="Close"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="modal-body" id="importBody"></div>
+    <div class="modal-foot" id="importFoot"></div>
+  </div>
+</div>
+
+<div class="tour-layer" id="tourLayer" aria-hidden="true">
+  <div class="tour-block"></div>
+  <div class="tour-spot" id="tourSpot"></div>
+  <div class="tour-tip" id="tourTip" role="dialog" aria-modal="false" aria-labelledby="tourTipTitle" aria-describedby="tourTipText">
+    <p class="tour-count" id="tourCount"></p>
+    <h4 id="tourTipTitle"></h4>
+    <p class="tour-text" id="tourTipText"></p>
+    <div class="tour-dots" id="tourDots" aria-hidden="true"></div>
+    <div class="tour-actions">
+      <button type="button" class="tour-skip" id="tourSkip">Skip tour</button>
+      <span class="tour-nav"><button type="button" class="btn ghost small" id="tourBack">Back</button><button type="button" class="btn accent small" id="tourNext">Next</button></span>
+    </div>
+  </div>
+  <div class="tour-live" id="tourLive" aria-live="polite"></div>
+</div>
 
 <script src="assets/js/splash.js" defer></script>
 <script src="assets/js/gate-animations.js" defer></script>

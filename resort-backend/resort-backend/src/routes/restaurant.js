@@ -2,6 +2,7 @@ const express = require('express');
 const { pool } = require('../db');
 const { requireAuth } = require('../middleware/auth');
 const { requireAdminDepartment, requireDepartment } = require('../middleware/rbac');
+const { validateMenuRow, MAX_IMPORT_ROWS } = require('../utils/importRows');
 
 const router = express.Router();
 router.use(requireAuth);
@@ -41,6 +42,48 @@ router.post('/menu/:id/restore', requireAdminDepartment('restaurant'), async (re
   const r = await pool.query('UPDATE menu_items SET deleted_at = NULL WHERE id = $1 AND admin_id = $2 RETURNING *', [req.params.id, req.user.adminId]);
   if (!r.rows[0]) return res.status(404).json({ error: 'Menu item not found.' });
   res.json(r.rows[0]);
+});
+// POST /api/restaurant/menu/import — body: { items: [{ rowNumber, name, category, price, veg }] }.
+// Bulk-creates menu items from a spreadsheet. Same rules as adding by hand; an item whose
+// name + category already exists on the active menu is skipped, never overwritten.
+router.post('/menu/import', requireAdminDepartment('restaurant'), async (req, res) => {
+  const rows = req.body && req.body.items;
+  if (!Array.isArray(rows) || rows.length === 0) return res.status(400).json({ error: 'There are no menu items to import.' });
+  if (rows.length > MAX_IMPORT_ROWS) return res.status(400).json({ error: 'Please import at most ' + MAX_IMPORT_ROWS + ' items at a time.' });
+  const adminId = req.user.adminId;
+  const dryRun = req.body.dryRun === true; // preview only: do everything, report, roll back
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', ['import-menu:' + adminId]);
+    const existing = new Set((await client.query('SELECT name, category FROM menu_items WHERE admin_id = $1 AND deleted_at IS NULL', [adminId]))
+      .rows.map((m) => (m.name || '').trim().toLowerCase() + '|' + (m.category || '').trim().toLowerCase()));
+    const errors = [], skipped = [], valid = [];
+    const seen = new Set();
+    rows.forEach((raw, i) => {
+      const rowNumber = Number(raw && raw.rowNumber) || (i + 2);
+      const v = validateMenuRow(raw || {});
+      if (v.errors.length) { errors.push({ row: rowNumber, message: v.errors.join(' ') }); return; }
+      const key = v.value.name.toLowerCase() + '|' + v.value.category.toLowerCase();
+      if (seen.has(key)) { errors.push({ row: rowNumber, message: '"' + v.value.name + '" appears more than once in your file.' }); return; }
+      seen.add(key);
+      if (existing.has(key)) { skipped.push({ row: rowNumber, message: '"' + v.value.name + '" is already on your menu, so it was skipped.' }); return; }
+      valid.push(v.value);
+    });
+    for (const m of valid) {
+      await client.query('INSERT INTO menu_items (admin_id, name, category, price, is_veg) VALUES ($1,$2,$3,$4,$5)',
+        [adminId, m.name, m.category, m.price, m.isVeg]);
+    }
+    await client.query(dryRun ? 'ROLLBACK' : 'COMMIT');
+    const preview = valid.slice(0, 8).map((m) => ({ name: m.name, category: m.category, price: m.price, isVeg: m.isVeg }));
+    res.status(dryRun ? 200 : 201).json({ dryRun, imported: valid.length, skipped, errors, warnings: [], createdCategories: [], createdFloors: [], preview });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error(err);
+    res.status(500).json({ error: 'Something went wrong importing the menu. Nothing was saved.' });
+  } finally {
+    client.release();
+  }
 });
 // PUT /api/restaurant/menu/:id/availability — a lighter-weight toggle than
 // the full edit route above, deliberately open to restaurant STAFF too (not

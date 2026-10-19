@@ -1451,6 +1451,9 @@
     if(name === 'banquet-history') renderBanquetHistory();
     if(name === 'banquet-booking') renderBanquetBookingPage();
     if(name === 'table-setup'){ fetchTablesFromServer().then(renderTableStatusGrid); renderTableStatusGrid(); }
+    // Leaving the screen a tour belongs to ends it (without marking it as seen); a new screen may start its own.
+    if(tourState && tourState.name !== sectionKey) endTour(false, false);
+    maybeStartTour(sectionKey);
   }
   function renderNavChildren(children){
     var html = '';
@@ -2351,6 +2354,7 @@
     renderPromoList();
     renderDashboard();
     renderStaffDashboard();
+    refreshSampleStatus();
     initSidebarToggle();
     initDashboardClock();
     var notifMenu = document.getElementById('notifMenu');
@@ -6321,6 +6325,486 @@
         + '</div>';
     }).join('');
   }
+  // ---------- refresh everything after a bulk change (import / sample data) ----------
+  function refreshAfterBulkChange(){
+    var depts = planDepartments();
+    var fetchers = [];
+    if(depts.indexOf('room') !== -1) fetchers.push(fetchRoomSetupFromServer);
+    if(depts.indexOf('restaurant') !== -1) fetchers.push(fetchMenuFromServer);
+    if(depts.indexOf('banquet') !== -1){ fetchers.push(fetchBanquetHallsFromServer); fetchers.push(fetchBanquetBookingsFromServer); }
+    var chain = Promise.resolve();
+    fetchers.forEach(function(fn){ chain = chain.then(function(){ return fn().catch(function(){}); }); });
+    return chain.then(function(){
+      [renderRoomSetup, renderRoomAvailability, renderBanquetSetup, renderBanquetAvailability, renderMenu, renderMenuTrash,
+       renderItemPicker, renderHistory, renderRoomHistory, renderSalesAnalysis, renderDashboard].forEach(function(fn){
+        try{ fn(); }catch(e){ console.error(e); }
+      });
+    });
+  }
+
+  // ---------- Excel / CSV import (rooms and menu items) ----------
+  // The admin downloads a template, fills it in and uploads it. The file is read in the
+  // browser (SheetJS), sent to the server as a "dry run" to PREVIEW what would happen,
+  // and only then imported. The server's rules are the only rules: the preview shows
+  // exactly what the real import will do.
+  function importNorm(s){
+    return String(s === undefined || s === null ? '' : s).toLowerCase()
+      .replace(/\(.*?\)/g, '').replace(/\*/g, '').replace(/[^a-z0-9\/# ]+/g, ' ')
+      .replace(/\s*\/\s*/g, '/').replace(/\s+/g, ' ').trim();
+  }
+  var IMPORT_KINDS = {
+    rooms: {
+      title: 'Import rooms from Excel', noun: 'rooms', one: 'room', sheet: 'Rooms', file: 'eazzio-rooms-template.xlsx',
+      sub: 'Add many rooms at once instead of typing them one by one.',
+      columns: [
+        { key:'roomNo', header:'Room No *', required:true, width:12, aliases:['room no','room number','room','room #','roomno','room num'] },
+        { key:'category', header:'Category *', required:true, width:16, aliases:['category','room category','room type','type'] },
+        { key:'price', header:'Price per night *', required:true, width:18, aliases:['price per night','price','rate','tariff','rate per night'] },
+        { key:'bedType', header:'Bed Type', width:14, aliases:['bed type','bed','beds'] },
+        { key:'ac', header:'AC (Yes/No)', width:13, aliases:['ac','a/c','air conditioning','ac yes/no'] },
+        { key:'maxAdults', header:'Max Adults', width:12, aliases:['max adults','adults','maximum adults'] },
+        { key:'maxChildren', header:'Max Children', width:13, aliases:['max children','children','maximum children'] },
+        { key:'amenities', header:'Amenities', width:42, aliases:['amenities','facilities'] },
+        { key:'extraBed', header:'Extra Bed Allowed (Yes/No)', width:25, aliases:['extra bed allowed','extra bed','extra bed yes/no'] },
+        { key:'extraBedPrice', header:'Extra Bed Price', width:15, aliases:['extra bed price','extra bed charge','extra bed rate'] }
+      ],
+      tips: function(){ return [
+        'Room No: the floor number followed by two digits. 101 is floor 1, room 01; 1205 is floor 12, room 05. Floors are created for you.',
+        'Category: any name you like (Standard, Deluxe, Suite...). New names are created automatically.',
+        'Price per night: numbers only (no need for a currency symbol).',
+        'Bed Type: Single, Double, Twin, Queen or King. Leave blank for Double.',
+        'AC and Extra Bed Allowed: Yes or No. Blank means AC = Yes and Extra Bed = No.',
+        'Amenities: separate with commas. Available: ' + DEFAULT_AMENITIES.join(', ') + '.',
+        'Rooms that already exist are skipped, never changed. Up to 500 rooms per file.'
+      ]; },
+      examples: [
+        [101, 'Standard', 2500, 'Double Bed', 'Yes', 2, 1, 'Wi-Fi, TV, Hot Water', 'No', ''],
+        [201, 'Deluxe', 3800, 'King Bed', 'Yes', 2, 2, 'Wi-Fi, TV, Balcony', 'Yes', 800]
+      ],
+      previewHead: ['Room', 'Category', 'Bed', 'AC', 'Price'],
+      previewRow: function(p){ return [String(p.roomNo), p.category, p.bedType, p.ac ? 'AC' : 'Non-AC', money(p.price)]; },
+      send: function(rows, dry){ return api.importRooms(rows, dry); }
+    },
+    menu: {
+      title: 'Import menu items from Excel', noun: 'menu items', one: 'menu item', sheet: 'Menu', file: 'eazzio-menu-template.xlsx',
+      sub: 'Add your whole menu at once instead of typing every dish.',
+      columns: [
+        { key:'name', header:'Item Name *', required:true, width:30, aliases:['item name','item','name','dish','dish name'] },
+        { key:'category', header:'Category', width:18, aliases:['category','menu category','section'] },
+        { key:'price', header:'Price *', required:true, width:12, aliases:['price','rate','amount'] },
+        { key:'veg', header:'Veg / Non-Veg', width:15, aliases:['veg/non veg','veg/nonveg','veg non veg','veg','food type','type'] }
+      ],
+      tips: function(){ return [
+        'Item Name: the dish as you want staff to see it.',
+        'Category: Starters, Main Course, Drinks... Leave blank for "Other".',
+        'Price: numbers only (no need for a currency symbol).',
+        'Veg / Non-Veg: write Veg or Non-Veg. Blank means Veg.',
+        'An item that is already on your menu (same name and category) is skipped, never changed. Up to 500 items per file.'
+      ]; },
+      examples: [
+        ['Paneer Tikka', 'Starters', 260, 'Veg'],
+        ['Chicken Biryani', 'Main Course', 320, 'Non-Veg']
+      ],
+      previewHead: ['Item', 'Category', 'Price', 'Type'],
+      previewRow: function(p){ return [p.name, p.category, money(p.price), p.isVeg ? 'Veg' : 'Non-Veg']; },
+      send: function(rows, dry){ return api.importMenuItems(rows, dry); }
+    }
+  };
+  var IMPORT_MAX_BYTES = 2 * 1024 * 1024;
+  var IMPORT_MAX_ROWS = 500;
+  var importScrim = document.getElementById('importModalScrim');
+  var importCtx = null;
+  var importBody = document.getElementById('importBody');
+  var importFoot = document.getElementById('importFoot');
+
+  function importXlsxReady(){ return typeof XLSX !== 'undefined' && XLSX && XLSX.read; }
+  function downloadImportTemplate(kind){
+    var cfg = IMPORT_KINDS[kind];
+    if(!importXlsxReady()){ showToast('The spreadsheet tool could not load. Check your internet connection and refresh the page.', 'error'); return; }
+    var wb = XLSX.utils.book_new();
+    var ws = XLSX.utils.aoa_to_sheet([cfg.columns.map(function(c){ return c.header; })]);
+    ws['!cols'] = cfg.columns.map(function(c){ return { wch: c.width }; });
+    XLSX.utils.book_append_sheet(wb, ws, cfg.sheet);
+    var help = [['How to fill in the "' + cfg.sheet + '" sheet'], ['']];
+    cfg.tips().forEach(function(t){ help.push(['\u2022 ' + t]); });
+    help.push(['']);
+    help.push(['Example rows (type your own on the "' + cfg.sheet + '" sheet, one per row, under the headings):']);
+    help.push(cfg.columns.map(function(c){ return c.header; }));
+    cfg.examples.forEach(function(r){ help.push(r); });
+    var ws2 = XLSX.utils.aoa_to_sheet(help);
+    ws2['!cols'] = [{ wch: 70 }].concat(cfg.columns.slice(1).map(function(c){ return { wch: c.width }; }));
+    XLSX.utils.book_append_sheet(wb, ws2, 'How to fill this in');
+    XLSX.writeFile(wb, cfg.file);
+  }
+
+  // Reads the first matching sheet and turns each row into { rowNumber, <column key>: value }.
+  function parseImportFile(file, kind){
+    var cfg = IMPORT_KINDS[kind];
+    return new Promise(function(resolve, reject){
+      if(!importXlsxReady()){ reject(new Error('The spreadsheet tool could not load. Check your internet connection and refresh the page.')); return; }
+      var ext = String(file.name || '').toLowerCase().split('.').pop();
+      if(['xlsx', 'xls', 'csv'].indexOf(ext) === -1){ reject(new Error('Please upload an Excel (.xlsx, .xls) or CSV (.csv) file.')); return; }
+      if(file.size > IMPORT_MAX_BYTES){ reject(new Error('That file is larger than 2 MB. Please split it into smaller files.')); return; }
+      var fr = new FileReader();
+      fr.onerror = function(){ reject(new Error('We couldn\'t read that file. Please try again.')); };
+      fr.onload = function(e){
+        var grid;
+        try{
+          var wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+          var want = cfg.sheet.toLowerCase();
+          var name = wb.SheetNames.filter(function(n){ return n.toLowerCase() === want; })[0] || wb.SheetNames[0];
+          grid = XLSX.utils.sheet_to_json(wb.Sheets[name], { header: 1, defval: '', blankrows: true, range: 0 });
+        }catch(err){ reject(new Error('We couldn\'t read that file. Please upload a .xlsx or .csv file.')); return; }
+        // The header row is the first one (in the top 10) that has at least two column names we know.
+        var aliasToKey = {};
+        cfg.columns.forEach(function(c){
+          aliasToKey[importNorm(c.header)] = c.key;
+          c.aliases.forEach(function(a){ aliasToKey[importNorm(a)] = c.key; });
+        });
+        var headerIdx = -1, colOf = {};
+        for(var i = 0; i < Math.min(grid.length, 10) && headerIdx === -1; i++){
+          var found = {}, hits = 0;
+          grid[i].forEach(function(cell, ci){
+            var key = aliasToKey[importNorm(cell)];
+            if(key && found[key] === undefined){ found[key] = ci; hits++; }
+          });
+          if(hits >= 2){ headerIdx = i; colOf = found; }
+        }
+        if(headerIdx === -1){ reject(new Error('We couldn\'t find the column headings. Please use the template and keep its first row.')); return; }
+        var missing = cfg.columns.filter(function(c){ return c.required && colOf[c.key] === undefined; }).map(function(c){ return c.header.replace(' *', ''); });
+        if(missing.length){ reject(new Error('These columns are missing: ' + missing.join(', ') + '. Please use the template.')); return; }
+        var rows = [];
+        for(var r = headerIdx + 1; r < grid.length; r++){
+          var obj = { rowNumber: r + 1 }, any = false;
+          cfg.columns.forEach(function(c){
+            var v = colOf[c.key] === undefined ? '' : grid[r][colOf[c.key]];
+            if(v === undefined || v === null) v = '';
+            if(String(v).trim() !== '') any = true;
+            obj[c.key] = typeof v === 'string' ? v.trim() : v;
+          });
+          if(any) rows.push(obj);
+        }
+        if(!rows.length){ reject(new Error('That file has no ' + cfg.noun + ' in it yet. Fill in the template and upload it again.')); return; }
+        if(rows.length > IMPORT_MAX_ROWS){ reject(new Error('That file has ' + rows.length + ' rows. Please import up to ' + IMPORT_MAX_ROWS + ' at a time.')); return; }
+        resolve(rows);
+      };
+      fr.readAsArrayBuffer(file);
+    });
+  }
+
+  function openImport(kind){
+    if(!IMPORT_KINDS[kind]) return;
+    importCtx = { kind: kind, cfg: IMPORT_KINDS[kind], rows: null };
+    document.getElementById('importTitle').textContent = importCtx.cfg.title;
+    document.getElementById('importSub').textContent = importCtx.cfg.sub;
+    renderImportStart();
+    importScrim.classList.add('show');
+  }
+  function closeImport(){ importScrim.classList.remove('show'); importCtx = null; }
+  document.getElementById('importModalClose').addEventListener('click', closeImport);
+  importScrim.addEventListener('click', function(e){ if(e.target === importScrim) closeImport(); });
+  document.addEventListener('keydown', function(e){ if(e.key === 'Escape' && importScrim.classList.contains('show')) closeImport(); });
+  document.addEventListener('click', function(e){
+    var trigger = e.target.closest ? e.target.closest('[data-import]') : null;
+    if(!trigger) return;
+    e.preventDefault();
+    openImport(trigger.getAttribute('data-import'));
+  });
+
+  function renderImportStart(errorText){
+    var cfg = importCtx.cfg;
+    importBody.innerHTML =
+      '<ol class="imp-steps">'
+      + '<li><span class="imp-num">1</span><span><b>Download the template</b><small>It already has the right columns.</small></span><button type="button" class="btn ghost small" id="impTemplateBtn">Download template</button></li>'
+      + '<li><span class="imp-num">2</span><span><b>Fill it in</b><small>One row per ' + cfg.one + '. The second sheet explains each column.</small></span></li>'
+      + '<li><span class="imp-num">3</span><span><b>Upload it here</b><small>Excel or CSV, up to ' + IMPORT_MAX_ROWS + ' rows. You\'ll see a preview before anything is saved.</small></span></li>'
+      + '</ol>'
+      + '<label class="imp-drop" id="impDrop" for="impFile"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>'
+      + '<span><b>Choose a file</b> or drag it here</span><small>.xlsx, .xls or .csv &middot; up to 2 MB</small></label>'
+      + '<input type="file" id="impFile" accept=".xlsx,.xls,.csv" class="imp-file">'
+      + '<p class="error-text' + (errorText ? ' show' : '') + '" id="impError" role="alert">' + escapeHtml(errorText || '') + '</p>';
+    importFoot.innerHTML = '<button type="button" class="btn ghost" id="impCancelBtn">Cancel</button>';
+    document.getElementById('impCancelBtn').addEventListener('click', closeImport);
+    document.getElementById('impTemplateBtn').addEventListener('click', function(){ downloadImportTemplate(importCtx.kind); });
+    var input = document.getElementById('impFile'), drop = document.getElementById('impDrop');
+    input.addEventListener('change', function(){ if(input.files && input.files[0]) handleImportFile(input.files[0]); });
+    ['dragenter', 'dragover'].forEach(function(ev){ drop.addEventListener(ev, function(e){ e.preventDefault(); drop.classList.add('over'); }); });
+    ['dragleave', 'drop'].forEach(function(ev){ drop.addEventListener(ev, function(e){ e.preventDefault(); drop.classList.remove('over'); }); });
+    drop.addEventListener('drop', function(e){ if(e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) handleImportFile(e.dataTransfer.files[0]); });
+  }
+  function renderImportBusy(text){
+    importBody.innerHTML = '<div class="imp-busy"><span class="imp-spin" aria-hidden="true"></span><p>' + escapeHtml(text) + '</p></div>';
+    importFoot.innerHTML = '';
+  }
+  function handleImportFile(file){
+    var ctx = importCtx;
+    renderImportBusy('Checking your file\u2026');
+    parseImportFile(file, ctx.kind).then(function(rows){
+      ctx.rows = rows;
+      return ctx.cfg.send(rows, true);
+    }).then(function(res){
+      if(importCtx !== ctx) return;
+      renderImportPreview(res);
+    }).catch(function(e){
+      if(importCtx !== ctx) return;
+      renderImportStart(e && e.message ? e.message : 'Something went wrong reading that file.');
+    });
+  }
+  function importProblemsHtml(items, cls){
+    if(!items.length) return '';
+    var shown = items.slice(0, 40).map(function(it){ return '<li><span class="imp-row">Row ' + it.row + '</span><span>' + escapeHtml(it.message) + '</span></li>'; }).join('');
+    var more = items.length > 40 ? '<li class="imp-more">\u2026and ' + (items.length - 40) + ' more</li>' : '';
+    return '<ul class="imp-problems ' + cls + '">' + shown + more + '</ul>';
+  }
+  function renderImportPreview(res){
+    var cfg = importCtx.cfg;
+    var ready = res.imported, errors = res.errors || [], skipped = res.skipped || [], warnings = res.warnings || [];
+    var chips = '<span class="imp-chip good"><b>' + ready + '</b> ready to import</span>'
+      + (skipped.length ? '<span class="imp-chip info"><b>' + skipped.length + '</b> already exist</span>' : '')
+      + (errors.length ? '<span class="imp-chip bad"><b>' + errors.length + '</b> need fixing</span>' : '');
+    var table = '';
+    if(res.preview && res.preview.length){
+      table = '<div class="imp-table-wrap"><table class="imp-table"><thead><tr>' + cfg.previewHead.map(function(h){ return '<th>' + h + '</th>'; }).join('') + '</tr></thead><tbody>'
+        + res.preview.map(function(p){ return '<tr>' + cfg.previewRow(p).map(function(c){ return '<td>' + escapeHtml(c) + '</td>'; }).join('') + '</tr>'; }).join('')
+        + '</tbody></table>' + (ready > res.preview.length ? '<p class="imp-more-note">\u2026and ' + (ready - res.preview.length) + ' more</p>' : '') + '</div>';
+    }
+    var notes = '';
+    if(res.createdCategories && res.createdCategories.length) notes += '<p class="imp-note">New categories will be created: <b>' + res.createdCategories.map(escapeHtml).join(', ') + '</b></p>';
+    if(res.createdFloors && res.createdFloors.length) notes += '<p class="imp-note">New floors will be created: <b>' + res.createdFloors.join(', ') + '</b></p>';
+    var problems = '';
+    if(errors.length) problems += '<p class="imp-sec-title bad">Rows that need fixing <small>(these will not be imported)</small></p>' + importProblemsHtml(errors, 'bad');
+    if(skipped.length) problems += '<p class="imp-sec-title">Skipped</p>' + importProblemsHtml(skipped, 'info');
+    if(warnings.length) problems += '<p class="imp-sec-title">Heads up</p>' + importProblemsHtml(warnings, 'warn');
+    var emptyMsg = ready === 0 ? '<p class="imp-note">Nothing in this file can be imported. Fix the rows below in Excel and upload it again.</p>' : '';
+    importBody.innerHTML = '<div class="imp-chips">' + chips + '</div>' + notes + emptyMsg + table + problems;
+    importFoot.innerHTML = '<button type="button" class="btn ghost" id="impAgainBtn">Choose a different file</button>'
+      + '<button type="button" class="btn accent" id="impGoBtn"' + (ready === 0 ? ' disabled' : '') + '>Import ' + ready + ' ' + (ready === 1 ? cfg.one : cfg.noun) + '</button>';
+    document.getElementById('impAgainBtn').addEventListener('click', function(){ renderImportStart(); });
+    document.getElementById('impGoBtn').addEventListener('click', runImport);
+  }
+  function runImport(){
+    var ctx = importCtx;
+    renderImportBusy('Importing your ' + ctx.cfg.noun + '\u2026');
+    ctx.cfg.send(ctx.rows, false).then(function(res){
+      if(importCtx !== ctx) return;
+      renderImportResult(res);
+      refreshAfterBulkChange().then(function(){ return renderOnboarding(); });
+    }).catch(function(e){
+      if(importCtx !== ctx) return;
+      importBody.innerHTML = '<p class="error-text show" role="alert">' + escapeHtml(e && e.message ? e.message : 'Something went wrong. Nothing was saved.') + '</p>';
+      importFoot.innerHTML = '<button type="button" class="btn ghost" id="impBackBtn">Back</button>';
+      document.getElementById('impBackBtn').addEventListener('click', function(){ renderImportStart(); });
+    });
+  }
+  function renderImportResult(res){
+    var cfg = importCtx.cfg;
+    var errors = res.errors || [], skipped = res.skipped || [];
+    importBody.innerHTML =
+      '<div class="imp-done"><span class="imp-done-badge">' + ONB_CHECK_SVG + '</span>'
+      + '<h4>' + res.imported + ' ' + (res.imported === 1 ? cfg.one : cfg.noun) + ' imported</h4>'
+      + '<p>' + (skipped.length ? skipped.length + ' already existed and ' + (skipped.length === 1 ? 'was' : 'were') + ' left as they are. ' : '')
+      + (errors.length ? errors.length + ' row' + (errors.length === 1 ? '' : 's') + ' could not be imported \u2014 fix ' + (errors.length === 1 ? 'it' : 'them') + ' in Excel and upload again.' : '')
+      + (!skipped.length && !errors.length ? 'They\'re ready to use right away.' : '') + '</p></div>'
+      + (errors.length ? importProblemsHtml(errors, 'bad') : '');
+    importFoot.innerHTML = '<button type="button" class="btn accent" id="impDoneBtn">Done</button>';
+    document.getElementById('impDoneBtn').addEventListener('click', closeImport);
+    showToast('Imported ' + res.imported + ' ' + (res.imported === 1 ? cfg.one : cfg.noun));
+  }
+
+  // ---------- "Try with sample data" ----------
+  // Fills an EMPTY account with realistic sample rooms, bookings, menu items and invoices
+  // so a new admin can explore a busy dashboard, then removes all of it with one click.
+  // The server tracks exactly which rows are samples; see backend routes/sample.js.
+  function refreshSampleStatus(){
+    if(!state.session || state.session.role !== 'admin' || api.isDemoMode()){ renderSampleBanner(); return Promise.resolve(); }
+    return api.getSampleDataStatus().then(function(s){ state.sample = s; }).catch(function(){}).then(renderSampleBanner);
+  }
+  function renderSampleBanner(){
+    var el = document.getElementById('sampleBanner');
+    if(!el) return;
+    if(!state.sample || !state.sample.active){ el.style.display = 'none'; el.innerHTML = ''; return; }
+    el.style.display = '';
+    el.innerHTML = '<span class="sb-text"><b>You\'re exploring sample data.</b> The rooms, bookings and sales you see are examples, not your real business.</span>'
+      + '<button type="button" class="btn small sb-btn" id="sampleClearBtn">Clear sample data</button>';
+    document.getElementById('sampleClearBtn').addEventListener('click', confirmClearSample);
+  }
+  function confirmClearSample(){
+    openConfirm({
+      title: 'Clear all sample data?',
+      desc: 'This removes the sample rooms, banquet halls, menu items, bookings and invoices. Anything you added yourself is kept, except bookings and invoices you made on a sample room or hall.',
+      confirmLabel: 'Clear sample data',
+      onConfirm: function(){
+        onbSession.doneCache = {}; onbSession.initialAllDone = null; onbSession.lastPct = 0;
+        api.clearSampleData().then(function(){
+          state.sample = { active: false, canSeed: true, reason: null };
+          renderSampleBanner();
+          return refreshAfterBulkChange();
+        }).then(function(){
+          return refreshSampleStatus();
+        }).then(function(){
+          showToast('Sample data cleared. Let\'s set up your real property.');
+          return renderOnboarding();
+        }).catch(function(e){ showToast(e.message, 'error'); });
+      }
+    });
+  }
+  function loadSampleData(btn){
+    setBtnLoading(btn, true, 'Loading sample data\u2026');
+    api.loadSampleData().then(function(){
+      onbSession.doneCache = {}; onbSession.initialAllDone = null;
+      return refreshSampleStatus();
+    }).then(function(){
+      return refreshAfterBulkChange();
+    }).then(function(){
+      showToast('Sample data loaded. Explore, then clear it when you\'re ready.');
+      return renderOnboarding();
+    }).catch(function(e){
+      setBtnLoading(btn, false, null, 'Try with sample data');
+      showToast(e.message, 'error');
+    });
+  }
+
+  // ---------- guided tours ----------
+  // A short 3-step spotlight tour, shown once, the first time someone opens a screen
+  // (once per person: a staff member sees it even if the admin already did). "Take a tour"
+  // on each screen replays it. Skipped in the demo, and for any step whose target isn't on screen.
+  var TOURS = {
+    'room-availability': { steps: [
+      { sel:'#roomAvailabilityStats', title:'Your rooms at a glance', text:'These cards show how many rooms are free, occupied and out of order right now. They update as your staff book and check guests out.' },
+      { sel:'#roomAvailabilityFilters', title:'Find a room fast', text:'Filter by floor, category or status to find the room you\'re looking for.' },
+      { sel:'#roomAvailabilityListWrap', title:'Who is where', text:'Each room shows its status and guest. Bookings are made by your Room staff from their own login, and they appear here straight away.' }
+    ] },
+    'room-booking': { steps: [
+      { sel:'#roomGuestName', title:'Start with the guest', text:'Enter their name and phone number. If they\'ve stayed with you before, you\'ll see their history right here.' },
+      { sel:'#roomPickerBtn', title:'Choose a room and dates', text:'Pick a free room, then set the check-in and check-out. The price is calculated for you.' },
+      { sel:'#roomTicketPanel', title:'Review and book', text:'Check the bill on this side, take an advance if the guest is paying one, choose how they paid, then confirm the booking.' }
+    ] },
+    'billing': { steps: [
+      { sel:'#custName', title:'Who is this bill for?', text:'Add the customer\'s name and phone number. The phone number links all of their visits together.' },
+      { sel:'#pickerCard', title:'Tap what they ordered', text:'Search for a dish or tap items to add them. Prices come straight from your menu, so nobody types them.' },
+      { sel:'#ticketPanel', title:'Review, then bill', text:'Apply a promo code, choose how they paid and press Generate invoice. You can send it to the customer on WhatsApp straight away.' }
+    ] },
+    'analysis': { steps: [
+      { sel:'#analysisMonth', title:'Pick a month', text:'Choose which month you want to look at. Clear it to see everything.' },
+      { sel:'#analysisStats', title:'Your numbers', text:'Total sales, number of orders and the average bill for that month, all in one glance.' },
+      { sel:'#analysisTopDish', title:'What sells best', text:'See your top-selling dish and how revenue and payment methods are split.' }
+    ] }
+  };
+  var tourState = null;
+  var tourEls = {
+    layer: document.getElementById('tourLayer'), spot: document.getElementById('tourSpot'), tip: document.getElementById('tourTip'),
+    count: document.getElementById('tourCount'), title: document.getElementById('tourTipTitle'), text: document.getElementById('tourTipText'),
+    dots: document.getElementById('tourDots'), skip: document.getElementById('tourSkip'), back: document.getElementById('tourBack'),
+    next: document.getElementById('tourNext'), live: document.getElementById('tourLive')
+  };
+  function tourSeenKey(name){
+    var s = state.session || {};
+    return 'tour-seen:' + name + ':' + tenantId() + ':' + (s.role || '') + ':' + (s.staffId || '');
+  }
+  function tourTargetVisible(sel){
+    var el = document.querySelector(sel);
+    if(!el) return null;
+    var r = el.getBoundingClientRect();
+    return (r.width > 0 && r.height > 0) ? el : null;
+  }
+  function maybeStartTour(name){
+    if(!TOURS[name] || !tourEls.layer || tourState || api.isDemoMode() || !state.session) return;
+    storageGet(tourSeenKey(name)).then(function(seen){
+      if(seen === '1') return;
+      // Give the screen a moment to render, then make sure we're still on it and nothing else is open.
+      window.setTimeout(function(){
+        var section = document.querySelector('.section.active');
+        if(tourState || !section || section.getAttribute('data-section') !== name) return;
+        if(document.querySelector('.modal-scrim.show') || document.getElementById('splashScreen') && document.getElementById('splashScreen').style.display !== 'none' && document.getElementById('splashScreen').offsetParent !== null) return;
+        startTour(name);
+      }, 700);
+    }).catch(function(){});
+  }
+  function startTour(name){
+    var def = TOURS[name];
+    if(!def || tourState) return;
+    var steps = def.steps.filter(function(st){ return !!tourTargetVisible(st.sel); });
+    if(!steps.length) return;
+    tourState = { name: name, steps: steps, i: 0, returnFocus: document.activeElement, scrollY: window.pageYOffset };
+    tourEls.layer.classList.add('show');
+    tourEls.layer.setAttribute('aria-hidden', 'false');
+    showTourStep();
+  }
+  function endTour(markSeen, keepPlace){
+    if(!tourState) return;
+    var name = tourState.name, back = tourState.returnFocus, y = tourState.scrollY;
+    tourState = null;
+    tourEls.layer.classList.remove('show');
+    tourEls.layer.setAttribute('aria-hidden', 'true');
+    if(markSeen !== false) storageSet(tourSeenKey(name), '1');
+    // Put the page back where it was: the tour scrolls targets into view, which can leave the screen's own buttons under the top bar.
+    if(keepPlace !== false && typeof y === 'number') window.scrollTo(0, y);
+    if(back && back.focus){ try{ back.focus({ preventScroll: true }); }catch(e){} }
+  }
+  function positionTour(){
+    if(!tourState) return;
+    var st = tourState.steps[tourState.i];
+    var el = tourTargetVisible(st.sel);
+    if(!el){ // the target vanished (e.g. the screen re-rendered): move on
+      if(tourState.i < tourState.steps.length - 1){ tourState.i++; showTourStep(); } else endTour(true);
+      return;
+    }
+    var r = el.getBoundingClientRect(), pad = 8;
+    var vw = window.innerWidth, vh = window.innerHeight;
+    var top = Math.max(4, r.top - pad), left = Math.max(4, r.left - pad);
+    var width = Math.min(vw - left - 4, r.width + pad * 2), height = Math.min(r.height + pad * 2, vh - top - 4);
+    tourEls.spot.style.cssText = 'top:' + top + 'px;left:' + left + 'px;width:' + width + 'px;height:' + height + 'px;';
+    var tip = tourEls.tip;
+    var narrow = vw < 640;
+    tip.classList.toggle('sheet', narrow);
+    if(narrow){ tip.style.cssText = ''; return; }
+    var tw = Math.min(340, vw - 24), th = tip.offsetHeight || 190;
+    var below = vh - (top + height) - 16, above = top - 16;
+    var y;
+    if(below >= th) y = top + height + 14;
+    else if(above >= th) y = top - th - 14;
+    else y = Math.max(12, vh - th - 16);          // no room beside it: dock at the bottom
+    var x = Math.min(Math.max(12, left), vw - tw - 12);
+    tip.style.cssText = 'width:' + tw + 'px;top:' + y + 'px;left:' + x + 'px;';
+  }
+  function showTourStep(){
+    var t = tourState, st = t.steps[t.i], last = t.i === t.steps.length - 1;
+    var el = tourTargetVisible(st.sel);
+    if(el && el.scrollIntoView){ el.scrollIntoView({ block: 'center', behavior: 'auto' }); }
+    tourEls.count.textContent = 'Step ' + (t.i + 1) + ' of ' + t.steps.length;
+    tourEls.title.textContent = st.title;
+    tourEls.text.textContent = st.text;
+    tourEls.dots.innerHTML = t.steps.map(function(_, i){ return '<i class="' + (i === t.i ? 'on' : '') + '"></i>'; }).join('');
+    tourEls.back.style.visibility = t.i === 0 ? 'hidden' : 'visible';
+    tourEls.next.textContent = last ? 'Got it' : 'Next';
+    tourEls.live.textContent = 'Step ' + (t.i + 1) + ' of ' + t.steps.length + ': ' + st.title;
+    positionTour();
+    window.requestAnimationFrame(positionTour);
+    tourEls.next.focus({ preventScroll: true });
+  }
+  if(tourEls.layer){
+    tourEls.next.addEventListener('click', function(){
+      if(!tourState) return;
+      if(tourState.i < tourState.steps.length - 1){ tourState.i++; showTourStep(); } else endTour(true);
+    });
+    tourEls.back.addEventListener('click', function(){ if(tourState && tourState.i > 0){ tourState.i--; showTourStep(); } });
+    tourEls.skip.addEventListener('click', function(){ endTour(true); });
+    window.addEventListener('resize', positionTour);
+    document.addEventListener('scroll', positionTour, true);
+    document.addEventListener('keydown', function(e){
+      if(!tourState) return;
+      if(e.key === 'Escape'){ e.preventDefault(); endTour(true); }
+      else if(e.key === 'ArrowRight'){ tourEls.next.click(); }
+      else if(e.key === 'ArrowLeft'){ tourEls.back.click(); }
+    });
+    document.addEventListener('click', function(e){
+      var replay = e.target.closest ? e.target.closest('[data-tour]') : null;
+      if(!replay) return;
+      e.preventDefault();
+      startTour(replay.getAttribute('data-tour'));
+    });
+  }
+
   // ---------- onboarding checklist (new admins) ----------
   // A short "get started" card at the top of the admin Dashboard: Add rooms →
   // Add staff → Make your first booking → Generate your first invoice, with a
@@ -6339,22 +6823,22 @@
     var hasRestaurant = depts.indexOf('restaurant') !== -1;
     var steps = [];
     if(hasRoom){
-      steps.push({ key:'rooms', title:'Add your rooms', desc:'Create your floors, room categories and rooms so you can start taking bookings.', cta:'Add rooms', tab:'room-setup' });
+      steps.push({ key:'rooms', title:'Add your rooms', desc:'Create your floors, room categories and rooms so you can start taking bookings.', cta:'Add rooms', tab:'room-setup', importKind:'rooms' });
     }
     if(hasRestaurant){
-      steps.push({ key:'menu', title:'Add your menu', desc:'Add the dishes you serve so your staff can bill a table in a few taps.', cta:'Add menu items', tab:'menu' });
+      steps.push({ key:'menu', title:'Add your menu', desc:'Add the dishes you serve so your staff can bill a table in a few taps.', cta:'Add menu items', tab:'menu', importKind:'menu' });
     }
     steps.push({ key:'staff', title:'Add your staff',
       desc: depts.length > 1 ? 'Create a login for each department\'s team. They only ever see their own department.' : 'Create a login for your team. They only see what you give them access to.',
       cta:'Add staff', tab:'staff' });
     if(hasRoom || hasBanquet){
       steps.push({ key:'booking', title:'Make your first booking',
-        desc: hasRoom ? ('Book a guest into a room' + (hasBanquet ? ' or schedule a banquet event' : '') + ' to see how a booking flows.') : 'Schedule your first banquet event.',
-        cta:'Make a booking', tab: hasRoom ? 'room-availability' : 'banquet-availability' });
+        desc: 'Bookings are made from your staff\'s own login. Log out, choose Staff Login, and book ' + (hasRoom ? 'a guest into a room' + (hasBanquet ? ' or a banquet event' : '') : 'a banquet event') + '.',
+        cta: hasRoom ? 'View room availability' : 'View banquet availability', tab: hasRoom ? 'room-availability' : 'banquet-availability' });
     }
     steps.push({ key:'invoice', title:'Generate your first invoice',
-      desc: hasRoom ? 'Check a guest out' + (hasRestaurant ? ' (or bill a restaurant table)' : '') + ' to create your first invoice.' : 'Once your staff bills a table, the invoice appears in your history.',
-      cta: hasRoom ? 'Go to bookings' : 'View invoices', tab: hasRoom ? 'room-availability' : 'history' });
+      desc: hasRoom ? 'Your staff check a guest out' + (hasRestaurant ? ' or bill a restaurant table' : '') + ', and the invoice appears in your history.' : 'Once your staff bills a table, the invoice appears in your history.',
+      cta: 'View invoice history', tab: hasRoom ? 'room-history' : 'history' });
     return steps;
   }
   // Real invoices only — the dashboard list also folds banquet BOOKINGS in as
@@ -6407,7 +6891,22 @@
     if(api.isDemoMode()){ wrap.innerHTML = ''; return Promise.resolve(); }
     if(onbSession.busy) return Promise.resolve();
     onbSession.busy = true;
-    return Promise.all([onbCompute(), storageGet(onbHiddenKey()), storageGet(onbCompleteKey())]).then(function(r){
+    return refreshSampleStatus().then(function(){
+      if(state.sample && state.sample.active){
+        // Exploring sample data: the checklist would tick itself off from the fake rooms, so show a
+        // sample-mode card instead, and forget anything counted from sample rows.
+        onbSession.doneCache = {}; onbSession.initialAllDone = null; onbSession.lastPct = 0;
+        wrap.innerHTML = '<section class="onb-card onb-card-sample" aria-labelledby="onbTitle">'
+          + '<div class="onb-head"><div><p class="onb-eyebrow">Sample data</p>'
+          + '<h3 class="onb-title" id="onbTitle">You\'re exploring a sample hotel</h3>'
+          + '<p class="onb-sub">Everything on screen is example data, so you can see what a busy dashboard looks like. When you\'re ready to set up your own property, clear it and your setup checklist will appear.</p></div></div>'
+          + '<div class="onb-done-actions"><button type="button" class="btn accent" id="onbClearSampleBtn">Clear sample data &amp; start setup</button></div></section>';
+        document.getElementById('onbClearSampleBtn').addEventListener('click', confirmClearSample);
+        return null;
+      }
+      return Promise.all([onbCompute(), storageGet(onbHiddenKey()), storageGet(onbCompleteKey())]);
+    }).then(function(r){
+      if(!r) return;
       var steps = r[0], hidden = r[1] === '1', finishedBefore = r[2] === '1';
       var total = steps.length;
       var doneCount = steps.filter(function(st){ return st.done; }).length;
@@ -6457,7 +6956,8 @@
         var mark = st.done ? ONB_CHECK_SVG : String(i + 1);
         var action = st.done
           ? '<span class="onb-done-tag">Done</span>'
-          : '<button type="button" class="btn ' + (i === currentIdx ? 'accent' : 'ghost') + ' small onb-go" data-onb-tab="' + st.tab + '">' + escapeHtml(st.cta) + '</button>';
+          : '<span class="onb-actions"><button type="button" class="btn ' + (i === currentIdx ? 'accent' : 'ghost') + ' small onb-go" data-onb-tab="' + st.tab + '">' + escapeHtml(st.cta) + '</button>'
+            + (st.importKind ? '<button type="button" class="onb-link" data-import="' + st.importKind + '">or import from Excel</button>' : '') + '</span>';
         return '<li class="onb-step ' + cls + '"' + (i === currentIdx ? ' aria-current="step"' : '') + '>'
           + '<span class="onb-mark">' + mark + '</span>'
           + '<span class="onb-body"><b>' + escapeHtml(st.title) + (st.done ? '<span class="onb-sr"> (completed)</span>' : '') + '</b><small>' + escapeHtml(st.desc) + '</small></span>'
@@ -6470,8 +6970,14 @@
         + '<p class="onb-sub">' + doneCount + ' of ' + total + ' steps done. Finish these and your dashboard fills up with real numbers.</p></div>'
         + '<button type="button" class="onb-hide" id="onbHideBtn" aria-label="Hide setup checklist" title="Hide for now">&times;</button></div>'
         + '<div class="onb-progress-row"><div class="onb-progress" role="progressbar" aria-label="Setup progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + pct + '"><span></span></div><span class="onb-pct">' + pct + '%</span></div>'
-        + '<ol class="onb-steps">' + stepsHtml + '</ol></section>';
+        + '<ol class="onb-steps">' + stepsHtml + '</ol>'
+        + (state.sample && state.sample.canSeed
+            ? '<div class="onb-sample"><span><b>Want to look around first?</b> Fill your account with sample rooms, bookings and sales. Clear it in one click when you\'re ready.</span><button type="button" class="btn ghost small" id="onbSampleBtn">Try with sample data</button></div>'
+            : '')
+        + '</section>';
       onbAnimateBar(wrap, pct);
+      var sampleBtn = document.getElementById('onbSampleBtn');
+      if(sampleBtn) sampleBtn.addEventListener('click', function(){ loadSampleData(sampleBtn); });
       wrap.querySelectorAll('[data-onb-tab]').forEach(function(btn){
         btn.addEventListener('click', function(){ switchTab(btn.getAttribute('data-onb-tab')); });
       });

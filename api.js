@@ -459,6 +459,13 @@
     getMenu: () => request('GET', '/restaurant/menu'),
     getDeletedMenu: () => request('GET', '/restaurant/menu/deleted'),
     createMenuItem: (item) => request('POST', '/restaurant/menu', item),
+    // Bulk import from a spreadsheet. dryRun:true previews (nothing is saved); the server's rules are the only rules.
+    importRooms: (rooms, dryRun) => request('POST', '/rooms/import', { rooms, dryRun: !!dryRun }),
+    importMenuItems: (items, dryRun) => request('POST', '/restaurant/menu/import', { items, dryRun: !!dryRun }),
+    // "Try with sample data"
+    getSampleDataStatus: () => request('GET', '/sample-data'),
+    loadSampleData: () => request('POST', '/sample-data'),
+    clearSampleData: () => request('DELETE', '/sample-data'),
     updateMenuItem: (id, item) => request('PUT', '/restaurant/menu/' + id, item),
     setMenuItemAvailability: (id, available) => request('PUT', '/restaurant/menu/' + id + '/availability', { available }),
     deleteMenuItem: (id) => request('DELETE', '/restaurant/menu/' + id),

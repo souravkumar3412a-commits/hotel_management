@@ -272,3 +272,11 @@ CREATE TABLE subscription_promo_codes (
   used_count        INTEGER NOT NULL DEFAULT 0,
   created_at        TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Rows created by "Try with sample data", so clearing it removes only those.
+CREATE TABLE sample_data_rows (
+  admin_id    UUID NOT NULL REFERENCES admins(id) ON DELETE CASCADE,
+  table_name  TEXT NOT NULL,
+  row_id      UUID NOT NULL,
+  PRIMARY KEY (admin_id, table_name, row_id)
+);

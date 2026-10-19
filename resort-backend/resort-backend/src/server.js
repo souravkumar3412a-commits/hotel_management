@@ -13,6 +13,7 @@ const invoiceRoutes = require('./routes/invoices');
 const settingsRoutes = require('./routes/settings');
 const subscriptionRoutes = require('./routes/subscription');
 const aiRoutes = require('./routes/ai');
+const sampleRoutes = require('./routes/sample');
 
 const app = express();
 
@@ -74,6 +75,7 @@ app.use('/api/invoices', invoiceRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/subscription', subscriptionRoutes);
 app.use('/api/ai', aiRoutes);
+app.use('/api/sample-data', sampleRoutes);
 
 app.get('/api/health', (req, res) => res.json({ ok: true }));
 
